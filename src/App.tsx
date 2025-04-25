@@ -11,6 +11,10 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import CreateEvent from "./pages/CreateEvent";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import Venues from "./pages/Venues";
+import VenueDetail from "./pages/VenueDetail";
+import CreateVenue from "./pages/CreateVenue";
+import MyVenues from "./pages/MyVenues";
 
 function App() {
   return (
@@ -19,6 +23,24 @@ function App() {
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/events" element={<Events />} />
+          <Route path="/venues" element={<Venues />} />
+          <Route path="/venues/:id" element={<VenueDetail />} />
+          <Route
+            path="/create-venue"
+            element={
+              <ProtectedRoute>
+                <CreateVenue />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/my-venues"
+            element={
+              <ProtectedRoute>
+                <MyVenues />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/settings"
             element={
