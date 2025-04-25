@@ -161,3 +161,24 @@ export const updateStripeConnectId = async (userId: string, stripeConnectId: str
     throw error;
   }
 };
+
+// Fetch all published events
+export const getPublishedEvents = async (): Promise<Event[]> => {
+  try {
+    const eventsRef = collection(db, "events");
+    const q = query(
+      eventsRef, 
+      where("published", "==", true),
+      orderBy("date", "asc")
+    );
+    
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ 
+      id: doc.id, 
+      ...doc.data() 
+    }) as Event);
+  } catch (error) {
+    console.error("Error fetching events:", error);
+    throw error;
+  }
+};
