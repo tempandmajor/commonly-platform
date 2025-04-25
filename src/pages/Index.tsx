@@ -52,9 +52,9 @@ const Index = () => {
               </p>
               <div className="flex justify-center space-x-4">
                 <Button>Explore Events</Button>
-                <Button variant="outline" as={Link} to="/settings">
-                  View Settings
-                </Button>
+                <Link to="/settings">
+                  <Button variant="outline">View Settings</Button>
+                </Link>
               </div>
             </div>
           ) : (
