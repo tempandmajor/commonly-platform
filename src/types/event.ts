@@ -1,4 +1,5 @@
 
+
 export interface Event {
   id: string;
   title: string;
@@ -53,7 +54,7 @@ export interface EventDraft {
 }
 
 export interface SponsorshipTier {
-  id?: string; // Making id optional during creation
+  id?: string; // Optional during creation
   name: string;
   price: number;
   benefits: string[];
@@ -90,3 +91,4 @@ export interface WalletTransaction {
   eventId?: string;
   referralId?: string;
 }
+

@@ -54,10 +54,12 @@ const formSchema = z.object({
   scheduledPublishDate: z.date().optional(),
   sponsorshipTiers: z.array(
     z.object({
+      id: z.string().optional(),
       name: z.string(),
       price: z.number().min(0),
       benefits: z.array(z.string()),
-      limitedSpots: z.number().optional()
+      limitedSpots: z.number().optional(),
+      spotsTaken: z.number().optional()
     })
   ).optional(),
   preSaleGoal: z.number().min(0).optional(),

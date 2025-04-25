@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { FormField, FormItem, FormLabel, FormControl, FormDescription, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -14,12 +13,7 @@ interface SponsorshipTiersProps {
 }
 
 export const SponsorshipTiers = ({ form }: SponsorshipTiersProps) => {
-  const [tiers, setTiers] = useState<{
-    name: string;
-    price: number;
-    benefits: string[];
-    limitedSpots?: number;
-  }[]>([
+  const [tiers, setTiers] = useState<SponsorshipTier[]>([
     {
       name: "Bronze Sponsor",
       price: 500,
