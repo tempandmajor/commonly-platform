@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,6 +17,8 @@ import { EventDetails } from "@/components/events/create/EventDetails";
 import { DateTimeSection } from "@/components/events/create/DateTimeSection";
 import { PricingAccess } from "@/components/events/create/PricingAccess";
 import { PublicationSettings } from "@/components/events/create/PublicationSettings";
+import { SponsorshipTiers } from "@/components/events/create/SponsorshipTiers";
+import { SponsorshipTier } from "@/types/event";
 import { 
   createEvent, 
   saveEventDraft, 
@@ -51,6 +52,16 @@ const formSchema = z.object({
   rewards: z.string().optional(),
   scheduledPublish: z.boolean().default(false),
   scheduledPublishDate: z.date().optional(),
+  sponsorshipTiers: z.array(
+    z.object({
+      name: z.string(),
+      price: z.number().min(0),
+      benefits: z.array(z.string()),
+      limitedSpots: z.number().optional()
+    })
+  ).optional(),
+  preSaleGoal: z.number().min(0).optional(),
+  referralPercentage: z.number().min(0).max(15).default(5)
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -80,6 +91,15 @@ const CreateEvent: React.FC = () => {
       isPrivate: false,
       isFree: false,
       scheduledPublish: false,
+      referralPercentage: 5,
+      sponsorshipTiers: [
+        {
+          name: "Bronze Sponsor",
+          price: 500,
+          benefits: ["Logo on event page", "Social media mention"],
+          limitedSpots: 10
+        }
+      ]
     },
   });
   
@@ -214,17 +234,16 @@ const CreateEvent: React.FC = () => {
         imageUrl = await uploadEventImage(eventImage, currentUser.uid);
       }
       
-      // Ensure all required fields are present and properly typed
       const eventData = {
-        title: data.title, // Explicitly include title as non-optional
-        description: data.description, // Explicitly include description as non-optional
+        title: data.title,
+        description: data.description,
         price: data.isFree ? 0 : (data.price || 0),
         imageUrl,
         organizer: userData?.displayName || "Unknown",
         organizerId: currentUser.uid,
         published: !data.scheduledPublish,
         date: format(data.startDate, "yyyy-MM-dd'T'HH:mm:ss"),
-        location: data.location, // Explicitly include location
+        location: data.location,
         category: "general",
         eventType: data.eventType as "single" | "multi" | "tour",
         ageRestriction: data.ageRestriction,
@@ -235,9 +254,12 @@ const CreateEvent: React.FC = () => {
           ? format(data.scheduledPublishDate, "yyyy-MM-dd'T'HH:mm:ss") 
           : undefined,
         stripeConnectId: userData?.stripeConnectId,
-        // For multi-day events or events with duration
         endDate: data.endDate ? format(data.endDate, "yyyy-MM-dd'T'HH:mm:ss") : undefined,
         eventDuration: data.eventDuration,
+        sponsorshipTiers: data.sponsorshipTiers,
+        preSaleGoal: data.preSaleGoal,
+        preSaleCount: 0,
+        referralPercentage: data.referralPercentage
       };
       
       const eventId = await createEvent(eventData);
@@ -383,6 +405,8 @@ const CreateEvent: React.FC = () => {
             form={form}
             isFree={isFree}
           />
+          
+          <SponsorshipTiers form={form} />
           
           <PublicationSettings 
             form={form}
