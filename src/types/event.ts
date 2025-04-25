@@ -48,6 +48,7 @@ export interface EventReport {
   id: string;
   eventId: string;
   userId: string;
+  reporterEmail?: string;
   reason: string;
   description: string;
   status: 'pending' | 'resolved' | 'dismissed';
@@ -62,6 +63,9 @@ export interface Referral {
   amount: number;
   status: 'pending' | 'paid';
   createdAt: Date;
+  code: string;
+  earnings: number;
+  conversionCount: number;
 }
 
 export interface UserWallet {
@@ -69,4 +73,15 @@ export interface UserWallet {
   balance: number;
   totalEarned: number;
   lastPayout?: Date;
+  availableBalance: number;
+  pendingBalance: number;
+  totalEarnings: number;
+  transactions: Array<{
+    id: string;
+    amount: number;
+    description: string;
+    type: 'referral' | 'withdrawal';
+    status: 'pending' | 'completed';
+    createdAt: string | Date;
+  }>;
 }

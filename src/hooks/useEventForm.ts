@@ -305,6 +305,7 @@ export const useEventForm = (currentUser: any, userData: any) => {
     checkingStripe,
     handleImageChange,
     onSubmit,
-    connectStripe
+    connectStripe,
+    handleAutosave
   };
 };

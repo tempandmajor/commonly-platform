@@ -69,7 +69,7 @@ const ReportEventDialog: React.FC<ReportEventDialogProps> = ({
       
       await reportEvent({
         eventId,
-        reporterId: currentUser.uid,
+        userId: currentUser.uid,
         reporterEmail: currentUser.email || "",
         reason: data.reason,
         description: data.description,

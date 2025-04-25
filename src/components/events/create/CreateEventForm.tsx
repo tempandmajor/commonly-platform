@@ -30,7 +30,8 @@ export const CreateEventForm = ({ currentUser, userData }: CreateEventFormProps)
     saving,
     lastSaved,
     handleImageChange,
-    onSubmit
+    onSubmit,
+    handleAutosave
   } = useEventForm(currentUser, userData);
 
   const isFree = form.watch("isFree");
