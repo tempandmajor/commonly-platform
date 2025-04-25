@@ -1,10 +1,10 @@
-
 import React, { useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, useNavigate, useParams } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { Toaster } from "./components/ui/toaster";
 import { httpsCallable } from "firebase/functions";
 import { functions } from "./lib/firebase";
+import AppWalkthrough from "./components/user/AppWalkthrough";
 import Index from "./pages/Index";
 import Events from "./pages/Events";
 import Settings from "./pages/Settings";
@@ -22,6 +22,7 @@ function App() {
   return (
     <Router>
       <AuthProvider>
+        <AppWalkthrough />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/events" element={<Events />} />
@@ -73,7 +74,6 @@ function App() {
                     </p>
                   </div>
                   <div className="space-y-8">
-                    {/* Include the ReferralsDashboard component */}
                     {React.createElement(
                       React.lazy(() => import("./components/user/ReferralsDashboard"))
                     )}
@@ -91,7 +91,6 @@ function App() {
   );
 }
 
-// This component handles referral link redirects
 const ReferralRedirect = () => {
   const navigate = useNavigate();
   const { code } = useParams();
@@ -100,12 +99,9 @@ const ReferralRedirect = () => {
   useEffect(() => {
     const trackClick = async () => {
       try {
-        // Track the referral click using Firebase Functions
         const trackReferralClick = httpsCallable(functions, 'trackReferralClick');
         await trackReferralClick({ code });
         
-        // Redirect to the event page
-        // In a real app, you would query for the event ID associated with this code
         navigate('/');
       } catch (error) {
         console.error('Error tracking referral:', error);
