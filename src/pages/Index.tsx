@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import AuthDialog from "@/components/auth/AuthDialog";
 import { Link } from "react-router-dom";
+import { Plus } from "lucide-react";
 
 const Index = () => {
   const { currentUser, userData, logout } = useAuth();
@@ -18,6 +19,12 @@ const Index = () => {
           <div className="flex items-center space-x-4">
             {currentUser ? (
               <>
+                <Link to="/create-event">
+                  <Button>
+                    <Plus className="mr-1 h-4 w-4" />
+                    Create Event
+                  </Button>
+                </Link>
                 <Link to="/settings">
                   <Button variant="outline">Settings</Button>
                 </Link>
