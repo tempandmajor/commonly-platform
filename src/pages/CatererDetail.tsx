@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -6,12 +5,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getCaterer } from '@/services/catererService';
 import Navbar from '@/components/layout/Navbar';
 import ReportCatererDialog from '@/components/catering/ReportCatererDialog';
-import { Button } from '@/components/ui/button';
+import { PhotoGallery } from '@/components/catering/detail/PhotoGallery';
+import { CatererHeader } from '@/components/catering/detail/CatererHeader';
+import { BookingSidebar } from '@/components/catering/detail/BookingSidebar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  MapPin, Calendar, Image, FileText, 
-  DollarSign, Flag, UtensilsCrossed, Users, Clock
-} from 'lucide-react';
+import { FileText, Image, Clock } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 
 const CatererDetail = () => {
@@ -56,103 +54,24 @@ const CatererDetail = () => {
     <>
       <Navbar />
       <main className="container mx-auto px-4 py-8">
-        {/* Hero Section */}
-        <div className="relative h-[60vh] md:h-[50vh] overflow-hidden rounded-xl mb-8">
-          <img 
-            src={caterer.photos[selectedPhotoIndex]?.url || '/placeholder.svg'} 
-            alt={caterer.name}
-            className="w-full h-full object-cover"
-          />
-          
-          {/* Photo Gallery Navigator */}
-          <div className="absolute bottom-4 left-4 right-4 flex justify-center">
-            <div className="bg-black/70 rounded-lg p-2 flex gap-2 overflow-x-auto max-w-full">
-              {caterer.photos.map((photo, index) => (
-                <div 
-                  key={photo.id}
-                  className={`w-16 h-16 cursor-pointer rounded overflow-hidden transition-all ${
-                    index === selectedPhotoIndex ? 'ring-2 ring-white' : 'opacity-70'
-                  }`}
-                  onClick={() => setSelectedPhotoIndex(index)}
-                >
-                  <img 
-                    src={photo.url} 
-                    alt={photo.caption || `Photo ${index + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          {/* Badges */}
-          <div className="absolute top-4 right-4 flex flex-col items-end gap-2">
-            {caterer.isVerified && (
-              <div className="bg-green-500 text-white px-3 py-1 rounded-full font-medium text-sm">
-                Verified Caterer
-              </div>
-            )}
-          </div>
-        </div>
+        <PhotoGallery 
+          photos={caterer.photos}
+          selectedIndex={selectedPhotoIndex}
+          onPhotoSelect={setSelectedPhotoIndex}
+        />
         
         {/* Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Header */}
-            <div>
-              <div className="flex justify-between items-start">
-                <div>
-                  <h1 className="text-3xl font-bold">{caterer.name}</h1>
-                  <div className="flex items-center gap-2 mt-2 text-muted-foreground">
-                    <MapPin className="h-4 w-4" />
-                    <span>{caterer.location.address}, {caterer.location.city}, {caterer.location.state}</span>
-                  </div>
-                </div>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="text-red-500 hover:bg-red-50 hover:text-red-600"
-                  onClick={() => setReportDialogOpen(true)}
-                >
-                  <Flag className="h-4 w-4 mr-1" />
-                  Report
-                </Button>
-              </div>
-              
-              {/* Cuisine Types */}
-              <div className="flex flex-wrap gap-2 mt-3">
-                {caterer.cuisineTypes.map((cuisine, index) => (
-                  <span 
-                    key={index}
-                    className="bg-secondary text-secondary-foreground text-xs rounded-full px-2 py-1"
-                  >
-                    {cuisine}
-                  </span>
-                ))}
-              </div>
-              
-              {/* Host Info */}
-              <div className="flex items-center gap-3 mt-4">
-                <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden">
-                  {caterer.ownerPhotoURL ? (
-                    <img 
-                      src={caterer.ownerPhotoURL} 
-                      alt={caterer.ownerName} 
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-primary/10">
-                      <UtensilsCrossed className="h-6 w-6 text-primary" />
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <p className="font-medium">By {caterer.ownerName}</p>
-                  <p className="text-sm text-muted-foreground">Catering Service</p>
-                </div>
-              </div>
-            </div>
+            <CatererHeader
+              name={caterer.name}
+              location={caterer.location}
+              cuisineTypes={caterer.cuisineTypes}
+              ownerName={caterer.ownerName}
+              ownerPhotoURL={caterer.ownerPhotoURL}
+              onReportClick={() => setReportDialogOpen(true)}
+            />
             
             {/* Tabs for different sections */}
             <Tabs defaultValue="menu" className="w-full">
@@ -313,84 +232,11 @@ const CatererDetail = () => {
           
           {/* Booking Sidebar */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl border p-6 sticky top-8">
-              <div className="flex justify-between items-baseline mb-6">
-                <div>
-                  <span className="text-2xl font-bold">
-                    {formatCurrency(caterer.pricing.minimumOrderAmount, caterer.pricing.currency)}
-                  </span>
-                  <span className="text-muted-foreground"> min. order</span>
-                </div>
-              </div>
-              
-              {/* Service Types */}
-              <div className="space-y-4 mb-6">
-                <h3 className="font-medium">Available Services</h3>
-                <div className="grid grid-cols-3 gap-2">
-                  {Object.entries(caterer.pricing.serviceTypes).map(([key, available]) => {
-                    if (!available) return null;
-                    
-                    const serviceNames: Record<string, string> = {
-                      pickup: 'Pickup',
-                      delivery: 'Delivery',
-                      fullService: 'Full Service'
-                    };
-                    
-                    return (
-                      <div 
-                        key={key}
-                        className="flex flex-col items-center p-2 border rounded-md text-center"
-                      >
-                        <span className="text-xs text-muted-foreground">{serviceNames[key]}</span>
-                        <span className="text-lg">✓</span>
-                      </div>
-                    );
-                  })}
-                </div>
-                
-                {/* Fee Breakdown */}
-                <div className="text-sm space-y-1 border-t pt-4 mt-4">
-                  <p className="flex justify-between">
-                    <span>Minimum order</span>
-                    <span>{formatCurrency(caterer.pricing.minimumOrderAmount, caterer.pricing.currency)}</span>
-                  </p>
-                  {caterer.pricing.deliveryFee && (
-                    <p className="flex justify-between">
-                      <span>Delivery fee</span>
-                      <span>{formatCurrency(caterer.pricing.deliveryFee, caterer.pricing.currency)}</span>
-                    </p>
-                  )}
-                  <p className="flex justify-between text-xs text-muted-foreground">
-                    <span>Commonly service fee (5%)</span>
-                    <span>Added at checkout</span>
-                  </p>
-                </div>
-                
-                {/* Guest Count Slider */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>Guest Count</span>
-                    <span>50 guests</span>
-                  </div>
-                  <Slider
-                    defaultValue={[50]}
-                    min={caterer.services[0]?.minGuests || 10}
-                    max={caterer.services[0]?.maxGuests || 100}
-                    step={5}
-                    className="mb-3"
-                  />
-                </div>
-              </div>
-              
-              <Button className="w-full mb-3">
-                <Calendar className="h-4 w-4 mr-2" />
-                Book Now
-              </Button>
-              
-              <p className="text-center text-xs text-muted-foreground">
-                You won't be charged yet
-              </p>
-            </div>
+            <BookingSidebar
+              pricing={caterer.pricing}
+              minGuests={caterer.services[0]?.minGuests || 10}
+              maxGuests={caterer.services[0]?.maxGuests || 100}
+            />
           </div>
         </div>
       </main>
