@@ -6,6 +6,7 @@ import { Toaster } from "./components/ui/toaster";
 import { httpsCallable } from "firebase/functions";
 import { functions } from "./lib/firebase";
 import Index from "./pages/Index";
+import Events from "./pages/Events";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import CreateEvent from "./pages/CreateEvent";
@@ -17,6 +18,7 @@ function App() {
       <AuthProvider>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/events" element={<Events />} />
           <Route
             path="/settings"
             element={
