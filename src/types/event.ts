@@ -36,3 +36,37 @@ export interface Event {
   createdAt?: string;
   updatedAt?: string;
 }
+
+export interface EventDraft {
+  id: string;
+  userId: string;
+  eventData: Partial<Event>;
+  lastSaved: Date;
+}
+
+export interface EventReport {
+  id: string;
+  eventId: string;
+  userId: string;
+  reason: string;
+  description: string;
+  status: 'pending' | 'resolved' | 'dismissed';
+  createdAt: Date;
+}
+
+export interface Referral {
+  id: string;
+  eventId: string;
+  referrerId: string;
+  purchaserId: string;
+  amount: number;
+  status: 'pending' | 'paid';
+  createdAt: Date;
+}
+
+export interface UserWallet {
+  userId: string;
+  balance: number;
+  totalEarned: number;
+  lastPayout?: Date;
+}
