@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -213,20 +214,30 @@ const CreateEvent: React.FC = () => {
         imageUrl = await uploadEventImage(eventImage, currentUser.uid);
       }
       
+      // Ensure all required fields are present and properly typed
       const eventData = {
-        ...data,
+        title: data.title, // Explicitly include title as non-optional
+        description: data.description, // Explicitly include description as non-optional
         price: data.isFree ? 0 : (data.price || 0),
         imageUrl,
         organizer: userData?.displayName || "Unknown",
         organizerId: currentUser.uid,
         published: !data.scheduledPublish,
         date: format(data.startDate, "yyyy-MM-dd'T'HH:mm:ss"),
+        location: data.location, // Explicitly include location
         category: "general",
         eventType: data.eventType as "single" | "multi" | "tour",
+        ageRestriction: data.ageRestriction,
+        isPrivate: data.isPrivate,
+        isFree: data.isFree,
+        rewards: data.rewards || "",
         scheduledPublishDate: data.scheduledPublish && data.scheduledPublishDate 
           ? format(data.scheduledPublishDate, "yyyy-MM-dd'T'HH:mm:ss") 
           : undefined,
         stripeConnectId: userData?.stripeConnectId,
+        // For multi-day events or events with duration
+        endDate: data.endDate ? format(data.endDate, "yyyy-MM-dd'T'HH:mm:ss") : undefined,
+        eventDuration: data.eventDuration,
       };
       
       const eventId = await createEvent(eventData);
