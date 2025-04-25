@@ -177,12 +177,12 @@ export const getUserEventsFeed = async (
 };
 
 // Get popular users (most followers)
-export const getPopularUsers = async (limit: number = 10): Promise<UserData[]> => {
+export const getPopularUsers = async (limitCount: number = 10): Promise<UserData[]> => {
   try {
     const q = query(
       collection(db, "users"),
       orderBy("followerCount", "desc"),
-      limit(limit)
+      limit(limitCount)
     );
     
     const usersSnap = await getDocs(q);
@@ -200,14 +200,14 @@ export const getPopularUsers = async (limit: number = 10): Promise<UserData[]> =
 };
 
 // Search users by name
-export const searchUsers = async (query: string, limit: number = 10): Promise<UserData[]> => {
+export const searchUsers = async (searchQuery: string, limitCount: number = 10): Promise<UserData[]> => {
   try {
     // Firebase doesn't support native text search, so we search by prefix
     const q = query(
       collection(db, "users"),
-      where("displayName", ">=", query),
-      where("displayName", "<=", query + '\uf8ff'),
-      limit(limit)
+      where("displayName", ">=", searchQuery),
+      where("displayName", "<=", searchQuery + '\uf8ff'),
+      limit(limitCount)
     );
     
     const usersSnap = await getDocs(q);

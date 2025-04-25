@@ -16,6 +16,8 @@ export interface UserData {
   isPrivate?: boolean;
   hasTwoFactorEnabled?: boolean;
   bio?: string;
+  isMerchant?: boolean;
+  merchantStoreId?: string;
 }
 
 export interface AuthContextType {
@@ -35,6 +37,7 @@ export interface AuthContextType {
   isFollowing: (userId: string) => boolean;
   enableTwoFactorAuth: () => Promise<void>;
   disableTwoFactorAuth: () => Promise<void>;
+  activateMerchantStore: () => Promise<void>;
 }
 
 export interface ChatMessage {
@@ -68,4 +71,32 @@ export interface FollowStats {
   userId: string;
   followerCount: number;
   followingCount: number;
+}
+
+export interface Product {
+  id: string;
+  storeId: string;
+  name: string;
+  description: string;
+  price: number;
+  images: string[];
+  category: string;
+  inventory: number;
+  createdAt: any;
+  updatedAt: any;
+  isActive: boolean;
+  stripeProductId?: string;
+  stripePriceId?: string;
+}
+
+export interface MerchantStore {
+  id: string;
+  ownerId: string;
+  name: string;
+  description: string;
+  logo?: string;
+  banner?: string;
+  createdAt: any;
+  updatedAt: any;
+  isActive: boolean;
 }

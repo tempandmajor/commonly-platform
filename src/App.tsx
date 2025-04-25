@@ -21,6 +21,9 @@ import CatererDetail from "./pages/CatererDetail";
 import UserProfile from "./pages/UserProfile";
 import Messages from "./pages/Messages";
 import MessagesList from "./pages/MessagesList";
+import StoreMarketplace from "./pages/StoreMarketplace";
+import StoreDashboard from "./components/merchant/StoreDashboard";
+import AddProduct from "./pages/AddProduct";
 
 function App() {
   return (
@@ -35,6 +38,7 @@ function App() {
           <Route path="/catering" element={<Catering />} />
           <Route path="/catering/:id" element={<CatererDetail />} />
           <Route path="/profile/:id" element={<UserProfile />} />
+          <Route path="/marketplace" element={<StoreMarketplace />} />
           
           <Route
             path="/create-venue"
@@ -81,6 +85,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <CreateEvent />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/store/dashboard"
+            element={
+              <ProtectedRoute>
+                <StoreDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/store/add-product"
+            element={
+              <ProtectedRoute>
+                <AddProduct />
               </ProtectedRoute>
             }
           />

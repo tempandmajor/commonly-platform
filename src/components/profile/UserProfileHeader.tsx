@@ -4,7 +4,7 @@ import { UserData } from "@/types/auth";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, UserPlus, UserMinus, ShieldCheck, Lock } from "lucide-react";
+import { MessageSquare, UserPlus, UserMinus, ShieldCheck, Lock, Store } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { getUserFollowers, getUserFollowing } from "@/services/userService";
 import { useToast } from "@/hooks/use-toast";
@@ -113,6 +113,12 @@ const UserProfileHeader: React.FC<UserProfileHeaderProps> = ({
         .toUpperCase()
     : "U";
 
+  const handleStoreClick = () => {
+    if (user.merchantStoreId) {
+      navigate(`/store/${user.merchantStoreId}`);
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
       <div className="flex flex-col md:flex-row gap-6 items-center md:items-start">
@@ -121,11 +127,18 @@ const UserProfileHeader: React.FC<UserProfileHeaderProps> = ({
             <AvatarImage src={user.photoURL || undefined} />
             <AvatarFallback>{userInitials}</AvatarFallback>
           </Avatar>
-          {isPro && (
-            <div className="absolute -bottom-1 -right-1 bg-yellow-500 text-white p-1 rounded-full">
-              <ShieldCheck className="h-4 w-4" />
-            </div>
-          )}
+          <div className="absolute -bottom-1 -right-1 flex gap-1">
+            {isPro && (
+              <div className="bg-yellow-500 text-white p-1 rounded-full">
+                <ShieldCheck className="h-4 w-4" />
+              </div>
+            )}
+            {user.isMerchant && (
+              <div className="bg-primary text-primary-foreground p-1 rounded-full cursor-pointer" onClick={handleStoreClick}>
+                <Store className="h-4 w-4" />
+              </div>
+            )}
+          </div>
         </div>
         
         <div className="flex-1 text-center md:text-left">
@@ -135,6 +148,11 @@ const UserProfileHeader: React.FC<UserProfileHeaderProps> = ({
             {isPro && (
               <span className="text-xs bg-yellow-500 text-white px-2 py-0.5 rounded-full">
                 PRO
+              </span>
+            )}
+            {user.isMerchant && (
+              <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
+                VERIFIED CREATOR
               </span>
             )}
           </div>
@@ -156,6 +174,14 @@ const UserProfileHeader: React.FC<UserProfileHeaderProps> = ({
             >
               <span className="font-bold">{user.followingCount || 0}</span> following
             </button>
+            {user.isMerchant && (
+              <button 
+                onClick={handleStoreClick}
+                className="text-sm hover:underline text-primary"
+              >
+                <span className="font-bold">Visit Store</span>
+              </button>
+            )}
           </div>
         </div>
         

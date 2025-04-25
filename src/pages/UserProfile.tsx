@@ -20,6 +20,7 @@ import UserList from "@/components/profile/UserList";
 import { Loader2 } from "lucide-react";
 import { checkSubscriptionEligibility } from "@/services/subscriptionService";
 import SubscriptionTab from "@/components/profile/SubscriptionTab";
+import MerchantStoreTab from "@/components/profile/MerchantStoreTab";
 
 const UserProfile = () => {
   const { id } = useParams<{ id: string }>();
@@ -151,6 +152,9 @@ const UserProfile = () => {
     );
   }
 
+  // Check if user is eligible for merchant store (1000+ followers)
+  const isEligibleForMerchant = (profileUser.followerCount || 0) >= 1000;
+
   return (
     <>
       <Navbar />
@@ -168,6 +172,9 @@ const UserProfile = () => {
             <TabsTrigger value="events">Events</TabsTrigger>
             {isOwnProfile && isEligibleForPro && (
               <TabsTrigger value="subscription">Subscription</TabsTrigger>
+            )}
+            {isOwnProfile && isEligibleForMerchant && (
+              <TabsTrigger value="merchant">Merchant Store</TabsTrigger>
             )}
           </TabsList>
           
@@ -194,6 +201,12 @@ const UserProfile = () => {
           {isOwnProfile && isEligibleForPro && (
             <TabsContent value="subscription" className="mt-4">
               <SubscriptionTab userId={profileUser.uid} />
+            </TabsContent>
+          )}
+          
+          {isOwnProfile && isEligibleForMerchant && (
+            <TabsContent value="merchant" className="mt-4">
+              <MerchantStoreTab userId={profileUser.uid} isEligible={isEligibleForMerchant} />
             </TabsContent>
           )}
         </Tabs>

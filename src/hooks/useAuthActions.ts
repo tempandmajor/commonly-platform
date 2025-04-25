@@ -20,6 +20,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { auth, db, storage, googleProvider } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { UserData } from "@/types/auth";
+import { createMerchantStore } from "@/services/merchantService";
 
 export const useAuthActions = (
   currentUser: User | null,
@@ -248,6 +249,60 @@ export const useAuthActions = (
     }
   };
 
+  // Add merchant store activation functionality
+  const activateMerchantStore = async () => {
+    if (!currentUser || !userData) throw new Error("No authenticated user");
+
+    // Check if user already has a merchant store
+    if (userData.isMerchant) {
+      toast({
+        title: "Store already exists",
+        description: "You already have a merchant store",
+      });
+      return;
+    }
+
+    // Check eligibility (1000+ followers)
+    if (!userData.followerCount || userData.followerCount < 1000) {
+      toast({
+        variant: "destructive",
+        title: "Not eligible",
+        description: "You need at least 1,000 followers to create a merchant store",
+      });
+      return;
+    }
+
+    try {
+      const storeName = `${userData.displayName || "User"}'s Store`;
+
+      // Create the merchant store
+      const storeId = await createMerchantStore(currentUser.uid, {
+        name: storeName,
+        description: `Official store by ${userData.displayName || "User"}`,
+      });
+
+      // Update user data
+      setUserData({
+        ...userData,
+        isMerchant: true,
+        merchantStoreId: storeId
+      });
+
+      toast({
+        title: "Store created",
+        description: "Your merchant store has been created successfully!",
+      });
+    } catch (error: any) {
+      const errorMessage = error.message || "Failed to create merchant store";
+      toast({
+        variant: "destructive",
+        title: "Store creation failed",
+        description: errorMessage,
+      });
+      throw error;
+    }
+  };
+
   return {
     signup,
     login,
@@ -257,5 +312,6 @@ export const useAuthActions = (
     updateUserProfile,
     uploadProfileImage,
     resetWalkthrough,
+    activateMerchantStore,
   };
 };
