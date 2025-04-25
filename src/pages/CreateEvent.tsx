@@ -1,27 +1,22 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, Clock, AlertCircle, Plus, MapPin, Upload, Save, Calendar as CalendarIcon2, CheckCircle2 } from "lucide-react";
+import { AlertCircle, Save } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import { Form } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "@/hooks/use-toast";
-import { usePlacesAutocomplete, PlacesAutocomplete } from "@/hooks/usePlacesAutocomplete";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { EventTypeSelection } from "@/components/events/create/EventTypeSelection";
+import { EventDetails } from "@/components/events/create/EventDetails";
+import { DateTimeSection } from "@/components/events/create/DateTimeSection";
+import { PricingAccess } from "@/components/events/create/PricingAccess";
+import { PublicationSettings } from "@/components/events/create/PublicationSettings";
 import { 
   createEvent, 
   saveEventDraft, 
@@ -29,8 +24,6 @@ import {
   checkStripeConnectAccount,
   updateStripeConnectId
 } from "@/services/eventService";
-
-import { cn } from "@/lib/utils";
 
 const formSchema = z.object({
   eventType: z.enum(["single", "multi", "tour"], {
@@ -229,6 +222,7 @@ const CreateEvent: React.FC = () => {
         published: !data.scheduledPublish,
         date: format(data.startDate, "yyyy-MM-dd'T'HH:mm:ss"),
         category: "general",
+        eventType: data.eventType as "single" | "multi" | "tour",
         scheduledPublishDate: data.scheduledPublish && data.scheduledPublishDate 
           ? format(data.scheduledPublishDate, "yyyy-MM-dd'T'HH:mm:ss") 
           : undefined,
@@ -359,544 +353,30 @@ const CreateEvent: React.FC = () => {
       
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Event Type</CardTitle>
-              <CardDescription>Choose the type of event you're creating</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <FormField
-                control={form.control}
-                name="eventType"
-                render={({ field }) => (
-                  <FormItem>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div
-                        className={cn(
-                          "border rounded-md p-4 cursor-pointer hover:border-primary transition-colors",
-                          field.value === "single" ? "border-primary bg-primary/5" : "border-input"
-                        )}
-                        onClick={() => field.onChange("single")}
-                      >
-                        <div className="flex justify-between items-center mb-2">
-                          <h3 className="font-semibold">Single Event</h3>
-                          {field.value === "single" && (
-                            <CheckCircle2 className="h-5 w-5 text-primary" />
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          One-time event on a specific date
-                        </p>
-                      </div>
-                      
-                      <div
-                        className={cn(
-                          "border rounded-md p-4 cursor-pointer hover:border-primary transition-colors",
-                          field.value === "multi" ? "border-primary bg-primary/5" : "border-input"
-                        )}
-                        onClick={() => field.onChange("multi")}
-                      >
-                        <div className="flex justify-between items-center mb-2">
-                          <h3 className="font-semibold">Multi-Day Event</h3>
-                          {field.value === "multi" && (
-                            <CheckCircle2 className="h-5 w-5 text-primary" />
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          Event spanning multiple consecutive days
-                        </p>
-                      </div>
-                      
-                      <div
-                        className={cn(
-                          "border rounded-md p-4 cursor-pointer hover:border-primary transition-colors",
-                          field.value === "tour" ? "border-primary bg-primary/5" : "border-input"
-                        )}
-                        onClick={() => field.onChange("tour")}
-                      >
-                        <div className="flex justify-between items-center mb-2">
-                          <h3 className="font-semibold">Tour</h3>
-                          {field.value === "tour" && (
-                            <CheckCircle2 className="h-5 w-5 text-primary" />
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          Multiple events in different locations
-                        </p>
-                      </div>
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Event Details</CardTitle>
-              <CardDescription>Basic information about your event</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Event Title</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Event title" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Create a catchy title for your event
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        placeholder="Describe your event" 
-                        className="min-h-32" 
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Provide details about what attendees can expect
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="space-y-2">
-                <FormLabel>Event Image</FormLabel>
-                <div className="border-2 border-dashed border-gray-300 rounded-md p-6 text-center">
-                  {imagePreview ? (
-                    <div className="relative">
-                      <img
-                        src={imagePreview}
-                        alt="Event preview"
-                        className="mx-auto max-h-60 object-contain rounded-md"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="absolute top-2 right-2"
-                        onClick={() => {
-                          setEventImage(null);
-                          setImagePreview(null);
-                        }}
-                      >
-                        Change
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <Upload className="h-8 w-8 mx-auto text-gray-400" />
-                      <div className="text-sm text-gray-600">
-                        Drag and drop an image, or click to browse
-                      </div>
-                      <Input
-                        id="image-upload"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleImageChange}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          document.getElementById("image-upload")?.click();
-                        }}
-                      >
-                        Upload Image
-                      </Button>
-                    </div>
-                  )}
-                </div>
-                <FormDescription>
-                  Upload a high-quality image (max 5MB)
-                </FormDescription>
-              </div>
-
-              <FormField
-                control={form.control}
-                name="location"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Location</FormLabel>
-                    <FormControl>
-                      <div className="flex items-center">
-                        <MapPin className="w-5 h-5 mr-2 text-gray-400" />
-                        <div className="flex-1">
-                          <Controller
-                            name="location"
-                            control={form.control}
-                            render={({ field }) => (
-                              <PlacesAutocomplete
-                                onPlaceSelect={(place) => {
-                                  field.onChange(place.formatted_address);
-                                }}
-                              />
-                            )}
-                          />
-                        </div>
-                      </div>
-                    </FormControl>
-                    <FormDescription>
-                      Enter the address where the event will take place
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Date & Time</CardTitle>
-              <CardDescription>When will your event take place?</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <FormField
-                control={form.control}
-                name="startDate"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Start Date</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "w-full pl-3 text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            {field.value ? (
-                              format(field.value, "PPP")
-                            ) : (
-                              <span>Pick a date</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          disabled={(date) =>
-                            date < new Date(new Date().setHours(0, 0, 0, 0))
-                          }
-                          initialFocus
-                          className={cn("p-3 pointer-events-auto")}
-                        />
-                      </PopoverContent>
-                    </Popover>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {(eventType === "multi" || eventType === "tour") && (
-                <FormField
-                  control={form.control}
-                  name="endDate"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>End Date</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP")
-                              ) : (
-                                <span>Pick an end date</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value || undefined}
-                            onSelect={field.onChange}
-                            disabled={(date) => {
-                              const startDate = form.getValues("startDate");
-                              return startDate && date < startDate;
-                            }}
-                            initialFocus
-                            className={cn("p-3 pointer-events-auto")}
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormDescription>
-                        For multi-day events, select when the event ends
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-
-              {eventType === "tour" && (
-                <FormField
-                  control={form.control}
-                  name="eventDuration"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tour Duration</FormLabel>
-                      <FormControl>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select duration" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="30">30 days</SelectItem>
-                            <SelectItem value="60">60 days</SelectItem>
-                            <SelectItem value="90">90 days</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormDescription>
-                        How long will your tour last?
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Pricing & Access</CardTitle>
-              <CardDescription>Set up pricing and access controls</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <FormField
-                control={form.control}
-                name="isFree"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Free Event</FormLabel>
-                      <FormDescription>
-                        Make this event free for all attendees
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              {!isFree && (
-                <FormField
-                  control={form.control}
-                  name="price"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Ticket Price ($)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          placeholder="0.00"
-                          {...field}
-                          onChange={(e) => field.onChange(Number(e.target.value))}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Set the price for your event tickets
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-
-              <FormField
-                control={form.control}
-                name="ageRestriction"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Age Restriction</FormLabel>
-                    <FormControl>
-                      <Select
-                        value={field.value}
-                        onValueChange={field.onChange}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select age restriction" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All Ages</SelectItem>
-                          <SelectItem value="13+">13+</SelectItem>
-                          <SelectItem value="18+">18+</SelectItem>
-                          <SelectItem value="21+">21+</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    <FormDescription>
-                      Set age restrictions for your event
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="isPrivate"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Private Event</FormLabel>
-                      <FormDescription>
-                        Only people with the link can view this event
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="rewards"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Attendee Rewards (Optional)</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Describe any rewards or perks for attendees"
-                        className="min-h-20"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      List any special rewards for attending your event
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Publication Settings</CardTitle>
-              <CardDescription>Control when your event goes live</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <FormField
-                control={form.control}
-                name="scheduledPublish"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Schedule Publication</FormLabel>
-                      <FormDescription>
-                        Set a future date to publish this event
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              {scheduledPublish && (
-                <FormField
-                  control={form.control}
-                  name="scheduledPublishDate"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Publication Date</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP")
-                              ) : (
-                                <span>Pick a publication date</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value || undefined}
-                            onSelect={field.onChange}
-                            disabled={(date) =>
-                              date < new Date(new Date().setHours(0, 0, 0, 0))
-                            }
-                            initialFocus
-                            className={cn("p-3 pointer-events-auto")}
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormDescription>
-                        When should this event be published?
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-            </CardContent>
-          </Card>
+          <EventTypeSelection form={form} />
+          
+          <EventDetails 
+            form={form}
+            handleImageChange={handleImageChange}
+            imagePreview={imagePreview}
+            setImagePreview={setImagePreview}
+            setEventImage={setEventImage}
+          />
+          
+          <DateTimeSection 
+            form={form}
+            eventType={eventType}
+          />
+          
+          <PricingAccess 
+            form={form}
+            isFree={isFree}
+          />
+          
+          <PublicationSettings 
+            form={form}
+            scheduledPublish={scheduledPublish}
+          />
 
           <div className="flex flex-col sm:flex-row gap-4">
             <Button
