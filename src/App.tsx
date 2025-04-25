@@ -1,3 +1,4 @@
+
 import React, { useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, useNavigate, useParams } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
@@ -17,6 +18,9 @@ import CreateVenue from "./pages/CreateVenue";
 import MyVenues from "./pages/MyVenues";
 import Catering from "./pages/Catering";
 import CatererDetail from "./pages/CatererDetail";
+import UserProfile from "./pages/UserProfile";
+import Messages from "./pages/Messages";
+import MessagesList from "./pages/MessagesList";
 
 function App() {
   return (
@@ -30,6 +34,8 @@ function App() {
           <Route path="/venues/:id" element={<VenueDetail />} />
           <Route path="/catering" element={<Catering />} />
           <Route path="/catering/:id" element={<CatererDetail />} />
+          <Route path="/profile/:id" element={<UserProfile />} />
+          
           <Route
             path="/create-venue"
             element={
@@ -43,6 +49,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <MyVenues />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/messages"
+            element={
+              <ProtectedRoute>
+                <MessagesList />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/messages/:chatId"
+            element={
+              <ProtectedRoute>
+                <Messages />
               </ProtectedRoute>
             }
           />
