@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller } from "react-hook-form";
 import * as z from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, Clock, AlertCircle, Plus, MapPin, Upload, Save, Calendar, CheckCircle2 } from "lucide-react";
+import { CalendarIcon, Clock, AlertCircle, Plus, MapPin, Upload, Save, Calendar as CalendarIcon2, CheckCircle2 } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -94,7 +93,6 @@ const CreateEvent: React.FC = () => {
   const eventType = form.watch("eventType");
   const scheduledPublish = form.watch("scheduledPublish");
 
-  // Check for Stripe account
   useEffect(() => {
     const checkStripeAccount = async () => {
       if (!currentUser) return;
@@ -118,15 +116,13 @@ const CreateEvent: React.FC = () => {
     checkStripeAccount();
   }, [currentUser]);
 
-  // Setup autosave
   useEffect(() => {
     if (!currentUser) return;
 
-    // Start autosave interval
     autosaveIntervalRef.current = setInterval(() => {
       const formData = form.getValues();
       handleAutosave(formData);
-    }, 30000); // Autosave every 30 seconds
+    }, 30000);
 
     return () => {
       if (autosaveIntervalRef.current) {
@@ -135,7 +131,6 @@ const CreateEvent: React.FC = () => {
     };
   }, [currentUser, form, draftId]);
 
-  // Handle autosaving
   const handleAutosave = async (formData: FormValues) => {
     if (!currentUser || !formData.title) return;
     
@@ -146,6 +141,10 @@ const CreateEvent: React.FC = () => {
         ...formData,
         organizer: userData?.displayName || "Unknown",
         organizerId: currentUser.uid,
+        startDate: formData.startDate ? format(formData.startDate, "yyyy-MM-dd'T'HH:mm:ss") : undefined,
+        endDate: formData.endDate ? format(formData.endDate, "yyyy-MM-dd'T'HH:mm:ss") : undefined,
+        scheduledPublishDate: formData.scheduledPublishDate ? 
+          format(formData.scheduledPublishDate, "yyyy-MM-dd'T'HH:mm:ss") : undefined,
       };
       
       const newDraftId = await saveEventDraft(currentUser.uid, draftData, draftId || undefined);
@@ -167,12 +166,10 @@ const CreateEvent: React.FC = () => {
     }
   };
 
-  // Handle image upload
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       
-      // Validate file type and size
       if (!file.type.includes("image/")) {
         toast({
           variant: "destructive",
@@ -182,7 +179,7 @@ const CreateEvent: React.FC = () => {
         return;
       }
       
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      if (file.size > 5 * 1024 * 1024) {
         toast({
           variant: "destructive",
           title: "File too large",
@@ -196,7 +193,6 @@ const CreateEvent: React.FC = () => {
     }
   };
 
-  // Handle form submission
   const onSubmit = async (data: FormValues) => {
     if (!currentUser) {
       toast({
@@ -219,13 +215,11 @@ const CreateEvent: React.FC = () => {
     try {
       setUploading(true);
       
-      // Upload image if selected
       let imageUrl = "";
       if (eventImage) {
         imageUrl = await uploadEventImage(eventImage, currentUser.uid);
       }
       
-      // Prepare event data
       const eventData = {
         ...data,
         price: data.isFree ? 0 : (data.price || 0),
@@ -233,13 +227,14 @@ const CreateEvent: React.FC = () => {
         organizer: userData?.displayName || "Unknown",
         organizerId: currentUser.uid,
         published: !data.scheduledPublish,
+        date: format(data.startDate, "yyyy-MM-dd'T'HH:mm:ss"),
+        category: "general",
         scheduledPublishDate: data.scheduledPublish && data.scheduledPublishDate 
           ? format(data.scheduledPublishDate, "yyyy-MM-dd'T'HH:mm:ss") 
           : undefined,
         stripeConnectId: userData?.stripeConnectId,
       };
       
-      // Create event in Firestore
       const eventId = await createEvent(eventData);
       
       toast({
@@ -249,7 +244,6 @@ const CreateEvent: React.FC = () => {
           : "Your event has been published successfully",
       });
       
-      // Navigate to event page
       navigate(`/events/${eventId}`);
       
     } catch (error) {
@@ -264,14 +258,10 @@ const CreateEvent: React.FC = () => {
     }
   };
 
-  // Handle connecting to Stripe
   const connectStripe = async () => {
-    // In a real implementation, this would redirect to Stripe Connect onboarding
-    // For now, we'll just simulate a successful connection
     if (!currentUser) return;
     
     try {
-      // Simulate connecting to Stripe
       const stripeConnectId = `stripe_${Date.now()}`;
       await updateStripeConnectId(currentUser.uid, stripeConnectId);
       setHasStripeAccount(true);
@@ -360,7 +350,6 @@ const CreateEvent: React.FC = () => {
     <div className="container max-w-4xl mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">Create Event</h1>
       
-      {/* Draft status indicator */}
       {lastSaved && (
         <div className="mb-4 flex items-center text-sm text-muted-foreground">
           <Save className="h-4 w-4 mr-1" />
@@ -370,7 +359,6 @@ const CreateEvent: React.FC = () => {
       
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          {/* Event Type Selection */}
           <Card>
             <CardHeader>
               <CardTitle>Event Type</CardTitle>
@@ -444,14 +432,12 @@ const CreateEvent: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Event Details */}
           <Card>
             <CardHeader>
               <CardTitle>Event Details</CardTitle>
               <CardDescription>Basic information about your event</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Title */}
               <FormField
                 control={form.control}
                 name="title"
@@ -469,7 +455,6 @@ const CreateEvent: React.FC = () => {
                 )}
               />
 
-              {/* Description */}
               <FormField
                 control={form.control}
                 name="description"
@@ -491,7 +476,6 @@ const CreateEvent: React.FC = () => {
                 )}
               />
 
-              {/* Image Upload */}
               <div className="space-y-2">
                 <FormLabel>Event Image</FormLabel>
                 <div className="border-2 border-dashed border-gray-300 rounded-md p-6 text-center">
@@ -545,7 +529,6 @@ const CreateEvent: React.FC = () => {
                 </FormDescription>
               </div>
 
-              {/* Location */}
               <FormField
                 control={form.control}
                 name="location"
@@ -580,14 +563,12 @@ const CreateEvent: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Date & Time */}
           <Card>
             <CardHeader>
               <CardTitle>Date & Time</CardTitle>
               <CardDescription>When will your event take place?</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Start Date */}
               <FormField
                 control={form.control}
                 name="startDate"
@@ -631,7 +612,6 @@ const CreateEvent: React.FC = () => {
                 )}
               />
 
-              {/* End Date (for multi-day events) */}
               {(eventType === "multi" || eventType === "tour") && (
                 <FormField
                   control={form.control}
@@ -681,7 +661,6 @@ const CreateEvent: React.FC = () => {
                 />
               )}
 
-              {/* Event Duration (for tour events) */}
               {eventType === "tour" && (
                 <FormField
                   control={form.control}
@@ -715,14 +694,12 @@ const CreateEvent: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Pricing & Access */}
           <Card>
             <CardHeader>
               <CardTitle>Pricing & Access</CardTitle>
               <CardDescription>Set up pricing and access controls</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Free Event Switch */}
               <FormField
                 control={form.control}
                 name="isFree"
@@ -744,7 +721,6 @@ const CreateEvent: React.FC = () => {
                 )}
               />
 
-              {/* Price (if not free) */}
               {!isFree && (
                 <FormField
                   control={form.control}
@@ -771,7 +747,6 @@ const CreateEvent: React.FC = () => {
                 />
               )}
 
-              {/* Age Restriction */}
               <FormField
                 control={form.control}
                 name="ageRestriction"
@@ -802,7 +777,6 @@ const CreateEvent: React.FC = () => {
                 )}
               />
 
-              {/* Private Event Switch */}
               <FormField
                 control={form.control}
                 name="isPrivate"
@@ -824,7 +798,6 @@ const CreateEvent: React.FC = () => {
                 )}
               />
 
-              {/* Rewards */}
               <FormField
                 control={form.control}
                 name="rewards"
@@ -848,14 +821,12 @@ const CreateEvent: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Publication Settings */}
           <Card>
             <CardHeader>
               <CardTitle>Publication Settings</CardTitle>
               <CardDescription>Control when your event goes live</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Schedule Publication */}
               <FormField
                 control={form.control}
                 name="scheduledPublish"
@@ -877,7 +848,6 @@ const CreateEvent: React.FC = () => {
                 )}
               />
 
-              {/* Publication Date */}
               {scheduledPublish && (
                 <FormField
                   control={form.control}
@@ -928,7 +898,6 @@ const CreateEvent: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Form Actions */}
           <div className="flex flex-col sm:flex-row gap-4">
             <Button
               type="button"

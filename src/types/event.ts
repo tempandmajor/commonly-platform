@@ -1,4 +1,3 @@
-
 export interface Event {
   id: string;
   title: string;
@@ -21,6 +20,7 @@ export interface Event {
   endDate?: string;
   rewards?: string;
   stripeConnectId?: string;
+  eventDuration?: string;
 }
 
 export interface Category {

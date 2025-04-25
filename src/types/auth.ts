@@ -1,4 +1,6 @@
 
+import { User } from "firebase/auth";
+
 export interface UserData {
   uid: string;
   email: string | null;
