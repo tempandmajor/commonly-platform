@@ -94,7 +94,7 @@ export const getVenue = async (id: string) => {
     
     return {
       id: venueDoc.id,
-      ...venueDoc.data()
+      ...venueDoc.data() as object
     } as Venue;
   } catch (error) {
     console.error("Error fetching venue:", error);

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { reportVenue } from '@/services/venueService';
@@ -22,6 +21,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
+import { Flag } from 'lucide-react';
 
 interface ReportVenueDialogProps {
   venueId: string;

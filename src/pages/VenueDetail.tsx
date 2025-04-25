@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -9,7 +8,7 @@ import ReportVenueDialog from '@/components/venues/ReportVenueDialog';
 import { Button } from '@/components/ui/button';
 import { 
   MapPin, Calendar, Image, FileText, 
-  DollarSign, Report, Building
+  DollarSign, Flag, Building
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 
@@ -114,7 +113,7 @@ const VenueDetail = () => {
                   className="text-red-500 hover:bg-red-50 hover:text-red-600"
                   onClick={() => setReportDialogOpen(true)}
                 >
-                  <Report className="h-4 w-4 mr-1" />
+                  <Flag className="h-4 w-4 mr-1" />
                   Report
                 </Button>
               </div>
