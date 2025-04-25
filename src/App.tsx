@@ -15,6 +15,8 @@ import Venues from "./pages/Venues";
 import VenueDetail from "./pages/VenueDetail";
 import CreateVenue from "./pages/CreateVenue";
 import MyVenues from "./pages/MyVenues";
+import Catering from "./pages/Catering";
+import CatererDetail from "./pages/CatererDetail";
 
 function App() {
   return (
@@ -25,6 +27,8 @@ function App() {
           <Route path="/events" element={<Events />} />
           <Route path="/venues" element={<Venues />} />
           <Route path="/venues/:id" element={<VenueDetail />} />
+          <Route path="/catering" element={<Catering />} />
+          <Route path="/catering/:id" element={<CatererDetail />} />
           <Route
             path="/create-venue"
             element={

@@ -55,7 +55,7 @@ export const getVenues = async (lastVisible = null, limitCount = 12) => {
     
     const venues = snapshot.docs.map(doc => ({
       id: doc.id,
-      ...doc.data()
+      ...doc.data() as object
     } as Venue));
     
     return { venues, lastVisible: lastVisibleDoc };
