@@ -53,7 +53,7 @@ export interface EventDraft {
 }
 
 export interface SponsorshipTier {
-  id: string;
+  id?: string; // Making id optional during creation
   name: string;
   price: number;
   benefits: string[];
