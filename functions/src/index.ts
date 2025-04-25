@@ -1,5 +1,3 @@
-import { onRequest } from 'firebase-functions/v2/https';
+import { stripeFunction } from './stripe-functions/src/index';
 
-export const helloWorld = onRequest((req, res) => {
-  res.send('Hello from Firebase!');
-});
+export { stripeFunction };
