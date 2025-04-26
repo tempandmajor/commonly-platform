@@ -1,9 +1,8 @@
-
 import React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PaymentMethod } from "@/types/auth";
-import { Loader2, CreditCard, Plus, Bank, Trash2 } from "lucide-react";
+import { Loader2, CreditCard, Plus, Building, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -78,7 +77,7 @@ const PaymentMethodsTab: React.FC<PaymentMethodsTabProps> = ({
                 <CardContent className="pt-6 pb-6">
                   <div className="flex justify-between items-center">
                     <div className="flex gap-3 items-center">
-                      <Bank className="h-8 w-8 text-green-500" />
+                      <Building className="h-8 w-8 text-green-500" />
                       <div>
                         <p className="font-medium">Stripe Connect Account</p>
                         <p className="text-sm text-muted-foreground">
@@ -101,7 +100,7 @@ const PaymentMethodsTab: React.FC<PaymentMethodsTabProps> = ({
                 <CardContent className="pt-6 pb-6">
                   <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                     <div className="flex gap-3 items-center">
-                      <Bank className="h-8 w-8 text-muted-foreground" />
+                      <Building className="h-8 w-8 text-muted-foreground" />
                       <div>
                         <p className="font-medium">No Payout Method</p>
                         <p className="text-sm text-muted-foreground">
@@ -156,7 +155,7 @@ const PaymentMethodsTab: React.FC<PaymentMethodsTabProps> = ({
                           </div>
                         ) : (
                           <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                            <Bank className="h-5 w-5 text-primary" />
+                            <Building className="h-5 w-5 text-primary" />
                           </div>
                         )}
                         

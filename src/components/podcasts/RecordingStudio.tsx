@@ -9,7 +9,7 @@ import {
   Video,
   VideoOff,
   Phone,
-  Record,
+  Podcast,
   StopCircle,
   Loader2,
 } from "lucide-react";
@@ -230,7 +230,7 @@ const RecordingStudio: React.FC<RecordingStudioProps> = ({
 
         {isRecording && (
           <div className="flex items-center justify-center bg-red-50 py-2 rounded-md">
-            <Record className="h-4 w-4 text-red-500 animate-pulse mr-2" />
+            <Podcast className="h-4 w-4 text-red-500 animate-pulse mr-2" />
             <span className="text-red-500 font-medium">
               Recording: {formatDuration(recordingDuration)}
             </span>
@@ -290,7 +290,7 @@ const RecordingStudio: React.FC<RecordingStudioProps> = ({
               {isProcessingRecording ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (
-                <Record className="h-4 w-4 mr-2" />
+                <Podcast className="h-4 w-4 mr-2" />
               )}
               Start Recording
             </Button>

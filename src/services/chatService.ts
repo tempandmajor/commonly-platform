@@ -60,6 +60,47 @@ export const sendMessage = async (chatId: string, senderId: string, recipientId:
   return messageRef.id;
 };
 
+export const getMessages = async (chatId: string): Promise<ChatMessage[]> => {
+  const messagesRef = collection(db, "chats", chatId, "messages");
+  const q = query(messagesRef, orderBy("timestamp", "asc"));
+  
+  const querySnapshot = await getDocs(q);
+  
+  return querySnapshot.docs.map(doc => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      senderId: data.senderId,
+      recipientId: data.recipientId,
+      text: data.text,
+      timestamp: data.timestamp,
+      read: data.read
+    };
+  });
+};
+
+export const getUserChats = async (userId: string): Promise<Chat[]> => {
+  const chatsRef = collection(db, "chats");
+  const q = query(
+    chatsRef,
+    where("participants", "array-contains", userId),
+    orderBy("updatedAt", "desc")
+  );
+  
+  const querySnapshot = await getDocs(q);
+  
+  return querySnapshot.docs.map(doc => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      participants: data.participants,
+      lastMessage: data.lastMessage,
+      createdAt: data.createdAt,
+      updatedAt: data.updatedAt
+    };
+  });
+};
+
 export const markMessagesAsRead = async (chatId: string, currentUserId: string) => {
   // Get all unread messages sent to the current user
   const messagesRef = collection(db, "chats", chatId, "messages");

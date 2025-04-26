@@ -1,5 +1,4 @@
 
-import axios from "axios";
 import { httpsCallable } from "firebase/functions";
 import { functions } from "@/lib/firebase";
 
