@@ -3,7 +3,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Plus, Settings, Building, UtensilsCrossed } from 'lucide-react';
+import { Plus, Settings, Building, UtensilsCrossed, Podcast } from 'lucide-react';
 import { 
   NavigationMenu,
   NavigationMenuList,
@@ -45,6 +45,12 @@ const Navbar = () => {
                   <Link to="/catering" className={navigationMenuTriggerStyle()}>
                     <UtensilsCrossed className="mr-1 h-4 w-4" />
                     Catering
+                  </Link>
+                </NavigationMenuItem>
+                <NavigationMenuItem>
+                  <Link to="/podcasts" className={navigationMenuTriggerStyle()}>
+                    <Podcast className="mr-1 h-4 w-4" />
+                    Podcasts
                   </Link>
                 </NavigationMenuItem>
                 <NavigationMenuItem>

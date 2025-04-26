@@ -1,15 +1,12 @@
 
-import React from "react";
-import { UserData } from "@/types/auth";
+import React, { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, UserPlus, UserMinus, ShieldCheck, Lock, Store } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { getUserFollowers, getUserFollowing } from "@/services/userService";
-import { useToast } from "@/hooks/use-toast";
-import { createChat } from "@/services/chatService";
-import { isUserPro } from "@/services/subscriptionService";
+import { UserData } from "@/types/auth";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Link } from "react-router-dom";
+import { MessageSquare, Settings, CheckCircle2, Podcast } from "lucide-react";
 
 interface UserProfileHeaderProps {
   user: UserData;
@@ -22,86 +19,25 @@ const UserProfileHeader: React.FC<UserProfileHeaderProps> = ({
   user,
   isOwnProfile,
   onToggleFollowersModal,
-  onToggleFollowingModal
+  onToggleFollowingModal,
 }) => {
-  const { currentUser, userData, followUser, unfollowUser, isFollowing } = useAuth();
-  const [following, setFollowing] = React.useState<boolean>(false);
-  const [loading, setLoading] = React.useState<boolean>(false);
-  const [isPro, setIsPro] = React.useState<boolean>(false);
-  const navigate = useNavigate();
-  const { toast } = useToast();
+  const { followUser, unfollowUser, isFollowing } = useAuth();
+  const [isFollowLoading, setIsFollowLoading] = useState(false);
 
-  React.useEffect(() => {
-    if (user && currentUser) {
-      setFollowing(isFollowing(user.uid));
-      
-      // Check if user is pro
-      const checkProStatus = async () => {
-        const proStatus = await isUserPro(user.uid);
-        setIsPro(proStatus);
-      };
-      
-      checkProStatus();
-    }
-  }, [user, currentUser, isFollowing]);
-
-  const handleFollowToggle = async () => {
-    if (!currentUser) {
-      toast({
-        title: "Not logged in",
-        description: "Please log in to follow users",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setLoading(true);
+  const handleFollow = async () => {
+    if (!user || !user.uid) return;
+    
+    setIsFollowLoading(true);
     try {
-      if (following) {
+      if (isFollowing(user.uid)) {
         await unfollowUser(user.uid);
-        setFollowing(false);
-        toast({
-          title: "Unfollowed",
-          description: `You no longer follow ${user.displayName}`,
-        });
       } else {
         await followUser(user.uid);
-        setFollowing(true);
-        toast({
-          title: "Success",
-          description: `You are now following ${user.displayName}`,
-        });
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update follow status",
-        variant: "destructive"
-      });
+      console.error("Error following/unfollowing user:", error);
     } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleMessageUser = async () => {
-    if (!currentUser) {
-      toast({
-        title: "Not logged in",
-        description: "Please log in to message users",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      const chatId = await createChat(currentUser.uid, user.uid);
-      navigate(`/messages/${chatId}`);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to create conversation",
-        variant: "destructive"
-      });
+      setIsFollowLoading(false);
     }
   };
 
@@ -113,109 +49,104 @@ const UserProfileHeader: React.FC<UserProfileHeaderProps> = ({
         .toUpperCase()
     : "U";
 
-  const handleStoreClick = () => {
-    if (user.merchantStoreId) {
-      navigate(`/store/${user.merchantStoreId}`);
-    }
-  };
-
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-      <div className="flex flex-col md:flex-row gap-6 items-center md:items-start">
-        <div className="relative">
-          <Avatar className="h-24 w-24">
-            <AvatarImage src={user.photoURL || undefined} />
-            <AvatarFallback>{userInitials}</AvatarFallback>
-          </Avatar>
-          <div className="absolute -bottom-1 -right-1 flex gap-1">
-            {isPro && (
-              <div className="bg-yellow-500 text-white p-1 rounded-full">
-                <ShieldCheck className="h-4 w-4" />
-              </div>
-            )}
-            {user.isMerchant && (
-              <div className="bg-primary text-primary-foreground p-1 rounded-full cursor-pointer" onClick={handleStoreClick}>
-                <Store className="h-4 w-4" />
-              </div>
-            )}
-          </div>
-        </div>
-        
-        <div className="flex-1 text-center md:text-left">
-          <div className="flex flex-wrap items-center gap-2 justify-center md:justify-start">
-            <h1 className="text-2xl font-bold">{user.displayName}</h1>
-            {user.isPrivate && <Lock className="h-4 w-4 text-gray-500" />}
-            {isPro && (
-              <span className="text-xs bg-yellow-500 text-white px-2 py-0.5 rounded-full">
-                PRO
-              </span>
-            )}
-            {user.isMerchant && (
-              <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
-                VERIFIED CREATOR
-              </span>
-            )}
-          </div>
+    <div className="flex flex-col md:flex-row items-center md:items-start gap-6 mb-8">
+      <div className="relative">
+        <Avatar className="h-24 w-24 md:h-32 md:h-32">
+          <AvatarImage src={user.photoURL || undefined} />
+          <AvatarFallback className="text-lg">{userInitials}</AvatarFallback>
+        </Avatar>
+        {(user.isPro || user.isMerchant) && (
+          <Badge 
+            className="absolute -top-2 -right-2 bg-yellow-500 text-white border-white border-2"
+          >
+            <CheckCircle2 className="h-3 w-3 mr-1" />
+            Verified
+          </Badge>
+        )}
+      </div>
+      
+      <div className="flex-1 text-center md:text-left">
+        <div className="flex flex-col md:flex-row md:items-center gap-2 mb-2">
+          <h1 className="text-2xl font-bold">
+            {user.displayName || "Anonymous User"}
+          </h1>
           
-          {user.bio && (
-            <p className="text-gray-600 mt-2">{user.bio}</p>
+          {user.isPro && (
+            <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">
+              Pro
+            </Badge>
           )}
           
-          <div className="flex gap-4 mt-3 justify-center md:justify-start">
-            <button 
-              onClick={onToggleFollowersModal}
-              className="text-sm hover:underline"
-            >
-              <span className="font-bold">{user.followerCount || 0}</span> followers
-            </button>
-            <button 
-              onClick={onToggleFollowingModal}
-              className="text-sm hover:underline"
-            >
-              <span className="font-bold">{user.followingCount || 0}</span> following
-            </button>
-            {user.isMerchant && (
-              <button 
-                onClick={handleStoreClick}
-                className="text-sm hover:underline text-primary"
-              >
-                <span className="font-bold">Visit Store</span>
-              </button>
-            )}
-          </div>
+          {user.isMerchant && (
+            <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+              Merchant
+            </Badge>
+          )}
         </div>
         
-        {!isOwnProfile && (
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Button
-              onClick={handleFollowToggle}
-              variant={following ? "outline" : "default"}
-              disabled={loading}
-              className="flex items-center gap-1"
-            >
-              {following ? (
-                <>
-                  <UserMinus className="h-4 w-4 mr-1" />
-                  Unfollow
-                </>
-              ) : (
-                <>
-                  <UserPlus className="h-4 w-4 mr-1" />
-                  Follow
-                </>
-              )}
-            </Button>
-            
-            <Button
-              onClick={handleMessageUser}
-              variant="outline"
-              className="flex items-center gap-1"
-            >
-              <MessageSquare className="h-4 w-4 mr-1" />
-              Message
-            </Button>
-          </div>
+        {user.bio && (
+          <p className="text-muted-foreground mb-4">{user.bio}</p>
         )}
+        
+        <div className="flex flex-wrap justify-center md:justify-start gap-4 mb-4">
+          <button 
+            onClick={onToggleFollowersModal}
+            className="text-sm hover:underline"
+          >
+            <span className="font-bold">{user.followerCount || 0}</span> Followers
+          </button>
+          
+          <button 
+            onClick={onToggleFollowingModal}
+            className="text-sm hover:underline"
+          >
+            <span className="font-bold">{user.followingCount || 0}</span> Following
+          </button>
+        </div>
+        
+        <div className="flex flex-wrap justify-center md:justify-start gap-2">
+          {isOwnProfile ? (
+            <>
+              <Button variant="outline" asChild>
+                <Link to="/settings">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Edit Profile
+                </Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link to={`/user/${user.uid}/podcasts`}>
+                  <Podcast className="mr-2 h-4 w-4" />
+                  My Podcasts
+                </Link>
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button 
+                onClick={handleFollow}
+                disabled={isFollowLoading}
+                variant={isFollowing(user.uid) ? "outline" : "default"}
+              >
+                {isFollowing(user.uid) ? "Unfollow" : "Follow"}
+              </Button>
+              
+              <Button variant="outline" asChild>
+                <Link to={`/messages/${user.uid}`}>
+                  <MessageSquare className="mr-2 h-4 w-4" />
+                  Message
+                </Link>
+              </Button>
+              
+              <Button variant="outline" asChild>
+                <Link to={`/user/${user.uid}/podcasts`}>
+                  <Podcast className="mr-2 h-4 w-4" />
+                  Podcasts
+                </Link>
+              </Button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

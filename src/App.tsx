@@ -25,6 +25,9 @@ import StoreMarketplace from "./pages/StoreMarketplace";
 import StoreDashboard from "./components/merchant/StoreDashboard";
 import AddProduct from "./pages/AddProduct";
 import Wallet from "./pages/Wallet";
+import Podcasts from "./pages/Podcasts";
+import PodcastDetails from "./pages/PodcastDetails";
+import UserPodcasts from "./pages/UserPodcasts";
 
 function App() {
   return (
@@ -40,6 +43,9 @@ function App() {
           <Route path="/catering/:id" element={<CatererDetail />} />
           <Route path="/profile/:id" element={<UserProfile />} />
           <Route path="/marketplace" element={<StoreMarketplace />} />
+          <Route path="/podcasts" element={<Podcasts />} />
+          <Route path="/podcasts/:id" element={<PodcastDetails />} />
+          <Route path="/user/:userId/podcasts" element={<UserPodcasts />} />
           
           <Route
             path="/create-venue"
@@ -134,6 +140,7 @@ function App() {
             }
           />
           <Route path="/r/:code" element={<ReferralRedirect />} />
+          <Route path="/about" element={<div className="container mx-auto px-4 py-8">About Commonly</div>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
         <Toaster />

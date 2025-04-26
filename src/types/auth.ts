@@ -1,4 +1,3 @@
-
 import { User } from "firebase/auth";
 
 export interface UserData {
@@ -18,6 +17,10 @@ export interface UserData {
   bio?: string;
   isMerchant?: boolean;
   merchantStoreId?: string;
+  isPro?: boolean;
+  isPodcaster?: boolean;
+  podcastChannelName?: string;
+  featuredPodcasts?: string[]; // Array of podcast IDs
 }
 
 export interface AuthContextType {
