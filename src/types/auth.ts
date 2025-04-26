@@ -100,3 +100,64 @@ export interface MerchantStore {
   updatedAt: any;
   isActive: boolean;
 }
+
+export interface Transaction {
+  id: string;
+  userId: string;
+  amount: number;
+  type: 'referral' | 'payout' | 'sale' | 'credit' | 'withdrawal' | 'fee';
+  status: 'pending' | 'completed' | 'failed' | 'canceled';
+  description: string;
+  createdAt: string;
+  updatedAt?: string;
+  eventId?: string;
+  referralId?: string;
+  orderId?: string;
+  paymentMethodId?: string;
+}
+
+export interface UserWallet {
+  id: string;
+  userId: string;
+  totalEarnings: number;
+  availableBalance: number;
+  pendingBalance: number;
+  platformCredits: number;
+  stripeConnectId?: string;
+  hasPayoutMethod: boolean;
+  transactions: Transaction[];
+  createdAt: any;
+  updatedAt: any;
+}
+
+export interface ReferralStats {
+  totalReferrals: number;
+  conversionRate: number;
+  totalEarnings: number;
+  clickCount: number;
+  conversionCount: number;
+  period: 'week' | 'month' | 'year' | 'all';
+}
+
+export interface Referral {
+  id: string;
+  userId: string;
+  eventId: string;
+  code: string;
+  createdAt: string;
+  clickCount: number;
+  conversionCount: number;
+  earnings: number;
+}
+
+export interface PaymentMethod {
+  id: string;
+  userId: string;
+  type: 'card' | 'bank_account';
+  last4: string;
+  brand?: string;
+  expiryMonth?: number;
+  expiryYear?: number;
+  isDefault: boolean;
+  createdAt: any;
+}

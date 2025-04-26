@@ -1,207 +1,210 @@
 
+import { db } from "@/lib/firebase";
 import { 
   collection, 
   addDoc, 
   query, 
   where, 
   orderBy, 
-  limit, 
-  getDocs,
-  onSnapshot,
+  onSnapshot, 
+  doc, 
   getDoc, 
-  doc,
-  serverTimestamp,
-  updateDoc,
-  arrayUnion,
-  setDoc
+  getDocs, 
+  serverTimestamp, 
+  updateDoc
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { ChatMessage, Chat } from "@/types/auth";
+import { Chat, ChatMessage, UserData } from "@/types/auth";
 
-// Create a new chat between two users
-export const createChat = async (currentUserId: string, otherUserId: string): Promise<string> => {
-  try {
-    // Check if chat already exists
-    const existingChat = await findChatByParticipants(currentUserId, otherUserId);
-    if (existingChat) {
-      return existingChat.id;
-    }
-    
-    // Create new chat
-    const chatRef = await addDoc(collection(db, "chats"), {
-      participants: [currentUserId, otherUserId],
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
-    
-    // Add chat reference to both users
-    await updateDoc(doc(db, "users", currentUserId), {
-      chats: arrayUnion(chatRef.id)
-    });
-    
-    await updateDoc(doc(db, "users", otherUserId), {
-      chats: arrayUnion(chatRef.id)
-    });
-    
-    return chatRef.id;
-  } catch (error) {
-    console.error("Error creating chat:", error);
-    throw error;
+export const createChat = async (currentUserId: string, otherUserId: string) => {
+  // Check if a chat already exists between these two users
+  const existingChat = await getChatByParticipants(currentUserId, otherUserId);
+  
+  if (existingChat) {
+    return existingChat.id;
   }
+  
+  // If no chat exists, create a new one
+  const chatRef = await addDoc(collection(db, "chats"), {
+    participants: [currentUserId, otherUserId],
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  });
+  
+  return chatRef.id;
 };
 
-// Find a chat by participants
-export const findChatByParticipants = async (userId1: string, userId2: string): Promise<Chat | null> => {
-  try {
-    const q1 = query(
-      collection(db, "chats"),
-      where("participants", "array-contains", userId1)
-    );
-    
-    const chatSnap = await getDocs(q1);
-    let existingChat: Chat | null = null;
-    
-    chatSnap.forEach(doc => {
-      const chatData = doc.data() as Omit<Chat, "id">;
-      if (chatData.participants.includes(userId2)) {
-        existingChat = {
-          id: doc.id,
-          ...chatData
-        } as Chat;
-      }
-    });
-    
-    return existingChat;
-  } catch (error) {
-    console.error("Error finding chat:", error);
-    throw error;
-  }
-};
-
-// Send a message in a chat
-export const sendMessage = async (chatId: string, senderId: string, recipientId: string, text: string): Promise<string> => {
-  try {
-    // Add message to messages collection
-    const messageRef = await addDoc(collection(db, "messages"), {
-      chatId,
+export const sendMessage = async (chatId: string, senderId: string, recipientId: string, text: string) => {
+  if (!text.trim()) return null;
+  
+  const messageRef = await addDoc(collection(db, "chats", chatId, "messages"), {
+    senderId,
+    recipientId,
+    text,
+    timestamp: serverTimestamp(),
+    read: false
+  });
+  
+  // Update the chat's updatedAt timestamp
+  await updateDoc(doc(db, "chats", chatId), {
+    updatedAt: serverTimestamp(),
+    "lastMessage": {
+      id: messageRef.id,
       senderId,
       recipientId,
       text,
       timestamp: serverTimestamp(),
       read: false
-    });
-    
-    // Update chat with last message
+    }
+  });
+  
+  return messageRef.id;
+};
+
+export const markMessagesAsRead = async (chatId: string, currentUserId: string) => {
+  // Get all unread messages sent to the current user
+  const messagesRef = collection(db, "chats", chatId, "messages");
+  const q = query(
+    messagesRef,
+    where("recipientId", "==", currentUserId),
+    where("read", "==", false)
+  );
+  
+  const querySnapshot = await getDocs(q);
+  
+  // Mark each message as read
+  const updatePromises = querySnapshot.docs.map(doc => 
+    updateDoc(doc.ref, { read: true })
+  );
+  
+  await Promise.all(updatePromises);
+  
+  // Check if the last message needs to be updated as well
+  const chatDoc = await getDoc(doc(db, "chats", chatId));
+  const chatData = chatDoc.data();
+  
+  if (chatData && chatData.lastMessage && 
+      chatData.lastMessage.recipientId === currentUserId && 
+      !chatData.lastMessage.read) {
     await updateDoc(doc(db, "chats", chatId), {
-      lastMessage: {
-        text,
-        timestamp: serverTimestamp(),
-        senderId
-      },
-      updatedAt: serverTimestamp()
+      "lastMessage.read": true
     });
-    
-    return messageRef.id;
-  } catch (error) {
-    console.error("Error sending message:", error);
-    throw error;
   }
 };
 
-// Get messages for a chat
-export const getMessages = async (chatId: string, limit = 50): Promise<ChatMessage[]> => {
-  try {
-    const q = query(
-      collection(db, "messages"),
-      where("chatId", "==", chatId),
-      orderBy("timestamp", "desc"),
-      limit(limit)
-    );
-    
-    const messagesSnap = await getDocs(q);
-    const messages: ChatMessage[] = [];
-    
-    messagesSnap.forEach(doc => {
-      messages.push({
-        id: doc.id,
-        ...doc.data()
-      } as ChatMessage);
-    });
-    
-    return messages.reverse();
-  } catch (error) {
-    console.error("Error getting messages:", error);
-    throw error;
-  }
-};
-
-// Get all chats for a user
-export const getUserChats = async (userId: string): Promise<Chat[]> => {
-  try {
-    const q = query(
-      collection(db, "chats"),
-      where("participants", "array-contains", userId),
-      orderBy("updatedAt", "desc")
-    );
-    
-    const chatsSnap = await getDocs(q);
-    const chats: Chat[] = [];
-    
-    chatsSnap.forEach(doc => {
-      chats.push({
-        id: doc.id,
-        ...doc.data()
-      } as Chat);
-    });
-    
-    return chats;
-  } catch (error) {
-    console.error("Error getting user chats:", error);
-    throw error;
-  }
-};
-
-// Mark messages as read
-export const markMessagesAsRead = async (chatId: string, userId: string): Promise<void> => {
-  try {
-    const q = query(
-      collection(db, "messages"),
-      where("chatId", "==", chatId),
-      where("recipientId", "==", userId),
-      where("read", "==", false)
-    );
-    
-    const unreadMessagesSnap = await getDocs(q);
-    
-    unreadMessagesSnap.forEach(async (message) => {
-      await updateDoc(doc(db, "messages", message.id), {
-        read: true
-      });
-    });
-  } catch (error) {
-    console.error("Error marking messages as read:", error);
-    throw error;
-  }
-};
-
-// Listen to new messages in real time
 export const subscribeToMessages = (
   chatId: string, 
   callback: (messages: ChatMessage[]) => void
-): (() => void) => {
-  const q = query(
-    collection(db, "messages"),
-    where("chatId", "==", chatId),
-    orderBy("timestamp", "asc")
-  );
+) => {
+  const messagesRef = collection(db, "chats", chatId, "messages");
+  const q = query(messagesRef, orderBy("timestamp", "asc"));
   
-  const unsubscribe = onSnapshot(q, (querySnapshot) => {
-    const messages: ChatMessage[] = [];
-    querySnapshot.forEach((doc) => {
-      messages.push({ id: doc.id, ...doc.data() } as ChatMessage);
+  return onSnapshot(q, (querySnapshot) => {
+    const messages = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        senderId: data.senderId,
+        recipientId: data.recipientId,
+        text: data.text,
+        timestamp: data.timestamp,
+        read: data.read
+      };
     });
+    
     callback(messages);
   });
+};
+
+export const subscribeToChats = (
+  userId: string, 
+  callback: (chats: Chat[]) => void
+) => {
+  const chatsRef = collection(db, "chats");
+  const q = query(
+    chatsRef,
+    where("participants", "array-contains", userId),
+    orderBy("updatedAt", "desc")
+  );
   
-  return unsubscribe;
+  return onSnapshot(q, (querySnapshot) => {
+    const chats = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        participants: data.participants,
+        lastMessage: data.lastMessage,
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt
+      };
+    });
+    
+    callback(chats);
+  });
+};
+
+export const getChatById = async (chatId: string): Promise<Chat | null> => {
+  const chatDoc = await getDoc(doc(db, "chats", chatId));
+  
+  if (!chatDoc.exists()) {
+    return null;
+  }
+  
+  const data = chatDoc.data();
+  return {
+    id: chatDoc.id,
+    participants: data.participants,
+    lastMessage: data.lastMessage,
+    createdAt: data.createdAt,
+    updatedAt: data.updatedAt
+  };
+};
+
+export const getChatByParticipants = async (userId1: string, userId2: string): Promise<Chat | null> => {
+  const chatsRef = collection(db, "chats");
+  const q1 = query(
+    chatsRef,
+    where("participants", "array-contains", userId1)
+  );
+  
+  const querySnapshot = await getDocs(q1);
+  const chat = querySnapshot.docs.find(doc => {
+    const data = doc.data();
+    return data.participants.includes(userId2);
+  });
+  
+  if (!chat) {
+    return null;
+  }
+  
+  const data = chat.data();
+  return {
+    id: chat.id,
+    participants: data.participants,
+    lastMessage: data.lastMessage,
+    createdAt: data.createdAt,
+    updatedAt: data.updatedAt
+  };
+};
+
+export const getOtherParticipant = async (chat: Chat, currentUserId: string): Promise<UserData | null> => {
+  const otherUserId = chat.participants.find(id => id !== currentUserId);
+  
+  if (!otherUserId) {
+    return null;
+  }
+  
+  const userDoc = await getDoc(doc(db, "users", otherUserId));
+  
+  if (!userDoc.exists()) {
+    return null;
+  }
+  
+  return {
+    uid: userDoc.id,
+    ...userDoc.data()
+  } as UserData;
+};
+
+export const getUnreadCount = (messages: ChatMessage[], currentUserId: string): number => {
+  return messages.filter(msg => msg.recipientId === currentUserId && !msg.read).length;
 };

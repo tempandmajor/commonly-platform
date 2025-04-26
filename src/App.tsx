@@ -24,6 +24,7 @@ import MessagesList from "./pages/MessagesList";
 import StoreMarketplace from "./pages/StoreMarketplace";
 import StoreDashboard from "./components/merchant/StoreDashboard";
 import AddProduct from "./pages/AddProduct";
+import Wallet from "./pages/Wallet";
 
 function App() {
   return (
@@ -101,6 +102,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <AddProduct />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/wallet"
+            element={
+              <ProtectedRoute>
+                <Wallet />
               </ProtectedRoute>
             }
           />
