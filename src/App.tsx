@@ -28,6 +28,8 @@ import Wallet from "./pages/Wallet";
 import Podcasts from "./pages/Podcasts";
 import PodcastDetails from "./pages/PodcastDetails";
 import UserPodcasts from "./pages/UserPodcasts";
+import AdminLogin from "./pages/AdminLogin";
+import AdminRoutes from "./pages/admin/AdminRoutes";
 
 function App() {
   return (
@@ -46,6 +48,9 @@ function App() {
           <Route path="/podcasts" element={<Podcasts />} />
           <Route path="/podcasts/:id" element={<PodcastDetails />} />
           <Route path="/user/:userId/podcasts" element={<UserPodcasts />} />
+          
+          {/* Admin Routes */}
+          <Route path="/admin/*" element={<AdminRoutes />} />
           
           <Route
             path="/create-venue"
