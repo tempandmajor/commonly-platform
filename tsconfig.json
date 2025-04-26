@@ -15,5 +15,9 @@
     "allowJs": true,
     "noUnusedLocals": false,
     "strictNullChecks": false
-  }
+  },
+  "exclude": [
+    "**/*.eslintrc.js",
+    "node_modules"
+  ]
 }
