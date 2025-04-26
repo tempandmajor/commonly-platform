@@ -1,10 +1,14 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
-import { useAuth } from '@/contexts/AuthContext';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { Building, MapPin, CalendarIcon, DollarSign } from 'lucide-react';
+import { auth } from '@/lib/firebase';
 import { createVenue, uploadVenuePhoto } from '@/services/venueService';
-import { PlacesAutocomplete, usePlacesAutocomplete } from '@/hooks/usePlacesAutocomplete';
+import { usePlacesAutocomplete } from '@/hooks/usePlacesAutocomplete';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -16,724 +20,563 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { toast } from 'sonner';
-import { ImagePlus, Trash } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent } from '@/components/ui/card';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
-type FormValues = {
-  name: string;
-  description: string;
-  type: string;
-  capacity: number;
-  sizeValue: number;
-  sizeUnit: 'sqft' | 'sqm';
-  hourlyRate: number;
-  dailyRate?: number;
-  minimumHours: number;
-  cleaningFee?: number;
-  securityDeposit?: number;
-  currency: string;
+// Define form schema with validations
+const formSchema = z.object({
+  name: z.string().min(3, { message: 'Venue name must be at least 3 characters' }),
+  description: z.string().min(10, { message: 'Description must be at least 10 characters' }),
+  type: z.string().min(1, { message: 'Venue type is required' }),
+  capacity: z.coerce.number().int().positive({ message: 'Capacity must be a positive number' }),
+  size: z.object({
+    value: z.coerce.number().positive({ message: 'Size must be a positive number' }),
+    unit: z.enum(['sqft', 'sqm'])
+  }),
+  hourlyRate: z.coerce.number().positive({ message: 'Hourly rate must be a positive number' }),
+  minimumHours: z.coerce.number().int().positive({ message: 'Minimum hours must be a positive number' }),
+  cleaningFee: z.coerce.number().nonnegative({ message: 'Cleaning fee must be a non-negative number' }).optional(),
+  securityDeposit: z.coerce.number().nonnegative({ message: 'Security deposit must be a non-negative number' }).optional(),
+});
+
+type FormValues = z.infer<typeof formSchema>;
+
+const DEFAULT_VALUES: FormValues = {
+  name: '',
+  description: '',
+  type: '',
+  capacity: 0,
+  size: {
+    value: 0,
+    unit: 'sqft'
+  },
+  hourlyRate: 0,
+  minimumHours: 1,
+  cleaningFee: 0,
+  securityDeposit: 0
 };
 
-const venueTypes = [
-  'Conference Room',
-  'Event Space',
-  'Studio',
-  'Office',
-  'Outdoor',
-  'Restaurant',
-  'Gallery',
-  'Workshop',
-  'Other',
-];
-
-const VenueForm: React.FC = () => {
-  const { currentUser, userData } = useAuth();
-  const navigate = useNavigate();
+const VenueForm = () => {
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [photoPreviewUrls, setPhotoPreviewUrls] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [uploadedPhotos, setUploadedPhotos] = useState<Array<{ id: string; url: string; file: File }>>([]);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState<any>(null);
-  const [venueRules, setVenueRules] = useState<Array<{ id: string; description: string }>>([]);
-  const [newRule, setNewRule] = useState('');
-  const [amenities, setAmenities] = useState<Array<{ id: string; name: string }>>([]);
-  const [newAmenity, setNewAmenity] = useState('');
-  const [availabilitySlots, setAvailabilitySlots] = useState<Array<{ dayOfWeek: number; startTime: string; endTime: string }>>([]);
-  const [newSlot, setNewSlot] = useState({ dayOfWeek: 1, startTime: '09:00', endTime: '17:00' });
+  const [address, setAddress] = useState('');
+  const [location, setLocation] = useState<{
+    address: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    country: string;
+    lat: number;
+    lng: number;
+    placeId?: string;
+  } | null>(null);
+  const [availableDates, setAvailableDates] = useState<Date[]>([]);
   
-  const { isLoaded } = usePlacesAutocomplete();
-  
+  const navigate = useNavigate();
+  const { isLoaded, initializeAutocomplete, getPlace } = usePlacesAutocomplete();
+
   const form = useForm<FormValues>({
-    defaultValues: {
-      name: '',
-      description: '',
-      type: '',
-      capacity: 1,
-      sizeValue: 100,
-      sizeUnit: 'sqft',
-      hourlyRate: 50,
-      minimumHours: 2,
-      currency: 'USD',
-    },
+    resolver: zodResolver(formSchema),
+    defaultValues: DEFAULT_VALUES
   });
-  
-  const handlePlaceSelect = (place: google.maps.places.PlaceResult) => {
-    if (!place.geometry) return;
-    
-    const addressComponents = place.address_components || [];
-    let city = '', state = '', country = '', zipCode = '';
-    
-    addressComponents.forEach(component => {
-      const types = component.types;
-      if (types.includes('locality')) {
-        city = component.long_name;
-      } else if (types.includes('administrative_area_level_1')) {
-        state = component.long_name;
-      } else if (types.includes('country')) {
-        country = component.long_name;
-      } else if (types.includes('postal_code')) {
-        zipCode = component.long_name;
-      }
-    });
-    
-    setSelectedLocation({
-      address: place.formatted_address || '',
-      city,
-      state,
-      zipCode,
-      country,
-      lat: place.geometry.location.lat(),
-      lng: place.geometry.location.lng(),
-      placeId: place.place_id,
-    });
-  };
-  
-  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
-    
-    setUploadingPhoto(true);
-    
-    try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const photoId = Math.random().toString(36).substring(2, 15);
-        const photoUrl = URL.createObjectURL(file);
-        
-        setUploadedPhotos(prev => [...prev, { id: photoId, url: photoUrl, file }]);
-      }
-    } catch (error) {
-      toast.error('Failed to upload photo. Please try again.');
-      console.error('Error uploading photo:', error);
-    } finally {
-      setUploadingPhoto(false);
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const selectedFiles = Array.from(e.target.files);
+      setPhotos(prev => [...prev, ...selectedFiles]);
+
+      // Create preview URLs for the selected photos
+      const newPreviewUrls = selectedFiles.map(file => URL.createObjectURL(file));
+      setPhotoPreviewUrls(prev => [...prev, ...newPreviewUrls]);
     }
   };
-  
-  const handleRemovePhoto = (photoId: string) => {
-    setUploadedPhotos(prev => prev.filter(photo => photo.id !== photoId));
-  };
-  
-  const handleAddRule = () => {
-    if (!newRule.trim()) return;
+
+  const removePhoto = (index: number) => {
+    // Revoke the object URL to avoid memory leaks
+    URL.revokeObjectURL(photoPreviewUrls[index]);
     
-    setVenueRules(prev => [...prev, {
-      id: Math.random().toString(36).substring(2, 15),
-      description: newRule.trim()
-    }]);
-    setNewRule('');
+    setPhotos(photos.filter((_, i) => i !== index));
+    setPhotoPreviewUrls(photoPreviewUrls.filter((_, i) => i !== index));
   };
-  
-  const handleRemoveRule = (ruleId: string) => {
-    setVenueRules(prev => prev.filter(rule => rule.id !== ruleId));
+
+  const handleAddressInputRef = (ref: HTMLInputElement | null) => {
+    if (ref && isLoaded) {
+      initializeAutocomplete(ref);
+      ref.addEventListener('blur', async () => {
+        try {
+          const place = await getPlace();
+          if (place && place.geometry && place.formatted_address) {
+            let city = '';
+            let state = '';
+            let zipCode = '';
+            let country = '';
+
+            place.address_components?.forEach(component => {
+              if (component.types.includes('locality')) {
+                city = component.long_name;
+              } else if (component.types.includes('administrative_area_level_1')) {
+                state = component.short_name;
+              } else if (component.types.includes('postal_code')) {
+                zipCode = component.long_name;
+              } else if (component.types.includes('country')) {
+                country = component.long_name;
+              }
+            });
+
+            setLocation({
+              address: place.formatted_address,
+              city,
+              state,
+              zipCode,
+              country,
+              lat: place.geometry.location.lat(),
+              lng: place.geometry.location.lng(),
+              placeId: place.place_id
+            });
+          }
+        } catch (error) {
+          console.error('Error getting place', error);
+        }
+      });
+    }
   };
-  
-  const handleAddAmenity = () => {
-    if (!newAmenity.trim()) return;
-    
-    setAmenities(prev => [...prev, {
-      id: Math.random().toString(36).substring(2, 15),
-      name: newAmenity.trim()
-    }]);
-    setNewAmenity('');
-  };
-  
-  const handleRemoveAmenity = (amenityId: string) => {
-    setAmenities(prev => prev.filter(amenity => amenity.id !== amenityId));
-  };
-  
-  const handleAddAvailabilitySlot = () => {
-    setAvailabilitySlots(prev => [...prev, { ...newSlot }]);
-  };
-  
-  const handleRemoveAvailabilitySlot = (index: number) => {
-    setAvailabilitySlots(prev => prev.filter((_, i) => i !== index));
-  };
-  
+
   const onSubmit = async (data: FormValues) => {
-    if (!currentUser) {
-      toast.error('You must be logged in to list a venue.');
-      return;
-    }
-    
-    if (!selectedLocation) {
-      toast.error('Please select a location for your venue.');
-      return;
-    }
-    
-    if (uploadedPhotos.length === 0) {
-      toast.error('Please upload at least one photo of your venue.');
-      return;
-    }
-    
-    setIsSubmitting(true);
-    
     try {
+      if (!auth.currentUser) {
+        toast.error('You must be logged in to create a venue');
+        return;
+      }
+
+      if (photos.length === 0) {
+        toast.error('Please upload at least one photo of your venue');
+        return;
+      }
+
+      if (!location) {
+        toast.error('Please select a valid address using the autocomplete');
+        return;
+      }
+
+      setIsSubmitting(true);
+
+      // Create venue availability from selected dates
+      const availability = availableDates.map(date => {
+        const start = new Date(date);
+        start.setHours(9, 0, 0, 0); // 9 AM
+        
+        const end = new Date(date);
+        end.setHours(17, 0, 0, 0); // 5 PM
+        
+        return {
+          dayOfWeek: date.getDay(), // 0 = Sunday, 6 = Saturday
+          startTime: '09:00',
+          endTime: '17:00'
+        };
+      });
+
       // Prepare venue data
       const venueData = {
         name: data.name,
         description: data.description,
         type: data.type,
-        capacity: Number(data.capacity),
+        capacity: data.capacity,
         size: {
-          value: Number(data.sizeValue),
-          unit: data.sizeUnit
+          value: data.size.value,
+          unit: data.size.unit
         },
-        location: selectedLocation,
-        amenities,
-        rules: venueRules,
-        photos: [], // Will be added after venue creation
+        location,
+        amenities: [],
+        rules: [],
+        photos: [],
         pricing: {
-          hourlyRate: Number(data.hourlyRate),
-          dailyRate: data.dailyRate ? Number(data.dailyRate) : undefined,
-          minimumHours: Number(data.minimumHours),
-          cleaningFee: data.cleaningFee ? Number(data.cleaningFee) : undefined,
-          securityDeposit: data.securityDeposit ? Number(data.securityDeposit) : undefined,
-          currency: data.currency
+          hourlyRate: data.hourlyRate,
+          minimumHours: data.minimumHours,
+          cleaningFee: data.cleaningFee || 0,
+          securityDeposit: data.securityDeposit || 0,
+          currency: 'USD'
         },
-        availability: availabilitySlots,
-        ownerId: currentUser.uid,
-        ownerName: userData?.displayName || currentUser.displayName || 'Anonymous',
-        ownerPhotoURL: userData?.photoURL || currentUser.photoURL || undefined,
-        stripeConnectId: userData?.stripeConnectId, // If available from the userData
+        availability,
+        ownerId: auth.currentUser.uid,
+        ownerName: auth.currentUser.displayName || 'Unnamed User',
+        ownerPhotoURL: auth.currentUser.photoURL || '',
         isVerified: false,
-        isActive: false,
+        isActive: false
       };
-      
-      // Create venue in Firestore
+
+      // Create the venue in Firestore
       const venueId = await createVenue(venueData);
-      
+
       // Upload photos
-      const photoUploadPromises = uploadedPhotos.map((photo, index) => {
-        return uploadVenuePhoto(
-          venueId, 
-          photo.file,
-          index === 0 ? 'Primary photo' : ''
-        );
-      });
+      const photoUploadPromises = photos.map(photo => 
+        uploadVenuePhoto(venueId, photo)
+      );
       
       await Promise.all(photoUploadPromises);
-      
-      toast.success('Your venue has been submitted for review!');
+
+      toast.success('Venue created successfully! It will be live after verification.');
       navigate('/my-venues');
     } catch (error) {
-      toast.error('Failed to submit venue. Please try again.');
-      console.error('Error submitting venue:', error);
+      console.error('Error creating venue:', error);
+      toast.error('Failed to create venue. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
-  
+
+  const venueTypes = [
+    'Conference Room',
+    'Event Hall',
+    'Studio',
+    'Office Space',
+    'Outdoor Area',
+    'Restaurant',
+    'Rooftop',
+    'Private Home',
+    'Warehouse',
+    'Gallery',
+    'Theater',
+    'Classroom',
+    'Other'
+  ];
+
   return (
-    <div className="bg-white rounded-lg border p-6">
+    <div className="space-y-8">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           {/* Basic Information */}
-          <div className="space-y-6">
-            <h2 className="text-xl font-semibold">Basic Information</h2>
-            
-            <FormField
-              control={form.control}
-              name="name"
-              rules={{ required: 'Venue name is required' }}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Venue Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter venue name" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="description"
-              rules={{ required: 'Description is required' }}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Describe your venue"
-                      className="min-h-[120px]"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <FormField
-              control={form.control}
-              name="type"
-              rules={{ required: 'Venue type is required' }}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Venue Type</FormLabel>
-                  <FormControl>
-                    <select
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                      {...field}
-                    >
-                      <option value="">Select a venue type</option>
-                      {venueTypes.map(type => (
-                        <option key={type} value={type}>{type}</option>
-                      ))}
-                    </select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Basic Information</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Venue Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter the venue name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Venue Type</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select venue type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {venueTypes.map((type) => (
+                          <SelectItem key={type} value={type}>{type}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <div className="mt-4">
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Describe your venue in detail" 
+                        className="h-32"
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
+
+          {/* Capacity and Size */}
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Capacity & Size</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField
                 control={form.control}
                 name="capacity"
-                rules={{ required: 'Capacity is required', min: { value: 1, message: 'Capacity must be at least 1' } }}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Capacity (people)</FormLabel>
+                    <FormLabel>Maximum Capacity</FormLabel>
                     <FormControl>
-                      <Input type="number" min="1" {...field} />
+                      <Input type="number" placeholder="0" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
-              <div className="flex gap-2 items-end">
-                <FormField
-                  control={form.control}
-                  name="sizeValue"
-                  rules={{ required: 'Size is required', min: { value: 1, message: 'Size must be at least 1' } }}
-                  render={({ field }) => (
-                    <FormItem className="flex-1">
-                      <FormLabel>Size</FormLabel>
-                      <FormControl>
-                        <Input type="number" min="1" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="sizeUnit"
-                  render={({ field }) => (
-                    <FormItem className="w-24">
-                      <FormControl>
-                        <select
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                          {...field}
-                        >
-                          <option value="sqft">sq ft</option>
-                          <option value="sqm">sq m</option>
-                        </select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-          </div>
-          
-          {/* Location */}
-          <div className="space-y-6 pt-6 border-t">
-            <h2 className="text-xl font-semibold">Location</h2>
-            
-            <div>
-              <FormLabel>Address</FormLabel>
-              <div className="mt-1">
-                <PlacesAutocomplete onPlaceSelect={handlePlaceSelect} />
-              </div>
-              {selectedLocation && (
-                <div className="bg-muted px-3 py-2 rounded-md mt-2 text-sm">
-                  <p><strong>Selected location:</strong> {selectedLocation.address}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    City: {selectedLocation.city}, State: {selectedLocation.state}, Country: {selectedLocation.country}
-                  </p>
+              <div className="grid grid-cols-5 gap-2">
+                <div className="col-span-3">
+                  <FormField
+                    control={form.control}
+                    name="size.value"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Size</FormLabel>
+                        <FormControl>
+                          <Input type="number" placeholder="0" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
-              )}
+                <div className="col-span-2">
+                  <FormField
+                    control={form.control}
+                    name="size.unit"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Unit</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Unit" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="sqft">sqft</SelectItem>
+                            <SelectItem value="sqm">sqm</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
             </div>
           </div>
-          
-          {/* Photos */}
-          <div className="space-y-6 pt-6 border-t">
-            <h2 className="text-xl font-semibold">Photos</h2>
-            
+
+          {/* Location */}
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Location</h2>
             <div className="space-y-4">
               <div>
-                <FormLabel htmlFor="venue-photos">Upload Photos</FormLabel>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Upload high-quality photos of your venue. First photo will be the main image.
-                </p>
-                
-                <label htmlFor="venue-photos">
-                  <div className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:bg-muted/50 transition-colors">
-                    <ImagePlus className="mx-auto h-10 w-10 text-muted-foreground" />
-                    <p className="mt-2">Click to upload photos</p>
-                    <p className="text-xs text-muted-foreground mt-1">JPG, PNG or WEBP, max 10MB each</p>
-                  </div>
-                  <input 
-                    id="venue-photos" 
-                    type="file" 
-                    accept="image/*" 
-                    multiple
-                    className="hidden" 
-                    onChange={handlePhotoUpload} 
-                    disabled={uploadingPhoto}
+                <FormLabel htmlFor="address">Address</FormLabel>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="address"
+                    ref={handleAddressInputRef}
+                    placeholder="Enter venue address"
+                    className="pl-10"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
                   />
-                </label>
-              </div>
-              
-              {uploadedPhotos.length > 0 && (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
-                  {uploadedPhotos.map((photo, index) => (
-                    <div key={photo.id} className="relative group">
-                      <div className="aspect-square rounded-md overflow-hidden border">
-                        <img 
-                          src={photo.url} 
-                          alt={`Venue photo ${index + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => handleRemovePhoto(photo.id)}
-                      >
-                        <Trash className="h-3 w-3" />
-                      </Button>
-                      {index === 0 && (
-                        <div className="absolute top-2 left-2 bg-primary text-white text-xs px-2 py-1 rounded-sm">
-                          Main Photo
-                        </div>
-                      )}
-                    </div>
-                  ))}
                 </div>
-              )}
+                {location && (
+                  <div className="mt-2 p-2 bg-secondary/50 rounded-md text-sm">
+                    <p className="font-medium">Selected location:</p>
+                    <p>{location.address}</p>
+                    <p>
+                      {location.city}, {location.state} {location.zipCode}, {location.country}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-          
+
           {/* Pricing */}
-          <div className="space-y-6 pt-6 border-t">
-            <h2 className="text-xl font-semibold">Pricing</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Pricing</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField
                 control={form.control}
                 name="hourlyRate"
-                rules={{ required: 'Hourly rate is required', min: { value: 1, message: 'Rate must be at least 1' } }}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Hourly Rate</FormLabel>
+                    <FormLabel>Hourly Rate ($)</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <span className="absolute left-3 top-2.5">$</span>
-                        <Input type="number" min="1" className="pl-7" {...field} />
+                        <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input type="number" placeholder="0" className="pl-10" {...field} />
                       </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
-              <FormField
-                control={form.control}
-                name="dailyRate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Daily Rate (Optional)</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <span className="absolute left-3 top-2.5">$</span>
-                        <Input type="number" min="0" className="pl-7" {...field} />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
               <FormField
                 control={form.control}
                 name="minimumHours"
-                rules={{ required: 'Minimum hours is required', min: { value: 1, message: 'Minimum hours must be at least 1' } }}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Minimum Hours</FormLabel>
+                    <FormLabel>Minimum Booking Hours</FormLabel>
                     <FormControl>
-                      <Input type="number" min="1" {...field} />
+                      <Input type="number" placeholder="1" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
               <FormField
                 control={form.control}
                 name="cleaningFee"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Cleaning Fee (Optional)</FormLabel>
+                    <FormLabel>Cleaning Fee ($)</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <span className="absolute left-3 top-2.5">$</span>
-                        <Input type="number" min="0" className="pl-7" {...field} />
+                        <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input type="number" placeholder="0" className="pl-10" {...field} />
                       </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
               <FormField
                 control={form.control}
                 name="securityDeposit"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Security Deposit (Optional)</FormLabel>
+                    <FormLabel>Security Deposit ($)</FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <span className="absolute left-3 top-2.5">$</span>
-                        <Input type="number" min="0" className="pl-7" {...field} />
+                        <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input type="number" placeholder="0" className="pl-10" {...field} />
                       </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
-              <FormField
-                control={form.control}
-                name="currency"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Currency</FormLabel>
-                    <FormControl>
-                      <select
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                        {...field}
-                      >
-                        <option value="USD">USD - US Dollar</option>
-                        <option value="EUR">EUR - Euro</option>
-                        <option value="GBP">GBP - British Pound</option>
-                        <option value="CAD">CAD - Canadian Dollar</option>
-                        <option value="AUD">AUD - Australian Dollar</option>
-                      </select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            
-            <div className="bg-muted p-3 rounded-md text-sm">
-              <p><strong>Note:</strong> Commonly takes a 5% platform fee + Stripe processing fees from each booking.</p>
             </div>
           </div>
-          
-          {/* Amenities */}
-          <div className="space-y-6 pt-6 border-t">
-            <h2 className="text-xl font-semibold">Amenities</h2>
-            <p className="text-sm text-muted-foreground">
-              List the amenities your venue offers.
-            </p>
-            
-            <div className="flex gap-2">
-              <Input 
-                value={newAmenity} 
-                onChange={(e) => setNewAmenity(e.target.value)}
-                placeholder="Add an amenity (e.g., WiFi, A/C, Projector)"
-                className="flex-grow"
-              />
-              <Button type="button" onClick={handleAddAmenity}>Add</Button>
-            </div>
-            
-            {amenities.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {amenities.map(amenity => (
-                  <div 
-                    key={amenity.id} 
-                    className="bg-muted flex items-center gap-2 px-3 py-1 rounded-full"
-                  >
-                    <span>{amenity.name}</span>
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-4 w-4 p-0 hover:bg-transparent"
-                      onClick={() => handleRemoveAmenity(amenity.id)}
+
+          {/* Availability */}
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Availability</h2>
+            <div className="space-y-4">
+              <p className="text-muted-foreground text-sm">
+                Select the days your venue is available for booking. You can customize the hours later.
+              </p>
+              <div>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className="w-full justify-start text-left font-normal"
                     >
-                      <Trash className="h-3 w-3" />
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {availableDates.length === 0 ? (
+                        <span>No dates selected</span>
+                      ) : availableDates.length === 1 ? (
+                        <span>1 date selected</span>
+                      ) : (
+                        <span>{availableDates.length} dates selected</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="multiple"
+                      selected={availableDates}
+                      onSelect={setAvailableDates}
+                      initialFocus
+                      className={cn("p-3 pointer-events-auto")}
+                      disabled={(date) => date < new Date()}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+          </div>
+
+          {/* Photos */}
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Photos</h2>
+            <div className="space-y-4">
+              <p className="text-muted-foreground text-sm">
+                Upload high-quality photos of your venue. We recommend at least 3 photos.
+              </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                {photoPreviewUrls.map((url, index) => (
+                  <div key={index} className="relative h-40 bg-secondary rounded-md overflow-hidden">
+                    <img
+                      src={url}
+                      alt={`Venue photo ${index + 1}`}
+                      className="h-full w-full object-cover"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="absolute top-2 right-2"
+                      onClick={() => removePhoto(index)}
+                    >
+                      &times;
                     </Button>
                   </div>
                 ))}
-              </div>
-            )}
-          </div>
-          
-          {/* Rules */}
-          <div className="space-y-6 pt-6 border-t">
-            <h2 className="text-xl font-semibold">House Rules</h2>
-            <p className="text-sm text-muted-foreground">
-              Add important rules for guests using your venue.
-            </p>
-            
-            <div className="flex gap-2">
-              <Input 
-                value={newRule} 
-                onChange={(e) => setNewRule(e.target.value)}
-                placeholder="Add a rule (e.g., No smoking, No pets)"
-                className="flex-grow"
-              />
-              <Button type="button" onClick={handleAddRule}>Add</Button>
-            </div>
-            
-            {venueRules.length > 0 && (
-              <ul className="space-y-2">
-                {venueRules.map(rule => (
-                  <li 
-                    key={rule.id} 
-                    className="flex justify-between items-center bg-muted p-3 rounded-md"
-                  >
-                    <span>{rule.description}</span>
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-7 w-7"
-                      onClick={() => handleRemoveRule(rule.id)}
-                    >
-                      <Trash className="h-4 w-4" />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-          
-          {/* Availability */}
-          <div className="space-y-6 pt-6 border-t">
-            <h2 className="text-xl font-semibold">Availability</h2>
-            <p className="text-sm text-muted-foreground">
-              Add your venue's regular availability. You can update specific dates later.
-            </p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <FormLabel htmlFor="day-of-week">Day of Week</FormLabel>
-                <select
-                  id="day-of-week"
-                  value={newSlot.dayOfWeek}
-                  onChange={(e) => setNewSlot({...newSlot, dayOfWeek: parseInt(e.target.value)})}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                >
-                  <option value={0}>Sunday</option>
-                  <option value={1}>Monday</option>
-                  <option value={2}>Tuesday</option>
-                  <option value={3}>Wednesday</option>
-                  <option value={4}>Thursday</option>
-                  <option value={5}>Friday</option>
-                  <option value={6}>Saturday</option>
-                </select>
-              </div>
-              
-              <div>
-                <FormLabel htmlFor="start-time">Start Time</FormLabel>
-                <Input
-                  id="start-time"
-                  type="time"
-                  value={newSlot.startTime}
-                  onChange={(e) => setNewSlot({...newSlot, startTime: e.target.value})}
-                />
-              </div>
-              
-              <div className="flex items-end gap-4">
-                <div className="flex-1">
-                  <FormLabel htmlFor="end-time">End Time</FormLabel>
-                  <Input
-                    id="end-time"
-                    type="time"
-                    value={newSlot.endTime}
-                    onChange={(e) => setNewSlot({...newSlot, endTime: e.target.value})}
+
+                <label className="flex flex-col justify-center items-center h-40 bg-secondary hover:bg-secondary/80 rounded-md cursor-pointer border-2 border-dashed border-muted-foreground/50">
+                  <div className="flex flex-col justify-center items-center text-center p-4">
+                    <Building className="h-6 w-6 mb-2" />
+                    <span className="font-medium">Add Photo</span>
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handlePhotoChange}
+                    className="hidden"
                   />
-                </div>
-                <Button type="button" onClick={handleAddAvailabilitySlot} className="mb-0.5">Add</Button>
+                </label>
               </div>
             </div>
-            
-            {availabilitySlots.length > 0 && (
-              <div className="mt-4 border rounded-md overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-muted">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Day</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Hours</th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {availabilitySlots.map((slot, index) => {
-                      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-                      return (
-                        <tr key={index}>
-                          <td className="px-6 py-4 whitespace-nowrap">{days[slot.dayOfWeek]}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">{slot.startTime} - {slot.endTime}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right">
-                            <Button 
-                              type="button" 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => handleRemoveAvailabilitySlot(index)}
-                              className="text-red-600 hover:text-red-800 hover:bg-red-50"
-                            >
-                              Remove
-                            </Button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
           </div>
-          
-          {/* Submission */}
-          <div className="pt-6 border-t flex flex-col sm:flex-row sm:justify-end gap-4">
-            <Button type="button" variant="outline" onClick={() => navigate('/venues')}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Submitting...' : 'Submit Venue for Review'}
+
+          {/* Stripe Verification Note */}
+          <Card className="border-yellow-400/50 bg-yellow-50 dark:bg-yellow-950/20">
+            <CardContent className="p-4">
+              <h3 className="text-sm font-medium flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+                Stripe Verification Required
+              </h3>
+              <p className="text-sm mt-2">
+                Before your venue can go live, you'll need to complete Stripe Identity 
+                verification and connect a Stripe account for receiving payments. You'll be 
+                prompted to complete this process after submitting your venue.
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Submit Button */}
+          <div className="flex justify-end">
+            <Button type="submit" disabled={isSubmitting} className="px-8">
+              {isSubmitting ? 'Creating...' : 'Create Venue'}
             </Button>
           </div>
         </form>

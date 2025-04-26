@@ -1,9 +1,13 @@
 
 import React, { useRef, useEffect } from 'react';
-import { ICameraVideoTrack } from 'agora-rtc-sdk-ng';
+
+interface VideoTrack {
+  play: (element: HTMLElement) => void;
+  stop: () => void;
+}
 
 interface VideoPreviewProps {
-  videoTrack: ICameraVideoTrack | null;
+  videoTrack: VideoTrack | null;
   name: string;
 }
 
