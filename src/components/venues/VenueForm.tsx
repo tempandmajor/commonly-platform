@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -27,7 +26,6 @@ import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
-// Define form schema with validations
 const formSchema = z.object({
   name: z.string().min(3, { message: 'Venue name must be at least 3 characters' }),
   description: z.string().min(10, { message: 'Description must be at least 10 characters' }),
@@ -90,14 +88,12 @@ const VenueForm = () => {
       const selectedFiles = Array.from(e.target.files);
       setPhotos(prev => [...prev, ...selectedFiles]);
 
-      // Create preview URLs for the selected photos
       const newPreviewUrls = selectedFiles.map(file => URL.createObjectURL(file));
       setPhotoPreviewUrls(prev => [...prev, ...newPreviewUrls]);
     }
   };
 
   const removePhoto = (index: number) => {
-    // Revoke the object URL to avoid memory leaks
     URL.revokeObjectURL(photoPreviewUrls[index]);
     
     setPhotos(photos.filter((_, i) => i !== index));
@@ -165,22 +161,20 @@ const VenueForm = () => {
 
       setIsSubmitting(true);
 
-      // Create venue availability from selected dates
       const availability = availableDates.map(date => {
         const start = new Date(date);
-        start.setHours(9, 0, 0, 0); // 9 AM
+        start.setHours(9, 0, 0, 0);
         
         const end = new Date(date);
-        end.setHours(17, 0, 0, 0); // 5 PM
+        end.setHours(17, 0, 0, 0);
         
         return {
-          dayOfWeek: date.getDay(), // 0 = Sunday, 6 = Saturday
+          dayOfWeek: date.getDay(),
           startTime: '09:00',
           endTime: '17:00'
         };
       });
 
-      // Prepare venue data
       const venueData = {
         name: data.name,
         description: data.description,
@@ -209,10 +203,8 @@ const VenueForm = () => {
         isActive: false
       };
 
-      // Create the venue in Firestore
       const venueId = await createVenue(venueData);
 
-      // Upload photos
       const photoUploadPromises = photos.map(photo => 
         uploadVenuePhoto(venueId, photo)
       );
@@ -249,7 +241,6 @@ const VenueForm = () => {
     <div className="space-y-8">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          {/* Basic Information */}
           <div>
             <h2 className="text-xl font-semibold mb-4">Basic Information</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -310,7 +301,6 @@ const VenueForm = () => {
             </div>
           </div>
 
-          {/* Capacity and Size */}
           <div>
             <h2 className="text-xl font-semibold mb-4">Capacity & Size</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -370,7 +360,6 @@ const VenueForm = () => {
             </div>
           </div>
 
-          {/* Location */}
           <div>
             <h2 className="text-xl font-semibold mb-4">Location</h2>
             <div className="space-y-4">
@@ -400,7 +389,6 @@ const VenueForm = () => {
             </div>
           </div>
 
-          {/* Pricing */}
           <div>
             <h2 className="text-xl font-semibold mb-4">Pricing</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -470,7 +458,6 @@ const VenueForm = () => {
             </div>
           </div>
 
-          {/* Availability */}
           <div>
             <h2 className="text-xl font-semibold mb-4">Availability</h2>
             <div className="space-y-4">
@@ -509,7 +496,6 @@ const VenueForm = () => {
             </div>
           </div>
 
-          {/* Photos */}
           <div>
             <h2 className="text-xl font-semibold mb-4">Photos</h2>
             <div className="space-y-4">
@@ -554,7 +540,6 @@ const VenueForm = () => {
             </div>
           </div>
 
-          {/* Stripe Verification Note */}
           <Card className="border-yellow-400/50 bg-yellow-50 dark:bg-yellow-950/20">
             <CardContent className="p-4">
               <h3 className="text-sm font-medium flex items-center">
@@ -573,7 +558,6 @@ const VenueForm = () => {
             </CardContent>
           </Card>
 
-          {/* Submit Button */}
           <div className="flex justify-end">
             <Button type="submit" disabled={isSubmitting} className="px-8">
               {isSubmitting ? 'Creating...' : 'Create Venue'}
