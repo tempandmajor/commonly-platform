@@ -17,11 +17,8 @@ export const getAdminEvents = async (
     if (Object.keys(filterOptions).length > 0) {
       Object.entries(filterOptions).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
-          // Handle filtering dynamically
-          if (key && value !== undefined) {
-            // Fixed: Using specific type assertion to avoid deep instantiation
-            query = query.eq(key, value) as typeof query;
-          }
+          // Handle filtering dynamically - using explicit any type to avoid recursive type inference
+          query = (query as any).eq(key, value);
         }
       });
     }
@@ -97,10 +94,13 @@ export const likeEvent = async (eventId: string, userId: string) => {
     }
 
     // Update likes count
-    // Fix: Type error by explicitly using any for eventId
-    const { error: updateError } = await supabase.rpc('increment_likes_count', { 
-      event_id: eventId as any 
-    });
+    // Cast parameters to proper type to avoid "not assignable to parameter of type 'never'" error
+    const params = { event_id: eventId };
+    const { error: updateError } = await supabase.rpc(
+      'increment_likes_count', 
+      params as any
+    );
+    
     if (updateError) throw updateError;
     
   } catch (error) {
@@ -120,9 +120,13 @@ export const unlikeEvent = async (eventId: string, userId: string) => {
     if (error) throw error;
 
     // Update likes count
-    const { error: updateError } = await supabase.rpc('decrement_likes_count', { 
-      event_id: eventId as any 
-    });
+    // Cast parameters to proper type to avoid "not assignable to parameter of type 'never'" error
+    const params = { event_id: eventId };
+    const { error: updateError } = await supabase.rpc(
+      'decrement_likes_count',
+      params as any
+    );
+    
     if (updateError) throw updateError;
     
   } catch (error) {
@@ -140,10 +144,13 @@ export const shareEvent = async (eventId: string, userId: string) => {
     if (error) throw error;
 
     // Update shares count
-    // Fix: Type error by explicitly using any for eventId
-    const { error: updateError } = await supabase.rpc('increment_shares_count', { 
-      event_id: eventId as any 
-    });
+    // Cast parameters to proper type to avoid "not assignable to parameter of type 'never'" error
+    const params = { event_id: eventId };
+    const { error: updateError } = await supabase.rpc(
+      'increment_shares_count',
+      params as any
+    );
+    
     if (updateError) throw updateError;
     
     return true;
