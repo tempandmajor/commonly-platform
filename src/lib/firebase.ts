@@ -5,6 +5,7 @@ import { getStorage } from "firebase/storage";
 import { getAnalytics } from "firebase/analytics";
 import { GoogleAuthProvider, getAuth } from "firebase/auth";
 import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
+import { getMessaging } from "firebase/messaging";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -26,9 +27,20 @@ const auth = getAuth(app);
 const functions = getFunctions(app);
 const googleProvider = new GoogleAuthProvider();
 
+// Initialize Firebase Cloud Messaging and get a reference to the service
+// Only initialize messaging in browser environments, not during SSR
+let messaging = null;
+if (typeof window !== 'undefined') {
+  try {
+    messaging = getMessaging(app);
+  } catch (error) {
+    console.error('Firebase messaging initialization error:', error);
+  }
+}
+
 // Connect to Functions emulator when in development
 if (import.meta.env.DEV) {
   connectFunctionsEmulator(functions, "localhost", 5001);
 }
 
-export { app, db, storage, analytics, auth, functions, googleProvider };
+export { app, db, storage, analytics, auth, functions, googleProvider, messaging };

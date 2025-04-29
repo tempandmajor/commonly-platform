@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { getUsersByIds } from "@/services/userService";
-import { getUserChats } from "@/services/chatService";
+import { getUserChats, subscribeToChats, getTotalUnreadMessages } from "@/services/chatService";
 import Navbar from "@/components/layout/Navbar";
 import { UserData, Chat } from "@/types/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -20,6 +20,7 @@ import { useNavigate } from "react-router-dom";
 
 interface ChatWithUser extends Chat {
   user: UserData;
+  unreadCount?: number;
 }
 
 const MessagesList = () => {
@@ -39,8 +40,10 @@ const MessagesList = () => {
       return;
     }
 
+    // Initial fetch
     const fetchChats = async () => {
       try {
+        setLoading(true);
         const userChats = await getUserChats(currentUser.uid);
         
         // Get all unique user IDs from the chats (excluding the current user)
@@ -82,6 +85,58 @@ const MessagesList = () => {
     };
     
     fetchChats();
+    
+    // Subscribe to chats in real-time
+    const unsubscribe = subscribeToChats(
+      currentUser.uid,
+      async (updatedChats) => {
+        // Get all unique user IDs from the chats
+        const userIds = new Set<string>();
+        updatedChats.forEach(chat => {
+          chat.participants.forEach(id => {
+            if (id !== currentUser.uid) {
+              userIds.add(id);
+            }
+          });
+        });
+        
+        const users = await getUsersByIds(Array.from(userIds));
+        const usersMap = new Map<string, UserData>();
+        users.forEach(user => {
+          usersMap.set(user.uid, user);
+        });
+        
+        // Map chats with their corresponding user and calculate unread counts
+        const chatsWithUsers = await Promise.all(
+          updatedChats.map(async (chat) => {
+            const otherUserId = chat.participants.find(id => id !== currentUser.uid) || "";
+            
+            // For each chat, count unread messages where current user is recipient
+            let unreadCount = 0;
+            if (chat.lastMessage && 
+                chat.lastMessage.recipientId === currentUser.uid && 
+                !chat.lastMessage.read) {
+              // If the last message is unread, check how many unread messages in total
+              // We'll just use the last message's read status as an indicator for now
+              // For a more accurate count, we'd need to query each chat's messages
+              unreadCount = 1;
+            }
+            
+            return {
+              ...chat,
+              user: usersMap.get(otherUserId) as UserData,
+              unreadCount
+            };
+          })
+        );
+        
+        setChats(chatsWithUsers);
+      }
+    );
+    
+    return () => {
+      unsubscribe();
+    };
   }, [currentUser, navigate, toast]);
 
   const handleSearch = async () => {
@@ -169,13 +224,16 @@ const MessagesList = () => {
                     .toUpperCase()
                 : "?";
                 
+              const hasUnread = chat.unreadCount && chat.unreadCount > 0;
+              const hasImage = chat.lastMessage?.hasImage;
+              
               return (
                 <Link 
                   key={chat.id} 
                   to={`/messages/${chat.id}`}
                   className="block"
                 >
-                  <div className="p-4 border rounded-lg hover:bg-gray-50">
+                  <div className={`p-4 border rounded-lg hover:bg-gray-50 ${hasUnread ? 'bg-blue-50' : ''}`}>
                     <div className="flex items-center">
                       <Avatar className="h-10 w-10 mr-3">
                         <AvatarImage src={chat.user?.photoURL || undefined} />
@@ -183,12 +241,23 @@ const MessagesList = () => {
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-center">
-                          <h3 className="font-medium truncate">{chat.user?.displayName}</h3>
+                          <h3 className={`font-medium truncate ${hasUnread ? 'text-blue-700' : ''}`}>
+                            {chat.user?.displayName}
+                          </h3>
                           {lastMessageTime && (
                             <span className="text-xs text-gray-500">{lastMessageTime}</span>
                           )}
                         </div>
-                        <p className="text-sm text-gray-600 truncate">{lastMessageText}</p>
+                        <div className="flex items-center">
+                          <p className={`text-sm text-gray-600 truncate ${hasUnread ? 'font-medium text-gray-700' : ''}`}>
+                            {hasImage ? "📷 Image" : lastMessageText}
+                          </p>
+                          {hasUnread && (
+                            <span className="ml-2 bg-blue-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                              {chat.unreadCount}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>

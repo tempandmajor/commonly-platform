@@ -1,4 +1,3 @@
-
 import { db } from "@/lib/firebase";
 import { 
   collection, 
@@ -14,6 +13,7 @@ import {
   updateDoc
 } from "firebase/firestore";
 import { Chat, ChatMessage, UserData } from "@/types/auth";
+import { createNotification } from "./notificationService";
 
 export const createChat = async (currentUserId: string, otherUserId: string) => {
   // Check if a chat already exists between these two users
@@ -56,6 +56,27 @@ export const sendMessage = async (chatId: string, senderId: string, recipientId:
       read: false
     }
   });
+  
+  // Create notification for the recipient
+  try {
+    const senderDoc = await getDoc(doc(db, "users", senderId));
+    const senderData = senderDoc.data();
+    const senderName = senderData?.displayName || "Someone";
+    
+    await createNotification(
+      recipientId,
+      'message',
+      'New Message',
+      `${senderName} sent you a message: ${text.length > 30 ? text.substring(0, 30) + '...' : text}`,
+      { 
+        chatId, 
+        senderId
+      },
+      senderData?.photoURL || undefined
+    );
+  } catch (error) {
+    console.error("Error creating message notification:", error);
+  }
   
   return messageRef.id;
 };
@@ -250,4 +271,140 @@ export const getOtherParticipant = async (chat: Chat, currentUserId: string): Pr
 
 export const getUnreadCount = (messages: ChatMessage[], currentUserId: string): number => {
   return messages.filter(msg => msg.recipientId === currentUserId && !msg.read).length;
+};
+
+/**
+ * Get total number of unread messages for a user across all chats
+ */
+export const getTotalUnreadMessages = async (userId: string): Promise<number> => {
+  try {
+    const chatsRef = collection(db, "chats");
+    const q = query(
+      chatsRef,
+      where("participants", "array-contains", userId)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    let total = 0;
+    
+    // For each chat, check for unread messages where the user is the recipient
+    for (const chatDoc of querySnapshot.docs) {
+      const chatId = chatDoc.id;
+      const messagesRef = collection(db, "chats", chatId, "messages");
+      const unreadQuery = query(
+        messagesRef,
+        where("recipientId", "==", userId),
+        where("read", "==", false)
+      );
+      
+      const unreadSnapshot = await getDocs(unreadQuery);
+      total += unreadSnapshot.size;
+    }
+    
+    return total;
+  } catch (error) {
+    console.error("Error counting total unread messages:", error);
+    return 0;
+  }
+};
+
+/**
+ * Subscribe to total unread messages count for a user
+ */
+export const subscribeToTotalUnreadMessages = (
+  userId: string,
+  callback: (count: number) => void
+) => {
+  const chatsRef = collection(db, "chats");
+  const q = query(
+    chatsRef,
+    where("participants", "array-contains", userId)
+  );
+  
+  // This will listen for changes to any chat the user is part of
+  return onSnapshot(q, async (querySnapshot) => {
+    try {
+      let total = 0;
+      
+      for (const chatDoc of querySnapshot.docs) {
+        const chatId = chatDoc.id;
+        const messagesRef = collection(db, "chats", chatId, "messages");
+        const unreadQuery = query(
+          messagesRef,
+          where("recipientId", "==", userId),
+          where("read", "==", false)
+        );
+        
+        const unreadSnapshot = await getDocs(unreadQuery);
+        total += unreadSnapshot.size;
+      }
+      
+      callback(total);
+    } catch (error) {
+      console.error("Error in unread messages subscription:", error);
+      callback(0);
+    }
+  });
+};
+
+/**
+ * Send a message with an image attachment
+ */
+export const sendMessageWithImage = async (
+  chatId: string,
+  senderId: string,
+  recipientId: string,
+  text: string,
+  imageUrl: string
+): Promise<string | null> => {
+  try {
+    const messageRef = await addDoc(collection(db, "chats", chatId, "messages"), {
+      senderId,
+      recipientId,
+      text,
+      imageUrl,
+      timestamp: serverTimestamp(),
+      read: false
+    });
+    
+    // Update the chat's updatedAt timestamp
+    await updateDoc(doc(db, "chats", chatId), {
+      updatedAt: serverTimestamp(),
+      "lastMessage": {
+        id: messageRef.id,
+        senderId,
+        recipientId,
+        text: imageUrl ? "📷 Image" : text,
+        timestamp: serverTimestamp(),
+        read: false,
+        hasImage: !!imageUrl
+      }
+    });
+    
+    // Create notification for the recipient
+    try {
+      const senderDoc = await getDoc(doc(db, "users", senderId));
+      const senderData = senderDoc.data();
+      const senderName = senderData?.displayName || "Someone";
+      
+      await createNotification(
+        recipientId,
+        'message',
+        'New Message',
+        imageUrl ? `${senderName} sent you an image` : `${senderName} sent you a message`,
+        { 
+          chatId, 
+          senderId 
+        },
+        senderData?.photoURL || undefined
+      );
+    } catch (error) {
+      console.error("Error creating message notification:", error);
+    }
+    
+    return messageRef.id;
+  } catch (error) {
+    console.error("Error sending message with image:", error);
+    return null;
+  }
 };

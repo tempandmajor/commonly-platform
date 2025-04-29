@@ -98,3 +98,28 @@ export interface EventEngagement {
   likes: number;
   shares: number;
 }
+
+// New interfaces for subscription handling
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  description: string;
+  features: string[];
+  price: number;
+  intervalType: 'month' | 'year';
+  stripePriceId: string;
+  isActive: boolean;
+}
+
+export interface UserSubscription {
+  id: string;
+  userId: string;
+  planId: string;
+  stripeSubscriptionId: string;
+  status: 'active' | 'canceled' | 'past_due' | 'trialing' | 'incomplete';
+  currentPeriodStart: string | Date;
+  currentPeriodEnd: string | Date;
+  cancelAtPeriodEnd: boolean;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+}

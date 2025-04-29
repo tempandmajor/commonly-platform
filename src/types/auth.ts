@@ -1,4 +1,3 @@
-
 export interface UserData {
   uid: string;
   email: string | null;
@@ -17,6 +16,7 @@ export interface UserData {
   hasTwoFactorEnabled?: boolean;
   bio?: string;
   recentLogin?: boolean;
+  notificationSettings?: NotificationSettings;
 }
 
 export interface AuthContextType {
@@ -174,4 +174,53 @@ export interface FollowStats {
   mutualCount: number;
   recentFollowers: UserData[];
   recentFollowing: UserData[];
+}
+
+// Notification related types
+export interface Notification {
+  id: string;
+  userId: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  read: boolean;
+  data?: Record<string, any>;
+  createdAt: any; // Firebase timestamp or Date
+  image?: string;
+}
+
+export type NotificationType = 
+  | 'event_update' 
+  | 'new_follower' 
+  | 'referral_earnings' 
+  | 'message' 
+  | 'sponsorship' 
+  | 'payout'
+  | 'system';
+
+export interface NotificationSettings {
+  email: {
+    eventUpdates: boolean;
+    newFollowers: boolean;
+    messages: boolean;
+    earnings: boolean;
+    marketing: boolean;
+  };
+  push: {
+    eventUpdates: boolean;
+    newFollowers: boolean;
+    messages: boolean;
+    earnings: boolean;
+  };
+  inApp: {
+    eventUpdates: boolean;
+    newFollowers: boolean;
+    messages: boolean;
+    earnings: boolean;
+  };
+}
+
+export interface NotificationBadge {
+  unreadCount: number;
+  lastChecked: any; // Firebase timestamp or Date
 }

@@ -237,6 +237,147 @@ export type Database = {
           },
         ]
       }
+      payment_transactions: {
+        Row: {
+          amount: number
+          buyer_id: string | null
+          created_at: string | null
+          event_id: string | null
+          id: string
+          metadata: Json | null
+          platform_fee: number
+          status: string
+          stripe_fee: number
+          stripe_payment_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          buyer_id?: string | null
+          created_at?: string | null
+          event_id?: string | null
+          id?: string
+          metadata?: Json | null
+          platform_fee: number
+          status: string
+          stripe_fee: number
+          stripe_payment_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          buyer_id?: string | null
+          created_at?: string | null
+          event_id?: string | null
+          id?: string
+          metadata?: Json | null
+          platform_fee?: number
+          status?: string
+          stripe_fee?: number
+          stripe_payment_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      payouts: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          organizer_id: string | null
+          status: string
+          stripe_payout_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          id?: string
+          organizer_id?: string | null
+          status: string
+          stripe_payout_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          organizer_id?: string | null
+          status?: string
+          stripe_payout_id?: string | null
+        }
+        Relationships: []
+      }
+      presale_campaigns: {
+        Row: {
+          created_at: string | null
+          current_amount: number
+          event_id: string
+          goal_amount: number
+          id: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          current_amount?: number
+          event_id: string
+          goal_amount: number
+          id?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          current_amount?: number
+          event_id?: string
+          goal_amount?: number
+          id?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          cancel_at: string | null
+          created_at: string | null
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          plan: string
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          cancel_at?: string | null
+          created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          plan: string
+          status: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          cancel_at?: string | null
+          created_at?: string | null
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          plan?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           amount: number
@@ -427,7 +568,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      decrement_event_likes: {
+        Args: { event_id_param: string }
+        Returns: undefined
+      }
+      increment_event_likes: {
+        Args: { event_id_param: string }
+        Returns: undefined
+      }
+      increment_event_shares: {
+        Args: { event_id_param: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
