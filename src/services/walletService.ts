@@ -86,7 +86,8 @@ const createUserWallet = async (userId: string): Promise<UserWallet> => {
       platformCredits: 0,
       hasPayoutMethod: false,
       transactions: [],
-      lastUpdated: Timestamp.now()
+      // Fix: Convert Timestamp to Date to match the expected type
+      lastUpdated: new Date()
     };
   } catch (error) {
     console.error("Error creating user wallet:", error);
@@ -112,7 +113,8 @@ const createUserWallet = async (userId: string): Promise<UserWallet> => {
       platformCredits: 0,
       hasPayoutMethod: false,
       transactions: [],
-      lastUpdated: Timestamp.now()
+      // Fix: Convert Timestamp to Date to match the expected type
+      lastUpdated: new Date()
     };
   }
 };

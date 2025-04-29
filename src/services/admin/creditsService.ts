@@ -43,7 +43,8 @@ export const distributeCredits = async (
         .from('users')
         .update({
           wallet: {
-            ...(wallet as object),
+            // Fix: Use type assertion to avoid 'spread types' error
+            ...(wallet as Record<string, any>),
             platform_credits: currentCredits + amount
           }
         })

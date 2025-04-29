@@ -18,8 +18,9 @@ export const getAdminEvents = async (
       Object.entries(filterOptions).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
           // Handle filtering dynamically
-          if (query) {
-            query = query.eq(key, value);
+          if (key && value !== undefined) {
+            // Fixed: Using specific type assertion to avoid deep instantiation
+            query = query.eq(key, value) as typeof query;
           }
         }
       });
@@ -96,6 +97,7 @@ export const likeEvent = async (eventId: string, userId: string) => {
     }
 
     // Update likes count
+    // Fix: Type error by explicitly using any for eventId
     const { error: updateError } = await supabase.rpc('increment_likes_count', { 
       event_id: eventId as any 
     });
@@ -138,6 +140,7 @@ export const shareEvent = async (eventId: string, userId: string) => {
     if (error) throw error;
 
     // Update shares count
+    // Fix: Type error by explicitly using any for eventId
     const { error: updateError } = await supabase.rpc('increment_shares_count', { 
       event_id: eventId as any 
     });
