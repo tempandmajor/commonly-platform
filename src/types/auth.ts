@@ -21,6 +21,7 @@ export interface UserData {
   isPodcaster?: boolean;
   podcastChannelName?: string;
   featuredPodcasts?: string[]; // Array of podcast IDs
+  isAdmin?: boolean; // Added isAdmin property
 }
 
 export interface AuthContextType {

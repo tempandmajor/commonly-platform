@@ -1,4 +1,3 @@
-
 import { 
   collection, 
   doc, 
@@ -14,7 +13,8 @@ import {
   Timestamp,
   addDoc,
   setDoc,
-  serverTimestamp 
+  serverTimestamp,
+  DocumentData
 } from 'firebase/firestore';
 import { 
   ref, 
@@ -49,7 +49,8 @@ export const getUsers = async (lastVisible = null, limitCount = 20) => {
     const lastDoc = snapshot.docs[snapshot.docs.length - 1];
     
     const users = snapshot.docs.map(doc => ({
-      ...doc.data()
+      id: doc.id,
+      ...(doc.data() as DocumentData)
     } as UserData));
     
     return { users, lastVisible: lastDoc };
@@ -71,7 +72,8 @@ export const searchUsers = async (searchTerm: string, limitCount = 20) => {
     const snapshot = await getDocs(usersQuery);
     
     return snapshot.docs.map(doc => ({
-      ...doc.data()
+      id: doc.id,
+      ...(doc.data() as DocumentData)
     } as UserData));
   } catch (error) {
     console.error("Error searching users:", error);
@@ -132,7 +134,7 @@ export const getAdminEvents = async (lastVisible = null, limitCount = 20) => {
     
     const events = snapshot.docs.map(doc => ({
       id: doc.id,
-      ...doc.data()
+      ...(doc.data() as DocumentData)
     }));
     
     return { events, lastVisible: lastDoc };
@@ -167,7 +169,7 @@ export const getAdminVenues = async (lastVisible = null, limitCount = 20) => {
     
     const venues = snapshot.docs.map(doc => ({
       id: doc.id,
-      ...doc.data()
+      ...(doc.data() as DocumentData)
     }));
     
     return { venues, lastVisible: lastDoc };

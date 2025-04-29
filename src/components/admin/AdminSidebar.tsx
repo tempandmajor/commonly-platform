@@ -12,7 +12,8 @@ import {
   DollarSign,
   Settings,
   LogOut,
-  Music
+  Music,
+  BookOpen
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { auth } from '@/lib/firebase';
@@ -46,8 +47,8 @@ const AdminSidebar: React.FC = () => {
     { to: '/admin/catering', icon: <Utensils className="h-5 w-5" />, label: 'Catering' },
     { to: '/admin/campaigns', icon: <Share2 className="h-5 w-5" />, label: 'Referrals' },
     { to: '/admin/content', icon: <FileText className="h-5 w-5" />, label: 'Content' },
+    { to: '/admin/ventures', icon: <BookOpen className="h-5 w-5" />, label: 'Ventures' },
     { to: '/admin/credits', icon: <DollarSign className="h-5 w-5" />, label: 'Credits' },
-    { to: '/admin/ventures', icon: <Music className="h-5 w-5" />, label: 'Ventures' },
     { to: '/admin/settings', icon: <Settings className="h-5 w-5" />, label: 'Settings' },
   ];
 

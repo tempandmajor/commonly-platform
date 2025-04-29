@@ -6,6 +6,7 @@ import AdminLogin from '@/pages/AdminLogin';
 import Dashboard from '@/pages/admin/Dashboard';
 import Users from '@/pages/admin/Users';
 import Credits from '@/pages/admin/Credits';
+import Ventures from '@/pages/admin/Ventures';
 
 // Placeholder components for other admin pages
 const Events = () => <div>Events Management</div>;
@@ -13,7 +14,6 @@ const Venues = () => <div>Venues Management</div>;
 const Catering = () => <div>Catering Management</div>;
 const Campaigns = () => <div>Referral Campaigns</div>;
 const Content = () => <div>Content Management</div>;
-const Ventures = () => <div>Commonly Ventures</div>;
 const Settings = () => <div>Admin Settings</div>;
 
 const AdminRoutes: React.FC = () => {

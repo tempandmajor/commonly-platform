@@ -30,6 +30,9 @@ import PodcastDetails from "./pages/PodcastDetails";
 import UserPodcasts from "./pages/UserPodcasts";
 import AdminLogin from "./pages/AdminLogin";
 import AdminRoutes from "./pages/admin/AdminRoutes";
+import Management from "./pages/ventures/Management";
+import Records from "./pages/ventures/Records";
+import Studios from "./pages/ventures/Studios";
 
 function App() {
   return (
@@ -48,6 +51,11 @@ function App() {
           <Route path="/podcasts" element={<Podcasts />} />
           <Route path="/podcasts/:id" element={<PodcastDetails />} />
           <Route path="/user/:userId/podcasts" element={<UserPodcasts />} />
+          
+          {/* Ventures Routes */}
+          <Route path="/ventures/management" element={<Management />} />
+          <Route path="/ventures/records" element={<Records />} />
+          <Route path="/ventures/studios" element={<Studios />} />
           
           {/* Admin Routes */}
           <Route path="/admin/*" element={<AdminRoutes />} />
