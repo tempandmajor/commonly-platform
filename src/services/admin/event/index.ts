@@ -9,6 +9,7 @@ export {
 
 export {
   likeEvent,
+  unlikeEvent,
   shareEvent,
   hasUserLikedEvent
 } from './eventEngagement';

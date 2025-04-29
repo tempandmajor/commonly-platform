@@ -70,6 +70,37 @@ export const likeEvent = async (
 };
 
 /**
+ * Remove a like from an event
+ */
+export const unlikeEvent = async (
+  eventId: string,
+  userId: string
+): Promise<boolean> => {
+  try {
+    // Delete like record
+    const { error: unlikeError } = await supabase
+      .from('event_likes')
+      .delete()
+      .eq('event_id', eventId)
+      .eq('user_id', userId);
+    
+    if (unlikeError) throw unlikeError;
+    
+    // Decrement likes count in events table
+    const { error: updateError } = await supabase.rpc('decrement_event_likes', { 
+      event_id_param: eventId 
+    });
+    
+    if (updateError) throw updateError;
+    
+    return true;
+  } catch (error) {
+    console.error('Error unliking event:', error);
+    return false;
+  }
+};
+
+/**
  * Record a share for an event
  */
 export const shareEvent = async (
