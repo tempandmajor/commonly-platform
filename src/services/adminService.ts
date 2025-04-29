@@ -1,3 +1,4 @@
+
 import { 
   collection, 
   doc, 
@@ -48,10 +49,32 @@ export const getUsers = async (lastVisible = null, limitCount = 20) => {
     const snapshot = await getDocs(usersQuery);
     const lastDoc = snapshot.docs[snapshot.docs.length - 1];
     
-    const users = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...(doc.data() as DocumentData)
-    } as UserData));
+    const users = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        uid: doc.id, // Use doc.id as uid
+        email: data.email || null,
+        displayName: data.displayName || null,
+        photoURL: data.photoURL || null,
+        recentLogin: data.recentLogin || false,
+        createdAt: data.createdAt,
+        stripeConnectId: data.stripeConnectId,
+        followers: data.followers,
+        following: data.following,
+        followerCount: data.followerCount,
+        followingCount: data.followingCount,
+        isPrivate: data.isPrivate,
+        hasTwoFactorEnabled: data.hasTwoFactorEnabled,
+        bio: data.bio,
+        isMerchant: data.isMerchant,
+        merchantStoreId: data.merchantStoreId,
+        isPro: data.isPro,
+        isPodcaster: data.isPodcaster,
+        podcastChannelName: data.podcastChannelName,
+        featuredPodcasts: data.featuredPodcasts,
+        isAdmin: data.isAdmin
+      } as UserData;
+    });
     
     return { users, lastVisible: lastDoc };
   } catch (error) {
@@ -71,10 +94,32 @@ export const searchUsers = async (searchTerm: string, limitCount = 20) => {
     
     const snapshot = await getDocs(usersQuery);
     
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...(doc.data() as DocumentData)
-    } as UserData));
+    return snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        uid: doc.id, // Use doc.id as uid
+        email: data.email || null,
+        displayName: data.displayName || null,
+        photoURL: data.photoURL || null,
+        recentLogin: data.recentLogin || false,
+        createdAt: data.createdAt,
+        stripeConnectId: data.stripeConnectId,
+        followers: data.followers,
+        following: data.following,
+        followerCount: data.followerCount,
+        followingCount: data.followingCount,
+        isPrivate: data.isPrivate,
+        hasTwoFactorEnabled: data.hasTwoFactorEnabled,
+        bio: data.bio,
+        isMerchant: data.isMerchant,
+        merchantStoreId: data.merchantStoreId,
+        isPro: data.isPro,
+        isPodcaster: data.isPodcaster,
+        podcastChannelName: data.podcastChannelName,
+        featuredPodcasts: data.featuredPodcasts,
+        isAdmin: data.isAdmin
+      } as UserData;
+    });
   } catch (error) {
     console.error("Error searching users:", error);
     throw error;
