@@ -1,30 +1,34 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
-// Venue management
-export const getAdminVenues = async (lastVisible = null, limitCount = 20) => {
+export const getAdminVenues = async (
+  limit = 20,
+  offset = 0,
+  filters = {}
+) => {
   try {
     let query = supabase
       .from('venues')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(limitCount);
+      .range(offset, offset + limit - 1);
     
-    if (lastVisible) {
-      // For pagination
-      const offset = lastVisible * limitCount;
-      query = query.range(offset, offset + limitCount - 1);
+    // Apply filters if any
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          query = query.eq(key, value);
+        }
+      });
     }
     
-    const { data: venues, error } = await query;
+    const { data, error } = await query;
     
     if (error) throw error;
     
-    // Using the last index as the lastVisible value for pagination
-    const lastVisibleIndex = lastVisible ? lastVisible + 1 : 1;
-    return { venues, lastVisible: venues.length === limitCount ? lastVisibleIndex : null };
+    return data;
   } catch (error) {
-    console.error("Error fetching venues:", error);
+    console.error("Error fetching admin venues:", error);
     throw error;
   }
 };
@@ -33,13 +37,11 @@ export const updateVenueVerification = async (venueId: string, isVerified: boole
   try {
     const { error } = await supabase
       .from('venues')
-      .update({ 
-        is_verified: isVerified,
-        updated_at: new Date().toISOString()
-      })
+      .update({ is_verified: isVerified })
       .eq('id', venueId);
     
     if (error) throw error;
+    
     return true;
   } catch (error) {
     console.error("Error updating venue verification:", error);

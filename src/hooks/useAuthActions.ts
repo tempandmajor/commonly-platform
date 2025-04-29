@@ -1,26 +1,8 @@
 
-import { User } from "firebase/auth";
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  GoogleAuthProvider,
-  signInWithPopup,
-  sendPasswordResetEmail,
-  updateProfile,
-} from "firebase/auth";
-import {
-  doc,
-  setDoc,
-  getDoc,
-  serverTimestamp,
-  updateDoc,
-} from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { auth, db, storage, googleProvider } from "@/lib/firebase";
+import { User } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { UserData } from "@/types/auth";
-import { createMerchantStore } from "@/services/merchantService";
 
 export const useAuthActions = (
   currentUser: User | null,
@@ -31,19 +13,17 @@ export const useAuthActions = (
 
   const signup = async (email: string, password: string, displayName: string) => {
     try {
-      const result = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(result.user, { displayName });
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: displayName
+          }
+        }
+      });
       
-      const newUserData: UserData = {
-        uid: result.user.uid,
-        email: result.user.email,
-        displayName,
-        photoURL: null,
-        recentLogin: true,
-        createdAt: serverTimestamp(),
-      };
-      
-      await setDoc(doc(db, "users", result.user.uid), newUserData);
+      if (error) throw error;
       
       toast({
         title: "Account created successfully",
@@ -62,11 +42,20 @@ export const useAuthActions = (
 
   const login = async (email: string, password: string) => {
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (error) throw error;
       
       if (currentUser) {
-        const userDocRef = doc(db, "users", currentUser.uid);
-        await updateDoc(userDocRef, { recentLogin: true });
+        const { error: updateError } = await supabase
+          .from('users')
+          .update({ recent_login: true })
+          .eq('id', currentUser.id);
+        
+        if (updateError) console.error("Error updating recent login:", updateError);
       }
       
       toast({
@@ -86,34 +75,16 @@ export const useAuthActions = (
 
   const googleSignIn = async () => {
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const user = result.user;
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+      });
       
-      const userDocRef = doc(db, "users", user.uid);
-      const userDoc = await getDoc(userDocRef);
+      if (error) throw error;
       
-      if (!userDoc.exists()) {
-        const newUserData: UserData = {
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName,
-          photoURL: user.photoURL,
-          recentLogin: true,
-          createdAt: serverTimestamp(),
-        };
-        
-        await setDoc(userDocRef, newUserData);
-        toast({
-          title: "Account created successfully",
-          description: `Welcome to Commonly, ${user.displayName}!`,
-        });
-      } else {
-        await updateDoc(userDocRef, { recentLogin: true });
-        toast({
-          title: "Login successful",
-          description: "Welcome back to Commonly!",
-        });
-      }
+      toast({
+        title: "Login successful",
+        description: "Welcome to Commonly!",
+      });
     } catch (error: any) {
       const errorMessage = error.message || "Failed to sign in with Google";
       toast({
@@ -127,7 +98,10 @@ export const useAuthActions = (
 
   const logout = async () => {
     try {
-      await signOut(auth);
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) throw error;
+      
       toast({
         title: "Logged out",
         description: "You have been successfully logged out",
@@ -145,7 +119,10 @@ export const useAuthActions = (
 
   const resetPassword = async (email: string) => {
     try {
-      await sendPasswordResetEmail(auth, email);
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      
+      if (error) throw error;
+      
       toast({
         title: "Password reset email sent",
         description: "Check your inbox for further instructions",
@@ -165,13 +142,27 @@ export const useAuthActions = (
     if (!currentUser) throw new Error("No authenticated user");
     
     try {
-      const userDocRef = doc(db, "users", currentUser.uid);
+      const updateData: any = {};
       
       if (data.displayName) {
-        await updateProfile(currentUser, { displayName: data.displayName });
+        updateData.display_name = data.displayName;
+        
+        // Update auth metadata
+        await supabase.auth.updateUser({
+          data: { full_name: data.displayName }
+        });
       }
       
-      await updateDoc(userDocRef, data);
+      if (data.photoURL) updateData.photo_url = data.photoURL;
+      if (data.bio !== undefined) updateData.bio = data.bio;
+      if (data.isPrivate !== undefined) updateData.is_private = data.isPrivate;
+      
+      const { error } = await supabase
+        .from('users')
+        .update(updateData)
+        .eq('id', currentUser.id);
+      
+      if (error) throw error;
       
       if (userData) {
         setUserData({ ...userData, ...data });
@@ -196,17 +187,26 @@ export const useAuthActions = (
     if (!currentUser) throw new Error("No authenticated user");
     
     try {
-      const storageRef = ref(storage, `profile_images/${currentUser.uid}`);
-      await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(storageRef);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${currentUser.id}-${Date.now()}.${fileExt}`;
+      const filePath = `profiles/${fileName}`;
       
-      await updateProfile(currentUser, { photoURL: downloadURL });
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
       
-      if (userData) {
-        const userDocRef = doc(db, "users", currentUser.uid);
-        await updateDoc(userDocRef, { photoURL: downloadURL });
-        setUserData({ ...userData, photoURL: downloadURL });
-      }
+      if (uploadError) throw uploadError;
+      
+      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const downloadURL = data.publicUrl;
+      
+      // Update user profile
+      await updateUserProfile({ photoURL: downloadURL });
+      
+      // Update auth metadata
+      await supabase.auth.updateUser({
+        data: { avatar_url: downloadURL }
+      });
       
       toast({
         title: "Profile image updated",
@@ -229,8 +229,12 @@ export const useAuthActions = (
     if (!currentUser || !userData) throw new Error("No authenticated user");
     
     try {
-      const userDocRef = doc(db, "users", currentUser.uid);
-      await updateDoc(userDocRef, { recentLogin: true });
+      const { error } = await supabase
+        .from('users')
+        .update({ recent_login: true })
+        .eq('id', currentUser.id);
+      
+      if (error) throw error;
       
       setUserData({ ...userData, recentLogin: true });
       
@@ -274,18 +278,38 @@ export const useAuthActions = (
 
     try {
       const storeName = `${userData.displayName || "User"}'s Store`;
-
-      // Create the merchant store
-      const storeId = await createMerchantStore(currentUser.uid, {
-        name: storeName,
-        description: `Official store by ${userData.displayName || "User"}`,
-      });
+      const storeDescription = `Official store by ${userData.displayName || "User"}`;
+      
+      // Create new merchant store record (simulated with separate table)
+      const { data: storeData, error: storeError } = await supabase
+        .from('merchant_stores') // This table needs to be created
+        .insert({
+          owner_id: currentUser.id,
+          name: storeName,
+          description: storeDescription,
+          is_active: true
+        })
+        .select()
+        .single();
+      
+      if (storeError) throw storeError;
+      
+      // Update user record
+      const { error: userError } = await supabase
+        .from('users')
+        .update({
+          is_merchant: true,
+          merchant_store_id: storeData.id
+        })
+        .eq('id', currentUser.id);
+      
+      if (userError) throw userError;
 
       // Update user data
       setUserData({
         ...userData,
         isMerchant: true,
-        merchantStoreId: storeId
+        merchantStoreId: storeData.id
       });
 
       toast({

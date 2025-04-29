@@ -1,136 +1,115 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { UserData } from '@/types/auth';
 
-// User management
-export const getUsers = async (lastVisible = null, limitCount = 20) => {
+// Get users with pagination
+export const getUsers = async (
+  lastVisible = null,
+  limit = 20
+): Promise<{ users: UserData[], lastVisible: any }> => {
   try {
     let query = supabase
       .from('users')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(limitCount);
+      .limit(limit);
     
     if (lastVisible) {
-      // For pagination, Supabase uses ranges rather than cursor-based pagination
-      const offset = lastVisible * limitCount;
-      query = query.range(offset, offset + limitCount - 1);
+      query = query.lt('created_at', lastVisible);
     }
     
-    const { data: usersData, error } = await query;
+    const { data, error } = await query;
     
     if (error) throw error;
     
-    const users = usersData.map(data => ({
-      uid: data.id,
-      email: data.email || null,
-      displayName: data.display_name || null,
-      photoURL: data.photo_url || null,
-      recentLogin: data.recent_login || false,
-      createdAt: data.created_at,
-      stripeConnectId: data.stripe_connect_id,
-      followers: data.followers,
-      following: data.following,
-      followerCount: data.follower_count,
-      followingCount: data.following_count,
-      isPrivate: data.is_private,
-      hasTwoFactorEnabled: data.has_two_factor_enabled,
-      bio: data.bio,
-      isMerchant: data.is_merchant,
-      merchantStoreId: data.merchant_store_id,
-      isPro: data.is_pro,
-      isPodcaster: data.is_podcaster,
-      podcastChannelName: data.podcast_channel_name,
-      featuredPodcasts: data.featured_podcasts,
-      isAdmin: data.is_admin
-    }) as UserData);
+    const users: UserData[] = data.map(user => ({
+      uid: user.id,
+      email: user.email || '',
+      displayName: user.display_name || '',
+      photoURL: user.photo_url || null,
+      isAdmin: user.is_admin || false,
+      isPro: user.is_pro || false,
+      isMerchant: user.is_merchant || false,
+      createdAt: user.created_at,
+      // Map any other fields needed
+    }));
     
-    // Using the last index as the lastVisible value for pagination
-    const lastVisibleIndex = lastVisible ? lastVisible + 1 : 1;
-    return { users, lastVisible: users.length === limitCount ? lastVisibleIndex : null };
+    const lastVisibleItem = data.length === limit ? data[data.length - 1].created_at : null;
+    
+    return { users, lastVisible: lastVisibleItem };
   } catch (error) {
     console.error("Error fetching users:", error);
     throw error;
   }
 };
 
-export const searchUsers = async (searchTerm: string, limitCount = 20) => {
+// Search users
+export const searchUsers = async (query: string, limit = 20): Promise<UserData[]> => {
   try {
-    const { data: usersData, error } = await supabase
+    if (!query.trim()) {
+      const { users } = await getUsers(null, limit);
+      return users;
+    }
+    
+    const { data, error } = await supabase
       .from('users')
       .select('*')
-      .ilike('display_name', `%${searchTerm}%`)
-      .limit(limitCount);
+      .or(`email.ilike.%${query}%,display_name.ilike.%${query}%`)
+      .order('created_at', { ascending: false })
+      .limit(limit);
     
     if (error) throw error;
     
-    return usersData.map(data => ({
-      uid: data.id,
-      email: data.email || null,
-      displayName: data.display_name || null,
-      photoURL: data.photo_url || null,
-      recentLogin: data.recent_login || false,
-      createdAt: data.created_at,
-      stripeConnectId: data.stripe_connect_id,
-      followers: data.followers,
-      following: data.following,
-      followerCount: data.follower_count,
-      followingCount: data.following_count,
-      isPrivate: data.is_private,
-      hasTwoFactorEnabled: data.has_two_factor_enabled,
-      bio: data.bio,
-      isMerchant: data.is_merchant,
-      merchantStoreId: data.merchant_store_id,
-      isPro: data.is_pro,
-      isPodcaster: data.is_podcaster,
-      podcastChannelName: data.podcast_channel_name,
-      featuredPodcasts: data.featured_podcasts,
-      isAdmin: data.is_admin
-    }) as UserData);
+    return data.map(user => ({
+      uid: user.id,
+      email: user.email || '',
+      displayName: user.display_name || '',
+      photoURL: user.photo_url || null,
+      isAdmin: user.is_admin || false,
+      isPro: user.is_pro || false,
+      isMerchant: user.is_merchant || false,
+      createdAt: user.created_at,
+      // Map any other fields needed
+    }));
   } catch (error) {
     console.error("Error searching users:", error);
     throw error;
   }
 };
 
-export const updateUser = async (userId: string, data: Partial<UserData>) => {
+// Update user
+export const updateUser = async (
+  userId: string,
+  data: Partial<{
+    display_name: string,
+    photo_url: string,
+    bio: string,
+    is_private: boolean,
+    has_two_factor_enabled: boolean,
+    // Add any other fields that can be updated
+  }>
+): Promise<void> => {
   try {
-    // Convert camelCase keys to snake_case for Supabase
-    const supabaseData: Record<string, any> = {};
-    Object.entries(data).forEach(([key, value]) => {
-      // Convert camelCase to snake_case
-      const snakeCaseKey = key.replace(/([A-Z])/g, "_$1").toLowerCase();
-      supabaseData[snakeCaseKey] = value;
-    });
-    
-    // Add updated_at timestamp
-    supabaseData.updated_at = new Date().toISOString();
-    
     const { error } = await supabase
       .from('users')
-      .update(supabaseData)
+      .update(data)
       .eq('id', userId);
     
     if (error) throw error;
-    return true;
   } catch (error) {
     console.error("Error updating user:", error);
     throw error;
   }
 };
 
-export const setAdminStatus = async (userId: string, isAdmin: boolean) => {
+// Set admin status
+export const setAdminStatus = async (userId: string, isAdmin: boolean): Promise<void> => {
   try {
     const { error } = await supabase
       .from('users')
-      .update({ 
-        is_admin: isAdmin,
-        updated_at: new Date().toISOString()
-      })
+      .update({ is_admin: isAdmin })
       .eq('id', userId);
     
     if (error) throw error;
-    return true;
   } catch (error) {
     console.error("Error setting admin status:", error);
     throw error;

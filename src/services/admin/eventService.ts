@@ -1,30 +1,34 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
-// Event management
-export const getAdminEvents = async (lastVisible = null, limitCount = 20) => {
+export const getAdminEvents = async (
+  limit = 20,
+  offset = 0,
+  filterOptions = {}
+) => {
   try {
     let query = supabase
       .from('events')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(limitCount);
+      .range(offset, offset + limit - 1);
     
-    if (lastVisible) {
-      // For pagination, similar approach as getUsers
-      const offset = lastVisible * limitCount;
-      query = query.range(offset, offset + limitCount - 1);
+    // Apply filters if any
+    if (filterOptions) {
+      Object.entries(filterOptions).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          query = query.eq(key, value);
+        }
+      });
     }
     
-    const { data: events, error } = await query;
+    const { data, error } = await query;
     
     if (error) throw error;
     
-    // Using the last index as the lastVisible value for pagination
-    const lastVisibleIndex = lastVisible ? lastVisible + 1 : 1;
-    return { events, lastVisible: events.length === limitCount ? lastVisibleIndex : null };
+    return data;
   } catch (error) {
-    console.error("Error fetching events:", error);
+    console.error("Error fetching admin events:", error);
     throw error;
   }
 };

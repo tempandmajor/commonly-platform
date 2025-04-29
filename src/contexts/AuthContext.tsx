@@ -1,10 +1,9 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { User, onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc, setDoc, serverTimestamp, updateDoc, arrayUnion, arrayRemove, collection, query, where, getDocs } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
+import { supabase } from "@/integrations/supabase/client";
 import { AuthContextType, UserData } from "@/types/auth";
 import { useAuthActions } from "@/hooks/useAuthActions";
+import { User } from "@supabase/supabase-js";
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
@@ -28,24 +27,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!currentUser || !userData) throw new Error("No authenticated user");
     
     try {
+      const currentUserId = currentUser.id;
+      
+      // Get current following list
+      const { data: currentUserData, error: fetchError } = await supabase
+        .from('users')
+        .select('following, following_count')
+        .eq('id', currentUserId)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      
       // Add target user to current user's following list
-      const userRef = doc(db, "users", currentUser.uid);
-      await updateDoc(userRef, {
-        following: arrayUnion(userId),
-        followingCount: (userData.followingCount || 0) + 1
-      });
+      const following = [...(currentUserData.following || []), userId];
+      const followingCount = (currentUserData.following_count || 0) + 1;
+      
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ 
+          following, 
+          following_count: followingCount
+        })
+        .eq('id', currentUserId);
+      
+      if (updateError) throw updateError;
+      
+      // Get target user's follower list
+      const { data: targetUserData, error: targetFetchError } = await supabase
+        .from('users')
+        .select('followers, follower_count')
+        .eq('id', userId)
+        .single();
+      
+      if (targetFetchError) throw targetFetchError;
       
       // Add current user to target user's followers list
-      const targetUserRef = doc(db, "users", userId);
-      const targetUserDoc = await getDoc(targetUserRef);
+      const followers = [...(targetUserData.followers || []), currentUserId];
+      const followerCount = (targetUserData.follower_count || 0) + 1;
       
-      if (targetUserDoc.exists()) {
-        const targetUserData = targetUserDoc.data() as UserData;
-        await updateDoc(targetUserRef, {
-          followers: arrayUnion(currentUser.uid),
-          followerCount: (targetUserData.followerCount || 0) + 1
-        });
-      }
+      const { error: targetUpdateError } = await supabase
+        .from('users')
+        .update({ 
+          followers, 
+          follower_count: followerCount
+        })
+        .eq('id', userId);
+      
+      if (targetUpdateError) throw targetUpdateError;
       
       // Update local user data
       setUserData({
@@ -65,24 +93,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!currentUser || !userData) throw new Error("No authenticated user");
     
     try {
+      const currentUserId = currentUser.id;
+      
+      // Get current following list
+      const { data: currentUserData, error: fetchError } = await supabase
+        .from('users')
+        .select('following, following_count')
+        .eq('id', currentUserId)
+        .single();
+      
+      if (fetchError) throw fetchError;
+      
       // Remove target user from current user's following list
-      const userRef = doc(db, "users", currentUser.uid);
-      await updateDoc(userRef, {
-        following: arrayRemove(userId),
-        followingCount: Math.max((userData.followingCount || 0) - 1, 0)
-      });
+      const following = (currentUserData.following || []).filter(id => id !== userId);
+      const followingCount = Math.max((currentUserData.following_count || 0) - 1, 0);
+      
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ 
+          following, 
+          following_count: followingCount
+        })
+        .eq('id', currentUserId);
+      
+      if (updateError) throw updateError;
+      
+      // Get target user's follower list
+      const { data: targetUserData, error: targetFetchError } = await supabase
+        .from('users')
+        .select('followers, follower_count')
+        .eq('id', userId)
+        .single();
+      
+      if (targetFetchError) throw targetFetchError;
       
       // Remove current user from target user's followers list
-      const targetUserRef = doc(db, "users", userId);
-      const targetUserDoc = await getDoc(targetUserRef);
+      const followers = (targetUserData.followers || []).filter(id => id !== currentUserId);
+      const followerCount = Math.max((targetUserData.follower_count || 0) - 1, 0);
       
-      if (targetUserDoc.exists()) {
-        const targetUserData = targetUserDoc.data() as UserData;
-        await updateDoc(targetUserRef, {
-          followers: arrayRemove(currentUser.uid),
-          followerCount: Math.max((targetUserData.followerCount || 0) - 1, 0)
-        });
-      }
+      const { error: targetUpdateError } = await supabase
+        .from('users')
+        .update({ 
+          followers, 
+          follower_count: followerCount
+        })
+        .eq('id', userId);
+      
+      if (targetUpdateError) throw targetUpdateError;
       
       // Update local user data
       setUserData({
@@ -108,10 +165,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!currentUser) throw new Error("No authenticated user");
     
     try {
-      const userRef = doc(db, "users", currentUser.uid);
-      await updateDoc(userRef, {
-        hasTwoFactorEnabled: true
-      });
+      const { error } = await supabase
+        .from('users')
+        .update({ has_two_factor_enabled: true })
+        .eq('id', currentUser.id);
+      
+      if (error) throw error;
       
       if (userData) {
         setUserData({
@@ -129,10 +188,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!currentUser) throw new Error("No authenticated user");
     
     try {
-      const userRef = doc(db, "users", currentUser.uid);
-      await updateDoc(userRef, {
-        hasTwoFactorEnabled: false
-      });
+      const { error } = await supabase
+        .from('users')
+        .update({ has_two_factor_enabled: false })
+        .eq('id', currentUser.id);
+      
+      if (error) throw error;
       
       if (userData) {
         setUserData({
@@ -147,53 +208,103 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
-      
-      if (user) {
-        try {
-          const userDocRef = doc(db, "users", user.uid);
-          const userDoc = await getDoc(userDocRef);
-          
-          if (userDoc.exists()) {
-            const data = userDoc.data() as UserData;
-            setUserData({
-              ...data,
-              followers: data.followers || [],
-              following: data.following || [],
-              followerCount: data.followerCount || 0,
-              followingCount: data.followingCount || 0
-            });
-          } else {
-            const newUserData: UserData = {
-              uid: user.uid,
-              email: user.email,
-              displayName: user.displayName,
-              photoURL: user.photoURL,
-              recentLogin: true,
-              createdAt: serverTimestamp(),
-              followers: [],
-              following: [],
-              followerCount: 0,
-              followingCount: 0,
-              isPrivate: false,
-              hasTwoFactorEnabled: false
-            };
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setCurrentUser(session?.user ?? null);
+        
+        if (session?.user) {
+          try {
+            const { data: userProfileData, error } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
             
-            await setDoc(userDocRef, newUserData);
-            setUserData(newUserData);
+            if (error && error.code !== 'PGRST116') { // Not found error
+              console.error("Error fetching user data:", error);
+              throw error;
+            }
+            
+            if (userProfileData) {
+              setUserData({
+                uid: userProfileData.id,
+                email: userProfileData.email,
+                displayName: userProfileData.display_name,
+                photoURL: userProfileData.photo_url,
+                isAdmin: userProfileData.is_admin,
+                isPro: userProfileData.is_pro,
+                isMerchant: userProfileData.is_merchant,
+                merchantStoreId: userProfileData.merchant_store_id,
+                followers: userProfileData.followers || [],
+                following: userProfileData.following || [],
+                followerCount: userProfileData.follower_count || 0,
+                followingCount: userProfileData.following_count || 0,
+                isPrivate: userProfileData.is_private,
+                hasTwoFactorEnabled: userProfileData.has_two_factor_enabled,
+                bio: userProfileData.bio
+              });
+            } else {
+              // User doesn't exist in the 'users' table yet, create a record
+              const newUserData = {
+                id: session.user.id,
+                email: session.user.email,
+                display_name: session.user.user_metadata?.full_name || null,
+                photo_url: session.user.user_metadata?.avatar_url || null,
+                recent_login: true,
+                followers: [],
+                following: [],
+                follower_count: 0,
+                following_count: 0,
+                is_private: false,
+                has_two_factor_enabled: false
+              };
+              
+              const { error: insertError } = await supabase
+                .from('users')
+                .insert(newUserData);
+              
+              if (insertError) {
+                console.error("Error creating user record:", insertError);
+                throw insertError;
+              }
+              
+              setUserData({
+                uid: session.user.id,
+                email: session.user.email,
+                displayName: newUserData.display_name,
+                photoURL: newUserData.photo_url,
+                followers: [],
+                following: [],
+                followerCount: 0,
+                followingCount: 0,
+                isPrivate: false,
+                hasTwoFactorEnabled: false
+              });
+            }
+          } catch (error) {
+            console.error("Error in auth state change:", error);
           }
-        } catch (error) {
-          console.error("Error fetching user data:", error);
+        } else {
+          setUserData(null);
         }
-      } else {
-        setUserData(null);
+        
+        setLoading(false);
       }
+    );
+
+    // Initial session check
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setCurrentUser(session?.user ?? null);
       
-      setLoading(false);
+      if (!session) {
+        setLoading(false);
+      }
     });
 
-    return unsubscribe;
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const value: AuthContextType = {

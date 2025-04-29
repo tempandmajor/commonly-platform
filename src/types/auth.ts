@@ -3,11 +3,14 @@ import { User } from "firebase/auth";
 export interface UserData {
   uid: string;
   email: string | null;
-  displayName: string | null;
-  photoURL: string | null;
-  recentLogin: boolean;
-  createdAt?: any;
-  stripeConnectId?: string;
+  displayName?: string | null;
+  photoURL?: string | null;
+  isAdmin?: boolean;
+  isPro?: boolean;
+  isMerchant?: boolean;
+  merchantStoreId?: string;
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
   followers?: string[];
   following?: string[];
   followerCount?: number;
@@ -15,32 +18,26 @@ export interface UserData {
   isPrivate?: boolean;
   hasTwoFactorEnabled?: boolean;
   bio?: string;
-  isMerchant?: boolean;
-  merchantStoreId?: string;
-  isPro?: boolean;
-  isPodcaster?: boolean;
-  podcastChannelName?: string;
-  featuredPodcasts?: string[]; // Array of podcast IDs
-  isAdmin?: boolean; // Added isAdmin property
+  // ... any other fields you need
 }
 
 export interface AuthContextType {
   currentUser: User | null;
   userData: UserData | null;
-  signup: (email: string, password: string, displayName: string) => Promise<void>;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
-  googleSignIn: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
-  updateUserProfile: (data: Partial<UserData>) => Promise<void>;
-  uploadProfileImage: (file: File) => Promise<string>;
-  resetWalkthrough: () => Promise<void>;
   loading: boolean;
   followUser: (userId: string) => Promise<void>;
   unfollowUser: (userId: string) => Promise<void>;
   isFollowing: (userId: string) => boolean;
   enableTwoFactorAuth: () => Promise<void>;
   disableTwoFactorAuth: () => Promise<void>;
+  signup: (email: string, password: string, displayName: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  googleSignIn: () => Promise<void>;
+  logout: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  updateUserProfile: (data: Partial<UserData>) => Promise<void>;
+  uploadProfileImage: (file: File) => Promise<string>;
+  resetWalkthrough: () => Promise<void>;
   activateMerchantStore: () => Promise<void>;
 }
 

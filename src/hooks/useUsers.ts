@@ -1,8 +1,8 @@
 
 import { useState, useEffect } from 'react';
 import { UserData } from '@/types/auth';
-import { getUsers, searchUsers, setAdminStatus } from '@/services/adminService';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 export const useUsers = () => {
   const [users, setUsers] = useState<UserData[]>([]);
@@ -16,9 +16,28 @@ export const useUsers = () => {
   const fetchUsers = async (searchValue = '') => {
     setLoading(true);
     try {
-      const { users, lastVisible } = await getUsers();
-      setUsers(users);
-      setLastVisibleState(lastVisible);
+      let query = supabase
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(20);
+      
+      const { data, error } = await query;
+      
+      if (error) throw error;
+      
+      const formattedUsers: UserData[] = data.map(user => ({
+        uid: user.id,
+        email: user.email || '',
+        displayName: user.display_name || '',
+        photoURL: user.photo_url || null,
+        isAdmin: user.is_admin || false,
+        createdAt: user.created_at,
+        // Add other fields as needed
+      }));
+      
+      setUsers(formattedUsers);
+      setLastVisibleState(data.length === 20 ? data[data.length - 1].created_at : null);
     } catch (error) {
       console.error("Error fetching users:", error);
       toast({
@@ -36,9 +55,27 @@ export const useUsers = () => {
     
     setLoadingMore(true);
     try {
-      const { users: newUsers, lastVisible: newLastVisible } = await getUsers(lastVisibleState, 20);
-      setUsers(prev => [...prev, ...newUsers]);
-      setLastVisibleState(newLastVisible);
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .lt('created_at', lastVisibleState)
+        .limit(20);
+      
+      if (error) throw error;
+      
+      const formattedUsers: UserData[] = data.map(user => ({
+        uid: user.id,
+        email: user.email || '',
+        displayName: user.display_name || '',
+        photoURL: user.photo_url || null,
+        isAdmin: user.is_admin || false,
+        createdAt: user.created_at,
+        // Add other fields as needed
+      }));
+      
+      setUsers(prev => [...prev, ...formattedUsers]);
+      setLastVisibleState(data.length === 20 ? data[data.length - 1].created_at : null);
     } catch (error) {
       console.error("Error loading more users:", error);
       toast({
@@ -55,9 +92,27 @@ export const useUsers = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const searchResults = await searchUsers(searchQuery, 20);
-      setUsers(searchResults);
-      setLastVisibleState(null);
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .or(`email.ilike.%${searchQuery}%,display_name.ilike.%${searchQuery}%`)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      
+      if (error) throw error;
+      
+      const formattedUsers: UserData[] = data.map(user => ({
+        uid: user.id,
+        email: user.email || '',
+        displayName: user.display_name || '',
+        photoURL: user.photo_url || null,
+        isAdmin: user.is_admin || false,
+        createdAt: user.created_at,
+        // Add other fields as needed
+      }));
+      
+      setUsers(formattedUsers);
+      setLastVisibleState(data.length === 20 ? data[data.length - 1].created_at : null);
     } catch (error) {
       console.error("Error searching users:", error);
       toast({
@@ -76,7 +131,12 @@ export const useUsers = () => {
         throw new Error("User ID is missing");
       }
       
-      await setAdminStatus(user.uid, !user.isAdmin);
+      const { error } = await supabase
+        .from('users')
+        .update({ is_admin: !user.isAdmin })
+        .eq('id', user.uid);
+      
+      if (error) throw error;
       
       setUsers(prev => 
         prev.map(u => 
