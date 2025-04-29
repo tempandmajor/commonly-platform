@@ -1,82 +1,56 @@
 
 import { 
-  collection, 
-  doc, 
-  getDoc, 
-  getDocs, 
-  query, 
-  where, 
-  updateDoc, 
-  deleteDoc, 
-  orderBy, 
-  limit, 
-  startAfter,
-  Timestamp,
-  addDoc,
-  setDoc,
-  serverTimestamp,
   DocumentData
 } from 'firebase/firestore';
-import { 
-  ref, 
-  uploadBytes, 
-  getDownloadURL, 
-  deleteObject 
-} from 'firebase/storage';
-import { db, storage } from '@/lib/firebase';
 import { UserData } from '@/types/auth';
+import { supabase } from '@/integrations/supabase/client';
 
 // User management
 export const getUsers = async (lastVisible = null, limitCount = 20) => {
   try {
-    let usersQuery;
+    let query = supabase
+      .from('users')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limitCount);
     
     if (lastVisible) {
-      usersQuery = query(
-        collection(db, 'users'),
-        orderBy('createdAt', 'desc'),
-        startAfter(lastVisible),
-        limit(limitCount)
-      );
-    } else {
-      usersQuery = query(
-        collection(db, 'users'),
-        orderBy('createdAt', 'desc'),
-        limit(limitCount)
-      );
+      // For pagination, Supabase uses ranges rather than cursor-based pagination
+      const offset = lastVisible * limitCount;
+      query = query.range(offset, offset + limitCount - 1);
     }
     
-    const snapshot = await getDocs(usersQuery);
-    const lastDoc = snapshot.docs[snapshot.docs.length - 1];
+    const { data: usersData, error } = await query;
     
-    const users = snapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        uid: doc.id, // Use doc.id as uid
-        email: data.email || null,
-        displayName: data.displayName || null,
-        photoURL: data.photoURL || null,
-        recentLogin: data.recentLogin || false,
-        createdAt: data.createdAt,
-        stripeConnectId: data.stripeConnectId,
-        followers: data.followers,
-        following: data.following,
-        followerCount: data.followerCount,
-        followingCount: data.followingCount,
-        isPrivate: data.isPrivate,
-        hasTwoFactorEnabled: data.hasTwoFactorEnabled,
-        bio: data.bio,
-        isMerchant: data.isMerchant,
-        merchantStoreId: data.merchantStoreId,
-        isPro: data.isPro,
-        isPodcaster: data.isPodcaster,
-        podcastChannelName: data.podcastChannelName,
-        featuredPodcasts: data.featuredPodcasts,
-        isAdmin: data.isAdmin
-      } as UserData;
-    });
+    if (error) throw error;
     
-    return { users, lastVisible: lastDoc };
+    const users = usersData.map(data => ({
+      uid: data.id,
+      email: data.email || null,
+      displayName: data.display_name || null,
+      photoURL: data.photo_url || null,
+      recentLogin: data.recent_login || false,
+      createdAt: data.created_at,
+      stripeConnectId: data.stripe_connect_id,
+      followers: data.followers,
+      following: data.following,
+      followerCount: data.follower_count,
+      followingCount: data.following_count,
+      isPrivate: data.is_private,
+      hasTwoFactorEnabled: data.has_two_factor_enabled,
+      bio: data.bio,
+      isMerchant: data.is_merchant,
+      merchantStoreId: data.merchant_store_id,
+      isPro: data.is_pro,
+      isPodcaster: data.is_podcaster,
+      podcastChannelName: data.podcast_channel_name,
+      featuredPodcasts: data.featured_podcasts,
+      isAdmin: data.is_admin
+    }) as UserData);
+    
+    // Using the last index as the lastVisible value for pagination
+    const lastVisibleIndex = lastVisible ? lastVisible + 1 : 1;
+    return { users, lastVisible: users.length === limitCount ? lastVisibleIndex : null };
   } catch (error) {
     console.error("Error fetching users:", error);
     throw error;
@@ -85,41 +59,37 @@ export const getUsers = async (lastVisible = null, limitCount = 20) => {
 
 export const searchUsers = async (searchTerm: string, limitCount = 20) => {
   try {
-    const usersQuery = query(
-      collection(db, 'users'),
-      where('displayName', '>=', searchTerm),
-      where('displayName', '<=', searchTerm + '\uf8ff'),
-      limit(limitCount)
-    );
+    const { data: usersData, error } = await supabase
+      .from('users')
+      .select('*')
+      .ilike('display_name', `%${searchTerm}%`)
+      .limit(limitCount);
     
-    const snapshot = await getDocs(usersQuery);
+    if (error) throw error;
     
-    return snapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        uid: doc.id, // Use doc.id as uid
-        email: data.email || null,
-        displayName: data.displayName || null,
-        photoURL: data.photoURL || null,
-        recentLogin: data.recentLogin || false,
-        createdAt: data.createdAt,
-        stripeConnectId: data.stripeConnectId,
-        followers: data.followers,
-        following: data.following,
-        followerCount: data.followerCount,
-        followingCount: data.followingCount,
-        isPrivate: data.isPrivate,
-        hasTwoFactorEnabled: data.hasTwoFactorEnabled,
-        bio: data.bio,
-        isMerchant: data.isMerchant,
-        merchantStoreId: data.merchantStoreId,
-        isPro: data.isPro,
-        isPodcaster: data.isPodcaster,
-        podcastChannelName: data.podcastChannelName,
-        featuredPodcasts: data.featuredPodcasts,
-        isAdmin: data.isAdmin
-      } as UserData;
-    });
+    return usersData.map(data => ({
+      uid: data.id,
+      email: data.email || null,
+      displayName: data.display_name || null,
+      photoURL: data.photo_url || null,
+      recentLogin: data.recent_login || false,
+      createdAt: data.created_at,
+      stripeConnectId: data.stripe_connect_id,
+      followers: data.followers,
+      following: data.following,
+      followerCount: data.follower_count,
+      followingCount: data.following_count,
+      isPrivate: data.is_private,
+      hasTwoFactorEnabled: data.has_two_factor_enabled,
+      bio: data.bio,
+      isMerchant: data.is_merchant,
+      merchantStoreId: data.merchant_store_id,
+      isPro: data.is_pro,
+      isPodcaster: data.is_podcaster,
+      podcastChannelName: data.podcast_channel_name,
+      featuredPodcasts: data.featured_podcasts,
+      isAdmin: data.is_admin
+    }) as UserData);
   } catch (error) {
     console.error("Error searching users:", error);
     throw error;
@@ -128,11 +98,23 @@ export const searchUsers = async (searchTerm: string, limitCount = 20) => {
 
 export const updateUser = async (userId: string, data: Partial<UserData>) => {
   try {
-    const userRef = doc(db, 'users', userId);
-    await updateDoc(userRef, {
-      ...data,
-      updatedAt: serverTimestamp()
+    // Convert camelCase keys to snake_case for Supabase
+    const supabaseData: Record<string, any> = {};
+    Object.entries(data).forEach(([key, value]) => {
+      // Convert camelCase to snake_case
+      const snakeCaseKey = key.replace(/([A-Z])/g, "_$1").toLowerCase();
+      supabaseData[snakeCaseKey] = value;
     });
+    
+    // Add updated_at timestamp
+    supabaseData.updated_at = new Date().toISOString();
+    
+    const { error } = await supabase
+      .from('users')
+      .update(supabaseData)
+      .eq('id', userId);
+    
+    if (error) throw error;
     return true;
   } catch (error) {
     console.error("Error updating user:", error);
@@ -142,11 +124,15 @@ export const updateUser = async (userId: string, data: Partial<UserData>) => {
 
 export const setAdminStatus = async (userId: string, isAdmin: boolean) => {
   try {
-    const userRef = doc(db, 'users', userId);
-    await updateDoc(userRef, {
-      isAdmin,
-      updatedAt: serverTimestamp()
-    });
+    const { error } = await supabase
+      .from('users')
+      .update({ 
+        is_admin: isAdmin,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', userId);
+    
+    if (error) throw error;
     return true;
   } catch (error) {
     console.error("Error setting admin status:", error);
@@ -157,32 +143,25 @@ export const setAdminStatus = async (userId: string, isAdmin: boolean) => {
 // Event management
 export const getAdminEvents = async (lastVisible = null, limitCount = 20) => {
   try {
-    let eventsQuery;
+    let query = supabase
+      .from('events')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limitCount);
     
     if (lastVisible) {
-      eventsQuery = query(
-        collection(db, 'events'),
-        orderBy('createdAt', 'desc'),
-        startAfter(lastVisible),
-        limit(limitCount)
-      );
-    } else {
-      eventsQuery = query(
-        collection(db, 'events'),
-        orderBy('createdAt', 'desc'),
-        limit(limitCount)
-      );
+      // For pagination, similar approach as getUsers
+      const offset = lastVisible * limitCount;
+      query = query.range(offset, offset + limitCount - 1);
     }
     
-    const snapshot = await getDocs(eventsQuery);
-    const lastDoc = snapshot.docs[snapshot.docs.length - 1];
+    const { data: events, error } = await query;
     
-    const events = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...(doc.data() as DocumentData)
-    }));
+    if (error) throw error;
     
-    return { events, lastVisible: lastDoc };
+    // Using the last index as the lastVisible value for pagination
+    const lastVisibleIndex = lastVisible ? lastVisible + 1 : 1;
+    return { events, lastVisible: events.length === limitCount ? lastVisibleIndex : null };
   } catch (error) {
     console.error("Error fetching events:", error);
     throw error;
@@ -192,32 +171,25 @@ export const getAdminEvents = async (lastVisible = null, limitCount = 20) => {
 // Venue management
 export const getAdminVenues = async (lastVisible = null, limitCount = 20) => {
   try {
-    let venuesQuery;
+    let query = supabase
+      .from('venues')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limitCount);
     
     if (lastVisible) {
-      venuesQuery = query(
-        collection(db, 'venues'),
-        orderBy('createdAt', 'desc'),
-        startAfter(lastVisible),
-        limit(limitCount)
-      );
-    } else {
-      venuesQuery = query(
-        collection(db, 'venues'),
-        orderBy('createdAt', 'desc'),
-        limit(limitCount)
-      );
+      // For pagination
+      const offset = lastVisible * limitCount;
+      query = query.range(offset, offset + limitCount - 1);
     }
     
-    const snapshot = await getDocs(venuesQuery);
-    const lastDoc = snapshot.docs[snapshot.docs.length - 1];
+    const { data: venues, error } = await query;
     
-    const venues = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...(doc.data() as DocumentData)
-    }));
+    if (error) throw error;
     
-    return { venues, lastVisible: lastDoc };
+    // Using the last index as the lastVisible value for pagination
+    const lastVisibleIndex = lastVisible ? lastVisible + 1 : 1;
+    return { venues, lastVisible: venues.length === limitCount ? lastVisibleIndex : null };
   } catch (error) {
     console.error("Error fetching venues:", error);
     throw error;
@@ -226,11 +198,15 @@ export const getAdminVenues = async (lastVisible = null, limitCount = 20) => {
 
 export const updateVenueVerification = async (venueId: string, isVerified: boolean) => {
   try {
-    const venueRef = doc(db, 'venues', venueId);
-    await updateDoc(venueRef, {
-      isVerified,
-      updatedAt: serverTimestamp()
-    });
+    const { error } = await supabase
+      .from('venues')
+      .update({ 
+        is_verified: isVerified,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', venueId);
+    
+    if (error) throw error;
     return true;
   } catch (error) {
     console.error("Error updating venue verification:", error);
@@ -242,30 +218,43 @@ export const updateVenueVerification = async (venueId: string, isVerified: boole
 export const distributeCredits = async (userId: string, amount: number, description: string) => {
   try {
     // Add transaction
-    await addDoc(collection(db, 'transactions'), {
-      userId,
-      amount,
-      type: 'credit',
-      status: 'completed',
-      description,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
+    const { error: transactionError } = await supabase
+      .from('transactions')
+      .insert({
+        user_id: userId,
+        amount,
+        type: 'credit',
+        status: 'completed',
+        description,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+    
+    if (transactionError) throw transactionError;
+    
+    // Get user data
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('wallet')
+      .eq('id', userId)
+      .single();
+    
+    if (userError) throw userError;
     
     // Update user's wallet
-    const userDoc = await getDoc(doc(db, 'users', userId));
-    if (userDoc.exists()) {
-      const userData = userDoc.data();
-      const wallet = userData.wallet || {};
-      
-      await updateDoc(doc(db, 'users', userId), {
+    const wallet = userData.wallet || {};
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({
         wallet: {
           ...wallet,
-          platformCredits: (wallet.platformCredits || 0) + amount,
-          updatedAt: serverTimestamp(),
+          platform_credits: (wallet.platform_credits || 0) + amount,
+          updated_at: new Date().toISOString(),
         }
-      });
-    }
+      })
+      .eq('id', userId);
+    
+    if (updateError) throw updateError;
     
     return true;
   } catch (error) {
@@ -276,13 +265,19 @@ export const distributeCredits = async (userId: string, amount: number, descript
 
 export const createCreditsCampaign = async (campaignData: any) => {
   try {
-    const docRef = await addDoc(collection(db, 'creditsCampaigns'), {
-      ...campaignData,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      active: true,
-    });
-    return docRef.id;
+    const { data, error } = await supabase
+      .from('credits_campaigns')
+      .insert({
+        ...campaignData,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        active: true,
+      })
+      .select('id')
+      .single();
+    
+    if (error) throw error;
+    return data.id;
   } catch (error) {
     console.error("Error creating credits campaign:", error);
     throw error;
@@ -292,34 +287,38 @@ export const createCreditsCampaign = async (campaignData: any) => {
 // Analytics dashboard
 export const getDashboardMetrics = async () => {
   try {
-    // Users count
-    const usersQuery = query(collection(db, 'users'));
-    const usersSnapshot = await getDocs(usersQuery);
-    const totalUsers = usersSnapshot.size;
+    // Get users count
+    const { count: totalUsers, error: usersError } = await supabase
+      .from('users')
+      .select('*', { count: 'exact', head: true });
     
-    // Active events count
-    const now = new Date();
-    const activeEventsQuery = query(
-      collection(db, 'events'),
-      where('date', '>=', now.toISOString()),
-      where('published', '==', true)
-    );
-    const activeEventsSnapshot = await getDocs(activeEventsQuery);
-    const activeEvents = activeEventsSnapshot.size;
+    if (usersError) throw usersError;
     
-    // Past events count
-    const pastEventsQuery = query(
-      collection(db, 'events'),
-      where('date', '<', now.toISOString()),
-      where('published', '==', true)
-    );
-    const pastEventsSnapshot = await getDocs(pastEventsQuery);
-    const pastEvents = pastEventsSnapshot.size;
+    // Get active events count (future events)
+    const now = new Date().toISOString();
+    const { count: activeEvents, error: activeEventsError } = await supabase
+      .from('events')
+      .select('*', { count: 'exact', head: true })
+      .gte('date', now)
+      .eq('published', true);
     
-    // Venues count
-    const venuesQuery = query(collection(db, 'venues'));
-    const venuesSnapshot = await getDocs(venuesQuery);
-    const venues = venuesSnapshot.size;
+    if (activeEventsError) throw activeEventsError;
+    
+    // Get past events count
+    const { count: pastEvents, error: pastEventsError } = await supabase
+      .from('events')
+      .select('*', { count: 'exact', head: true })
+      .lt('date', now)
+      .eq('published', true);
+    
+    if (pastEventsError) throw pastEventsError;
+    
+    // Get venues count
+    const { count: venues, error: venuesError } = await supabase
+      .from('venues')
+      .select('*', { count: 'exact', head: true });
+    
+    if (venuesError) throw venuesError;
     
     return {
       totalUsers,
@@ -336,10 +335,15 @@ export const getDashboardMetrics = async () => {
 // Content management
 export const updateContentPage = async (pageId: string, content: any) => {
   try {
-    await setDoc(doc(db, 'content', pageId), {
-      ...content,
-      updatedAt: serverTimestamp()
-    }, { merge: true });
+    const { error } = await supabase
+      .from('content')
+      .upsert({
+        id: pageId,
+        ...content,
+        updated_at: new Date().toISOString()
+      });
+    
+    if (error) throw error;
     return true;
   } catch (error) {
     console.error("Error updating content:", error);
@@ -350,12 +354,18 @@ export const updateContentPage = async (pageId: string, content: any) => {
 // Ventures content
 export const addArtistProfile = async (profile: any) => {
   try {
-    const docRef = await addDoc(collection(db, 'artists'), {
-      ...profile,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    });
-    return docRef.id;
+    const { data, error } = await supabase
+      .from('artists')
+      .insert({
+        ...profile,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select('id')
+      .single();
+    
+    if (error) throw error;
+    return data.id;
   } catch (error) {
     console.error("Error adding artist profile:", error);
     throw error;
@@ -364,14 +374,34 @@ export const addArtistProfile = async (profile: any) => {
 
 export const uploadArtistImage = async (artistId: string, file: File) => {
   try {
-    const storageRef = ref(storage, `artists/${artistId}/${file.name}`);
-    await uploadBytes(storageRef, file);
-    const downloadURL = await getDownloadURL(storageRef);
+    const fileExt = file.name.split('.').pop();
+    const filePath = `artists/${artistId}/${Math.random().toString(36).substring(2)}.${fileExt}`;
     
-    await updateDoc(doc(db, 'artists', artistId), {
-      imageUrl: downloadURL,
-      updatedAt: serverTimestamp()
-    });
+    const { error: uploadError } = await supabase
+      .storage
+      .from('artists')
+      .upload(filePath, file);
+    
+    if (uploadError) throw uploadError;
+    
+    // Get public URL
+    const { data: urlData } = supabase
+      .storage
+      .from('artists')
+      .getPublicUrl(filePath);
+    
+    const downloadURL = urlData.publicUrl;
+    
+    // Update artist with image URL
+    const { error: updateError } = await supabase
+      .from('artists')
+      .update({
+        image_url: downloadURL,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', artistId);
+    
+    if (updateError) throw updateError;
     
     return downloadURL;
   } catch (error) {
