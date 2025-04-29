@@ -78,15 +78,9 @@ serve(async (req) => {
     const { resourceId } = await acquisitionResponse.json();
 
     // Step 2: Start the recording
-    const storageConfig = {
-      vendor: 1, // Third-party cloud storage
-      region: 0, // For third-party, this is not needed
-      bucket: "event_recordings",
-      accessKey: Deno.env.get("SUPABASE_STORAGE_KEY") || "",
-      secretKey: Deno.env.get("SUPABASE_STORAGE_SECRET") || "",
-      fileNamePrefix: [`recordings/${channelName}`],
-    };
-
+    // Use Agora's default cloud storage for simplicity
+    // For production, you should configure your own cloud storage
+    
     const startResponse = await fetch(
       `https://api.agora.io/v1/apps/${appID}/cloud_recording/resourceid/${resourceId}/mode/mix/start`,
       {
@@ -116,7 +110,10 @@ serve(async (req) => {
             recordingFileConfig: {
               avFileType: ["hls"],
             },
-            storageConfig,
+            storageConfig: {
+              vendor: 0, // Agora's cloud storage
+              region: 0, // Global default
+            },
           },
         }),
       }

@@ -4,7 +4,7 @@ import { useAgora } from "@/hooks/useAgora";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { startCloudRecording, stopCloudRecording } from "@/services/agoraService";
+import { startCloudRecording, stopCloudRecording, generateAgoraToken } from "@/services/agoraService";
 import { useToast } from "@/hooks/use-toast";
 import VideoPreview from "./studio/VideoPreview";
 import RecordingTimer from "./studio/RecordingTimer";
@@ -56,11 +56,6 @@ const RecordingStudio: React.FC<RecordingStudioProps> = ({
     };
   }, []);
 
-  // For demo purposes - in a real app, get a token from your backend
-  const generateDummyToken = async (): Promise<string> => {
-    return "dummy_token";
-  };
-
   const startRecording = async () => {
     if (!isJoined) {
       toast({
@@ -73,7 +68,8 @@ const RecordingStudio: React.FC<RecordingStudioProps> = ({
 
     try {
       setIsProcessingRecording(true);
-      const token = await generateDummyToken();
+      // Generate a recording token using our edge function
+      const token = await generateAgoraToken(channelName, uid, "host");
       const resId = await startCloudRecording(channelName, uid, token);
       setResourceId(resId);
       setIsRecording(true);
