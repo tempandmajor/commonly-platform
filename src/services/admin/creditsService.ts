@@ -1,25 +1,10 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
-// Platform credits
-export const distributeCredits = async (userId: string, amount: number, description: string) => {
+// Credits and rewards distribution
+export const distributeCredits = async (userId: string, amount: number, reason: string) => {
   try {
-    // Add transaction
-    const { error: transactionError } = await supabase
-      .from('transactions')
-      .insert({
-        user_id: userId,
-        amount,
-        type: 'credit',
-        status: 'completed',
-        description,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      });
-    
-    if (transactionError) throw transactionError;
-    
-    // Get user data
+    // Start a transaction
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('wallet')
@@ -28,20 +13,39 @@ export const distributeCredits = async (userId: string, amount: number, descript
     
     if (userError) throw userError;
     
+    // Create or update wallet with platform credits
+    const currentWallet = userData?.wallet || {};
+    const currentCredits = currentWallet.platform_credits || 0;
+    
+    const updatedWallet = {
+      ...currentWallet,
+      platform_credits: currentCredits + amount
+    };
+    
     // Update user's wallet
-    const wallet = userData.wallet || {};
     const { error: updateError } = await supabase
       .from('users')
       .update({
-        wallet: {
-          ...wallet,
-          platform_credits: (wallet.platform_credits || 0) + amount,
-          updated_at: new Date().toISOString(),
-        }
+        wallet: updatedWallet,
+        updated_at: new Date().toISOString()
       })
       .eq('id', userId);
     
     if (updateError) throw updateError;
+    
+    // Record the transaction
+    const { error: transactionError } = await supabase
+      .from('transactions')
+      .insert({
+        user_id: userId,
+        amount: amount,
+        type: 'credit',
+        status: 'completed',
+        description: reason || 'Admin credit distribution',
+        created_at: new Date().toISOString()
+      });
+    
+    if (transactionError) throw transactionError;
     
     return true;
   } catch (error) {
@@ -56,14 +60,13 @@ export const createCreditsCampaign = async (campaignData: any) => {
       .from('credits_campaigns')
       .insert({
         ...campaignData,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        active: true,
+        created_at: new Date().toISOString()
       })
       .select('id')
       .single();
     
     if (error) throw error;
+    
     return data.id;
   } catch (error) {
     console.error("Error creating credits campaign:", error);

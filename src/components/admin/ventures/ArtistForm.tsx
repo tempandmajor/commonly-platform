@@ -1,280 +1,250 @@
 
 import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import {
+import { useForm } from 'react-hook-form';
+import { addArtistProfile, uploadArtistImage } from '@/services/adminService';
+import { 
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { 
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Card, CardContent } from '@/components/ui/card';
-import { Upload, Trash2, Loader2 } from 'lucide-react';
-import { ArtistProfile } from '@/types/ventures';
-// Import from the new location
-import { uploadArtistImage } from '@/services/admin/artistService';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Loader2, Upload } from 'lucide-react';
+
+const artistSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  bio: z.string().optional(),
+  category: z.enum(["management", "records", "studios"]),
+  featured: z.boolean().default(false),
+  social_links: z.object({
+    instagram: z.string().optional(),
+    twitter: z.string().optional(),
+    website: z.string().optional(),
+  }).optional(),
+});
+
+type ArtistFormValues = z.infer<typeof artistSchema>;
 
 interface ArtistFormProps {
-  initialData?: Partial<ArtistProfile>;
-  onSubmit: (data: Partial<ArtistProfile>) => Promise<void>;
-  isSubmitting: boolean;
+  onSuccess?: () => void;
 }
 
-const ArtistForm: React.FC<ArtistFormProps> = ({ 
-  initialData = {}, 
-  onSubmit,
-  isSubmitting 
-}) => {
-  const [formData, setFormData] = useState<Partial<ArtistProfile>>({
-    name: initialData.name || '',
-    bio: initialData.bio || '',
-    imageUrl: initialData.imageUrl || '',
-    category: initialData.category || 'management',
-    featured: initialData.featured || false,
-    socialLinks: initialData.socialLinks || {},
-  });
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
+const ArtistForm: React.FC<ArtistFormProps> = ({ onSuccess }) => {
   const { toast } = useToast();
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSocialLinkChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      socialLinks: {
-        ...(prev.socialLinks || {}),
-        [name]: value,
-      }
-    }));
-  };
-
-  const handleCategoryChange = (value: string) => {
-    setFormData((prev) => ({ 
-      ...prev, 
-      category: value as 'management' | 'records' | 'studios' 
-    }));
-  };
-
-  const handleFeaturedChange = (checked: boolean) => {
-    setFormData((prev) => ({ ...prev, featured: checked }));
-  };
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  
+  const form = useForm<ArtistFormValues>({
+    resolver: zodResolver(artistSchema),
+    defaultValues: {
+      name: "",
+      bio: "",
+      category: "management",
+      featured: false,
+      social_links: {
+        instagram: "",
+        twitter: "",
+        website: "",
+      },
+    },
+  });
+  
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setImageFile(e.target.files[0]);
+      const file = e.target.files[0];
+      setImageFile(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
-  const handleUploadImage = async () => {
-    if (!imageFile) return;
-    
-    setIsUploading(true);
+  const onSubmit = async (data: ArtistFormValues) => {
+    setIsSubmitting(true);
     try {
-      const imageUrl = await uploadArtistImage(imageFile);
-      setFormData((prev) => ({ ...prev, imageUrl }));
-      toast({ title: "Image uploaded successfully" });
+      // Add artist profile
+      const artistId = await addArtistProfile(data);
+      
+      // Upload image if available
+      if (imageFile && artistId) {
+        await uploadArtistImage(artistId, imageFile);
+      }
+      
+      toast({
+        title: "Artist added successfully",
+        description: `${data.name} has been added to the platform.`,
+      });
+      
+      // Reset form
+      form.reset();
+      setImageFile(null);
+      setImagePreview(null);
+      
+      // Call onSuccess callback if provided
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (error) {
-      toast({ 
+      console.error("Error adding artist:", error);
+      toast({
         variant: "destructive",
-        title: "Failed to upload image", 
-        description: "Please try again later" 
+        title: "Failed to add artist",
+        description: "There was an error adding the artist. Please try again.",
       });
     } finally {
-      setIsUploading(false);
-      setImageFile(null);
+      setIsSubmitting(false);
     }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await onSubmit(formData);
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="space-y-2">
-        <Label htmlFor="name">Name *</Label>
-        <Input 
-          id="name"
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <FormField
+          control={form.control}
           name="name"
-          value={formData.name}
-          onChange={handleInputChange}
-          required
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Artist Name</FormLabel>
+              <FormControl>
+                <Input placeholder="Enter artist name" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="bio">Bio *</Label>
-        <Textarea 
-          id="bio"
+        
+        <FormField
+          control={form.control}
           name="bio"
-          value={formData.bio}
-          onChange={handleInputChange}
-          rows={5}
-          required
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="category">Category *</Label>
-        <Select 
-          value={formData.category} 
-          onValueChange={handleCategoryChange}
-          required
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select category" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="management">Management</SelectItem>
-            <SelectItem value="records">Records</SelectItem>
-            <SelectItem value="studios">Studios</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="featured">Featured Artist</Label>
-          <Switch 
-            id="featured"
-            checked={formData.featured}
-            onCheckedChange={handleFeaturedChange}
-          />
-        </div>
-      </div>
-
-      <Card>
-        <CardContent className="pt-6">
-          <div className="space-y-4">
-            <h3 className="font-medium">Profile Image</h3>
-            {formData.imageUrl && (
-              <div className="relative w-40 h-40 mx-auto">
-                <img 
-                  src={formData.imageUrl} 
-                  alt="Artist" 
-                  className="w-full h-full object-cover rounded-lg"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Artist Bio</FormLabel>
+              <FormControl>
+                <Textarea 
+                  placeholder="Enter artist bio" 
+                  className="min-h-32"
+                  {...field} 
+                  value={field.value || ""}
                 />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="category"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Category</FormLabel>
+              <Select 
+                onValueChange={field.onChange} 
+                defaultValue={field.value}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="management">Management</SelectItem>
+                  <SelectItem value="records">Records</SelectItem>
+                  <SelectItem value="studios">Studios</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
+          name="featured"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+              <FormControl>
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              </FormControl>
+              <div className="space-y-1 leading-none">
+                <FormLabel>Featured Artist</FormLabel>
+                <FormDescription>
+                  Featured artists will be shown prominently on the Ventures page
+                </FormDescription>
               </div>
-            )}
-            
-            <div className="space-y-2">
-              <Input 
+            </FormItem>
+          )}
+        />
+        
+        <div>
+          <FormLabel>Artist Image</FormLabel>
+          <div className="mt-2">
+            <div className="flex items-center gap-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => document.getElementById('artist-image')?.click()}
+                className="flex items-center gap-2"
+              >
+                <Upload className="h-4 w-4" />
+                Upload Image
+              </Button>
+              <Input
+                id="artist-image"
                 type="file"
-                id="image"
-                onChange={handleImageChange}
                 accept="image/*"
+                className="hidden"
+                onChange={handleImageChange}
               />
-              {imageFile && (
-                <Button 
-                  type="button" 
-                  variant="outline"
-                  onClick={handleUploadImage}
-                  disabled={isUploading}
-                >
-                  {isUploading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Uploading...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="mr-2 h-4 w-4" />
-                      Upload Image
-                    </>
-                  )}
-                </Button>
+              {imagePreview && (
+                <div className="h-20 w-20 overflow-hidden rounded-md">
+                  <img 
+                    src={imagePreview} 
+                    alt="Artist preview" 
+                    className="h-full w-full object-cover"
+                  />
+                </div>
               )}
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="pt-6">
-          <h3 className="font-medium mb-4">Social Media Links</h3>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="instagram">Instagram URL</Label>
-              <Input 
-                id="instagram"
-                name="instagram"
-                value={formData.socialLinks?.instagram || ''}
-                onChange={handleSocialLinkChange}
-                placeholder="https://instagram.com/username"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="twitter">Twitter URL</Label>
-              <Input 
-                id="twitter"
-                name="twitter"
-                value={formData.socialLinks?.twitter || ''}
-                onChange={handleSocialLinkChange}
-                placeholder="https://twitter.com/username"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="spotify">Spotify URL</Label>
-              <Input 
-                id="spotify"
-                name="spotify"
-                value={formData.socialLinks?.spotify || ''}
-                onChange={handleSocialLinkChange}
-                placeholder="https://open.spotify.com/artist/id"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="youtube">YouTube URL</Label>
-              <Input 
-                id="youtube"
-                name="youtube"
-                value={formData.socialLinks?.youtube || ''}
-                onChange={handleSocialLinkChange}
-                placeholder="https://youtube.com/channel"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="website">Website URL</Label>
-              <Input 
-                id="website"
-                name="website"
-                value={formData.socialLinks?.website || ''}
-                onChange={handleSocialLinkChange}
-                placeholder="https://example.com"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="flex justify-end">
-        <Button type="submit" disabled={isSubmitting}>
+        </div>
+        
+        <Button type="submit" disabled={isSubmitting} className="w-full">
           {isSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Saving...
+              Adding Artist...
             </>
           ) : (
-            'Save Artist'
+            'Add Artist'
           )}
         </Button>
-      </div>
-    </form>
+      </form>
+    </Form>
   );
 };
 
