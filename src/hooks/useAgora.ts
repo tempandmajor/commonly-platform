@@ -7,7 +7,7 @@ import AgoraRTC, {
   ICameraVideoTrack,
 } from "agora-rtc-sdk-ng";
 import { generateAgoraToken } from "@/services/agoraService";
-import { APP_ID } from "@/services/agoraService";
+import { supabase } from "@/integrations/supabase/client";
 
 export type MediaStatus = {
   audio: boolean;
@@ -33,6 +33,7 @@ export const useAgora = (
   const [localVideoTrack, setLocalVideoTrack] = useState<ICameraVideoTrack | null>(null);
   const [remoteUsers, setRemoteUsers] = useState<IAgoraRTCRemoteUser[]>([]);
   const [token, setToken] = useState<string>("");
+  const [appId, setAppId] = useState<string>("");
   const [isJoined, setIsJoined] = useState<boolean>(false);
   const [mediaStatus, setMediaStatus] = useState<MediaStatus>({ audio: true, video: true });
   const [loading, setLoading] = useState<boolean>(true);
@@ -44,10 +45,31 @@ export const useAgora = (
     // Initialize Agora client
     clientRef.current = AgoraRTC.createClient(config);
 
+    // Get the App ID from edge function
+    const fetchAppId = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('get-agora-config');
+        
+        if (error) {
+          throw error;
+        }
+        
+        if (data && data.appId) {
+          setAppId(data.appId);
+        } else {
+          throw new Error("Failed to retrieve Agora App ID");
+        }
+      } catch (err) {
+        console.error("Error fetching Agora App ID:", err);
+        setError("Failed to fetch Agora configuration");
+      }
+    };
+
     // Get token from server
     const fetchToken = async () => {
       try {
         setLoading(true);
+        await fetchAppId();
         const tokenValue = await generateAgoraToken(channelName, uid, "host");
         setToken(tokenValue);
         setLoading(false);
@@ -69,8 +91,8 @@ export const useAgora = (
 
   const joinChannel = async () => {
     try {
-      if (!token || !channelName) {
-        setError("Channel name and token are required");
+      if (!token || !channelName || !appId) {
+        setError("Channel name, token, and App ID are required");
         return;
       }
 
@@ -83,7 +105,7 @@ export const useAgora = (
       setError(null);
 
       // Join the channel
-      await clientRef.current.join(APP_ID, channelName, token, uid);
+      await clientRef.current.join(appId, channelName, token, uid);
 
       // Create and publish local audio and video tracks
       const audioTrack = await AgoraRTC.createMicrophoneAudioTrack();

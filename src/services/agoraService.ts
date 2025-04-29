@@ -1,11 +1,12 @@
 
 import { httpsCallable } from "firebase/functions";
 import { functions } from "@/lib/firebase";
+import { supabase } from "@/integrations/supabase/client";
 
-// Agora SDK configurations
-export const APP_ID = "YOUR_AGORA_APP_ID"; // Replace with actual Agora App ID
+// Agora SDK configurations - This will be populated from Supabase Edge Function
+export const APP_ID = "app_id_placeholder"; // Will be replaced at runtime with the actual App ID from edge function
 
-// Generate token for joining a channel (this would typically be done via a backend)
+// Generate token for joining a channel (done via Supabase edge function)
 export const generateAgoraToken = async (
   channelName: string,
   uid: string,
