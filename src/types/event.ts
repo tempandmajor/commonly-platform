@@ -93,3 +93,8 @@ export interface UserWallet {
     createdAt: string | Date;
   }>;
 }
+
+export interface EventEngagement {
+  likes: number;
+  shares: number;
+}

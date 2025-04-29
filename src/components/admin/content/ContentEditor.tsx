@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -62,14 +61,34 @@ const ContentEditor = () => {
       }
       
       setPageTitle(data.title || '');
-      // Type assertion to ensure it's treated as ContentData
-      setPageData(data.content as ContentData || {
-        title: '',
-        subtitle: '',
-        description: '',
-        heroImage: '',
-        sections: [],
-      });
+      // Properly type-cast the content data with proper type checks
+      if (data.content && typeof data.content === 'object') {
+        // First cast to unknown, then to ContentData to avoid TypeScript errors
+        const contentData = data.content as unknown as ContentData;
+        
+        // Ensure the content has the required properties of ContentData
+        const safeContentData: ContentData = {
+          title: contentData.title || '',
+          subtitle: contentData.subtitle || '',
+          description: contentData.description || '',
+          heroImage: contentData.heroImage || '',
+          sections: Array.isArray(contentData.sections) 
+            ? contentData.sections 
+            : [],
+        };
+        
+        setPageData(safeContentData);
+      } else {
+        // Set default data if content is not valid
+        setPageData({
+          title: '',
+          subtitle: '',
+          description: '',
+          heroImage: '',
+          sections: [],
+        });
+      }
+      
       setPageIdInput(id);
     } catch (error) {
       console.error('Error fetching content:', error);
