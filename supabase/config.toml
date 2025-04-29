@@ -1,1 +1,35 @@
+
 project_id = "kweskshyumqhijjileky"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage"]
+
+[db]
+port = 54322
+
+[studio]
+port = 54323
+
+[inbucket]
+port = 54324
+
+[storage]
+enabled = true
+
+[realtime]
+enabled = true
+
+[auth]
+enabled = true
+
+[functions]
+[functions.generate-agora-token]
+verify_jwt = true
+
+[functions.start-agora-recording]
+verify_jwt = true
+
+[functions.stop-agora-recording]
+verify_jwt = true

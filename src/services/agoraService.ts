@@ -12,9 +12,13 @@ export const generateAgoraToken = async (
   role: "host" | "audience"
 ): Promise<string> => {
   try {
-    const generateToken = httpsCallable(functions, "generateAgoraToken");
-    const result = await generateToken({ channelName, uid, role });
-    return (result.data as { token: string }).token;
+    // Use Supabase edge function to generate token
+    const { data, error } = await supabase.functions.invoke('generate-agora-token', {
+      body: { channelName, uid, role }
+    });
+    
+    if (error) throw error;
+    return data.token;
   } catch (error) {
     console.error("Error generating Agora token:", error);
     throw error;
@@ -28,9 +32,12 @@ export const startCloudRecording = async (
   token: string
 ): Promise<string> => {
   try {
-    const startRecording = httpsCallable(functions, "startAgoraRecording");
-    const result = await startRecording({ channelName, uid, token });
-    return (result.data as { resourceId: string }).resourceId;
+    const { data, error } = await supabase.functions.invoke('start-agora-recording', {
+      body: { channelName, uid, token }
+    });
+    
+    if (error) throw error;
+    return data.resourceId;
   } catch (error) {
     console.error("Error starting cloud recording:", error);
     throw error;
@@ -44,9 +51,12 @@ export const stopCloudRecording = async (
   resourceId: string
 ): Promise<string> => {
   try {
-    const stopRecording = httpsCallable(functions, "stopAgoraRecording");
-    const result = await stopRecording({ channelName, uid, resourceId });
-    return (result.data as { recordingUrl: string }).recordingUrl;
+    const { data, error } = await supabase.functions.invoke('stop-agora-recording', {
+      body: { channelName, uid, resourceId }
+    });
+    
+    if (error) throw error;
+    return data.recordingUrl;
   } catch (error) {
     console.error("Error stopping cloud recording:", error);
     throw error;

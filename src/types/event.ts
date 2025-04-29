@@ -24,6 +24,14 @@ export interface Event {
   ageRestriction: 'all' | '13+' | '18+' | '21+';
   isPrivate: boolean;
   isFree: boolean;
+  isVirtual?: boolean;
+  agoraChannel?: string;
+  agoraToken?: string;
+  streamStartedAt?: string;
+  streamEndedAt?: string;
+  recordingUrl?: string;
+  likesCount?: number;
+  sharesCount?: number;
   rewards?: string;
   scheduledPublishDate?: string;
   endDate?: string;

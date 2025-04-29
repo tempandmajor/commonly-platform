@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -33,10 +32,11 @@ const formSchema = z.object({
     required_error: "Start date is required",
   }),
   endDate: z.date().optional(),
-  eventDuration: z.enum(["30", "60", "90"]).optional(),
+  eventDuration: z.string().optional(),
   ageRestriction: z.enum(["all", "13+", "18+", "21+"]),
   isPrivate: z.boolean().default(false),
   isFree: z.boolean().default(false),
+  isVirtual: z.boolean().default(false),
   rewards: z.string().optional(),
   scheduledPublish: z.boolean().default(false),
   scheduledPublishDate: z.date().optional(),
@@ -79,6 +79,7 @@ export const useEventForm = (currentUser: any, userData: any) => {
       ageRestriction: "all",
       isPrivate: false,
       isFree: false,
+      isVirtual: false,
       scheduledPublish: false,
       referralPercentage: 5,
       sponsorshipTiers: [
@@ -234,17 +235,20 @@ export const useEventForm = (currentUser: any, userData: any) => {
         ageRestriction: data.ageRestriction,
         isPrivate: data.isPrivate,
         isFree: data.isFree,
+        isVirtual: data.isVirtual,
+        eventDuration: data.eventDuration,
         rewards: data.rewards || "",
         scheduledPublishDate: data.scheduledPublish && data.scheduledPublishDate 
           ? format(data.scheduledPublishDate, "yyyy-MM-dd'T'HH:mm:ss") 
           : undefined,
         stripeConnectId: userData?.stripeConnectId,
         endDate: data.endDate ? format(data.endDate, "yyyy-MM-dd'T'HH:mm:ss") : undefined,
-        eventDuration: data.eventDuration,
         sponsorshipTiers: data.sponsorshipTiers as SponsorshipTier[],
         preSaleGoal: data.preSaleGoal,
         preSaleCount: 0,
-        referralPercentage: data.referralPercentage
+        referralPercentage: data.referralPercentage,
+        likesCount: 0,
+        sharesCount: 0
       };
       
       const eventId = await createEvent(eventData);

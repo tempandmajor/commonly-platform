@@ -108,40 +108,122 @@ export type Database = {
         }
         Relationships: []
       }
+      event_likes: {
+        Row: {
+          created_at: string | null
+          event_id: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          event_id?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          event_id?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_likes_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_shares: {
+        Row: {
+          event_id: string | null
+          id: string
+          shared_at: string | null
+          user_id: string
+        }
+        Insert: {
+          event_id?: string | null
+          id?: string
+          shared_at?: string | null
+          user_id: string
+        }
+        Update: {
+          event_id?: string | null
+          id?: string
+          shared_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_shares_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
+          agora_channel: string | null
+          agora_token: string | null
           created_at: string | null
           created_by: string | null
           date: string | null
           description: string | null
           id: string
           image_url: string | null
+          is_virtual: boolean | null
+          likes_count: number | null
           location: string | null
           published: boolean | null
+          recording_url: string | null
+          shares_count: number | null
+          stream_ended_at: string | null
+          stream_started_at: string | null
           title: string
           updated_at: string | null
         }
         Insert: {
+          agora_channel?: string | null
+          agora_token?: string | null
           created_at?: string | null
           created_by?: string | null
           date?: string | null
           description?: string | null
           id?: string
           image_url?: string | null
+          is_virtual?: boolean | null
+          likes_count?: number | null
           location?: string | null
           published?: boolean | null
+          recording_url?: string | null
+          shares_count?: number | null
+          stream_ended_at?: string | null
+          stream_started_at?: string | null
           title: string
           updated_at?: string | null
         }
         Update: {
+          agora_channel?: string | null
+          agora_token?: string | null
           created_at?: string | null
           created_by?: string | null
           date?: string | null
           description?: string | null
           id?: string
           image_url?: string | null
+          is_virtual?: boolean | null
+          likes_count?: number | null
           location?: string | null
           published?: boolean | null
+          recording_url?: string | null
+          shares_count?: number | null
+          stream_ended_at?: string | null
+          stream_started_at?: string | null
           title?: string
           updated_at?: string | null
         }

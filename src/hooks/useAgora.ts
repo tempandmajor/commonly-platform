@@ -52,6 +52,7 @@ export const useAgora = (
         setToken(tokenValue);
         setLoading(false);
       } catch (err) {
+        console.error("Token generation error:", err);
         setError("Failed to generate token. Please try again.");
         setLoading(false);
       }
@@ -120,7 +121,7 @@ export const useAgora = (
       });
 
       setLoading(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error joining channel:", err);
       setError(`Failed to join channel: ${err.message}`);
       setLoading(false);
@@ -162,7 +163,7 @@ export const useAgora = (
         }
         setMediaStatus(prev => ({ ...prev, video: !prev.video }));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(`Error toggling ${type}:`, err);
       setError(`Failed to toggle ${type}: ${err.message}`);
     }

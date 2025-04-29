@@ -11,6 +11,7 @@ import { DateTimeSection } from './DateTimeSection';
 import { PricingAccess } from './PricingAccess';
 import { SponsorshipTiers } from './SponsorshipTiers';
 import { PublicationSettings } from './PublicationSettings';
+import { VirtualEventSection } from './VirtualEventSection';
 import { useEventForm } from '@/hooks/useEventForm';
 
 interface CreateEventFormProps {
@@ -37,6 +38,7 @@ export const CreateEventForm = ({ currentUser, userData }: CreateEventFormProps)
   const isFree = form.watch("isFree");
   const eventType = form.watch("eventType");
   const scheduledPublish = form.watch("scheduledPublish");
+  const isVirtual = form.watch("isVirtual");
 
   return (
     <Form {...form}>
@@ -56,6 +58,10 @@ export const CreateEventForm = ({ currentUser, userData }: CreateEventFormProps)
           imagePreview={imagePreview}
           setImagePreview={setImagePreview}
           setEventImage={setEventImage}
+        />
+        
+        <VirtualEventSection
+          isVirtual={isVirtual}
         />
         
         <DateTimeSection 
