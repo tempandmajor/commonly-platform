@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { createPodcast } from "@/services/podcastService";
+import { createPodcast } from "@/services/podcast"; // Updated import path
 import { PodcastFormData } from "./PodcastForm";
 import PodcastForm from "./PodcastForm";
 import { PodcastCategory } from "@/types/podcast";

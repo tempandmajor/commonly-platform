@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
-import { getPodcasts, getPodcastCategories } from "@/services/podcastService";
+import { getPodcasts, getPodcastCategories } from "@/services/podcast"; // Updated import path
 import { isUserPro } from "@/services/subscriptionService";
 import { Podcast, PodcastCategory } from "@/types/podcast";
 import { useToast } from "@/hooks/use-toast";

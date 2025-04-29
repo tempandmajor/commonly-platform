@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/layout/Navbar";
-import { getPodcastsByCreator } from "@/services/podcastService";
+import { getPodcastsByCreator } from "@/services/podcast"; // Updated import path
 import { getUserProfile } from "@/services/userService";
 import { Podcast } from "@/types/podcast";
 import { UserData } from "@/types/auth";

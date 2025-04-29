@@ -5,7 +5,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { createPodcast, createPodcastSession } from "@/services/podcastService";
+import { 
+  createPodcast, 
+  createPodcastSession 
+} from "@/services/podcast"; // Updated import path
 import { PodcastFormData } from "./PodcastForm";
 import RecordingStudio from "./RecordingStudio";
 import PodcastForm from "./PodcastForm";

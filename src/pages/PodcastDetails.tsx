@@ -14,7 +14,7 @@ import {
   getPodcast,
   getPodcastComments,
   addPodcastComment,
-} from "@/services/podcastService";
+} from "@/services/podcast"; // Updated import path
 import { Podcast, PodcastComment } from "@/types/podcast";
 import { useToast } from "@/hooks/use-toast";
 import PodcastPlayer from "@/components/podcasts/PodcastPlayer";
