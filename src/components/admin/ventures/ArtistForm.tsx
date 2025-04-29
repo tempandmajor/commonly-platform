@@ -15,7 +15,8 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { Upload, Trash2, Loader2 } from 'lucide-react';
 import { ArtistProfile } from '@/types/ventures';
-import { uploadArtistImage } from '@/services/venturesService';
+// Import from the new location
+import { uploadArtistImage } from '@/services/admin/artistService';
 import { useToast } from '@/hooks/use-toast';
 
 interface ArtistFormProps {

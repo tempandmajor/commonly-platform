@@ -1,14 +1,12 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth, db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { AlertCircle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const AdminLogin: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -22,14 +20,28 @@ const AdminLogin: React.FC = () => {
     setLoading(true);
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
+      // Sign in with Supabase
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
       
-      // Check if user has admin role in Firestore
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      const userData = userDoc.data();
+      if (authError) throw authError;
       
-      if (userData?.isAdmin) {
+      if (!authData.user) {
+        throw new Error('User not found');
+      }
+      
+      // Check if user has admin role
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('is_admin')
+        .eq('id', authData.user.id)
+        .single();
+      
+      if (userError) throw userError;
+      
+      if (userData?.is_admin) {
         toast({
           title: "Login successful",
           description: "Welcome to the Admin Portal",
@@ -37,7 +49,7 @@ const AdminLogin: React.FC = () => {
         navigate('/admin/dashboard');
       } else {
         // Sign out if not an admin
-        await auth.signOut();
+        await supabase.auth.signOut();
         toast({
           variant: "destructive",
           title: "Access denied",
