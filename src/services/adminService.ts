@@ -9,8 +9,17 @@ export {
 } from './admin/userService';
 
 export {
-  getAdminEvents
-} from './admin/eventService';
+  getAdminEvents,
+  getVirtualEvents,
+  getLiveEvents,
+  likeEvent,
+  unlikeEvent,
+  shareEvent,
+  checkIfUserLiked,
+  startStream,
+  endStream,
+  uploadRecording
+} from './admin/event';
 
 export {
   getAdminVenues,
