@@ -28,7 +28,9 @@ const UserDetailsSheet: React.FC<UserDetailsSheetProps> = ({ user, toggleAdminSt
       }
       // Handle Firebase Timestamp objects if they exist
       if (typeof dateValue === 'object' && 'seconds' in dateValue) {
-        return new Date(dateValue.seconds * 1000).toLocaleString();
+        // Use type assertion to tell TypeScript that dateValue.seconds is a number
+        const seconds = (dateValue as any).seconds;
+        return new Date(seconds * 1000).toLocaleString();
       }
       return dateValue.toLocaleString();
     } catch (error) {
