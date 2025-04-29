@@ -242,7 +242,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 followingCount: userProfileData.following_count || 0,
                 isPrivate: userProfileData.is_private,
                 hasTwoFactorEnabled: userProfileData.has_two_factor_enabled,
-                bio: userProfileData.bio
+                bio: userProfileData.bio,
+                recentLogin: userProfileData.recent_login,
+                createdAt: userProfileData.created_at,
               });
             } else {
               // User doesn't exist in the 'users' table yet, create a record
@@ -279,7 +281,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 followerCount: 0,
                 followingCount: 0,
                 isPrivate: false,
-                hasTwoFactorEnabled: false
+                hasTwoFactorEnabled: false,
+                recentLogin: true,
+                createdAt: new Date().toISOString(),
               });
             }
           } catch (error) {

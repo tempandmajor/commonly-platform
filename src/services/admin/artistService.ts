@@ -2,7 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { ArtistProfile } from '@/types/artist';
 
-export const addArtistProfile = async (artistData: Omit<ArtistProfile, 'id'>) => {
+export const addArtistProfile = async (artistData: Omit<ArtistProfile, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
     // Prepare data for insertion
     const newArtist = {
@@ -29,7 +29,9 @@ export const addArtistProfile = async (artistData: Omit<ArtistProfile, 'id'>) =>
       imageUrl: data.image_url,
       category: data.category,
       socialLinks: data.social_links,
-      featured: data.featured
+      featured: data.featured,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at
     };
   } catch (error) {
     console.error("Error adding artist profile:", error);

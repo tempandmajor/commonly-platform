@@ -236,7 +236,10 @@ export const useAuthActions = (
       
       if (error) throw error;
       
-      setUserData({ ...userData, recentLogin: true });
+      setUserData({ 
+        ...userData, 
+        recentLogin: true 
+      });
       
       toast({
         title: "Walkthrough reset",
@@ -280,26 +283,15 @@ export const useAuthActions = (
       const storeName = `${userData.displayName || "User"}'s Store`;
       const storeDescription = `Official store by ${userData.displayName || "User"}`;
       
-      // Create new merchant store record (simulated with separate table)
-      const { data: storeData, error: storeError } = await supabase
-        .from('merchant_stores') // This table needs to be created
-        .insert({
-          owner_id: currentUser.id,
-          name: storeName,
-          description: storeDescription,
-          is_active: true
-        })
-        .select()
-        .single();
+      // Create a store_id instead of using a merchant_stores table
+      const storeId = `store_${currentUser.id}`;
       
-      if (storeError) throw storeError;
-      
-      // Update user record
+      // Update user record with merchant status
       const { error: userError } = await supabase
         .from('users')
         .update({
           is_merchant: true,
-          merchant_store_id: storeData.id
+          merchant_store_id: storeId
         })
         .eq('id', currentUser.id);
       
@@ -309,7 +301,7 @@ export const useAuthActions = (
       setUserData({
         ...userData,
         isMerchant: true,
-        merchantStoreId: storeData.id
+        merchantStoreId: storeId
       });
 
       toast({

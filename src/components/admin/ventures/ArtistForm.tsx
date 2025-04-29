@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { addArtistProfile, uploadArtistImage } from '@/services/adminService';
+import { addArtistProfile, uploadArtistImage } from '@/services/admin/artistService';
 import { 
   Form,
   FormControl,
@@ -26,6 +26,7 @@ import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2, Upload } from 'lucide-react';
+import { ArtistProfile } from '@/types/artist';
 
 const artistSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -43,17 +44,35 @@ type ArtistFormValues = z.infer<typeof artistSchema>;
 
 interface ArtistFormProps {
   onSuccess?: () => void;
+  initialData?: ArtistProfile;
+  onSubmit?: (data: ArtistFormValues) => Promise<void>;
+  isSubmitting?: boolean;
 }
 
-const ArtistForm: React.FC<ArtistFormProps> = ({ onSuccess }) => {
+const ArtistForm: React.FC<ArtistFormProps> = ({ 
+  onSuccess, 
+  initialData,
+  onSubmit: externalSubmit,
+  isSubmitting: externalIsSubmitting 
+}) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(initialData?.imageUrl || null);
   
   const form = useForm<ArtistFormValues>({
     resolver: zodResolver(artistSchema),
-    defaultValues: {
+    defaultValues: initialData ? {
+      name: initialData.name,
+      bio: initialData.bio,
+      category: initialData.category as "management" | "records" | "studios",
+      featured: initialData.featured,
+      social_links: {
+        instagram: initialData.socialLinks?.instagram || "",
+        twitter: initialData.socialLinks?.twitter || "",
+        website: initialData.socialLinks?.website || "",
+      },
+    } : {
       name: "",
       bio: "",
       category: "management",
@@ -80,15 +99,29 @@ const ArtistForm: React.FC<ArtistFormProps> = ({ onSuccess }) => {
     }
   };
 
-  const onSubmit = async (data: ArtistFormValues) => {
+  const handleSubmit = async (data: ArtistFormValues) => {
+    if (externalSubmit) {
+      await externalSubmit(data);
+      return;
+    }
+    
     setIsSubmitting(true);
     try {
+      // Convert form data to the format expected by the service
+      const artistData = {
+        name: data.name,
+        bio: data.bio || "",
+        category: data.category,
+        featured: data.featured,
+        socialLinks: data.social_links,
+      };
+      
       // Add artist profile
-      const artistId = await addArtistProfile(data);
+      const artistResult = await addArtistProfile(artistData);
       
       // Upload image if available
-      if (imageFile && artistId) {
-        await uploadArtistImage(artistId, imageFile);
+      if (imageFile && artistResult) {
+        await uploadArtistImage(imageFile);
       }
       
       toast({
@@ -119,7 +152,7 @@ const ArtistForm: React.FC<ArtistFormProps> = ({ onSuccess }) => {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <FormField
           control={form.control}
           name="name"
@@ -233,14 +266,18 @@ const ArtistForm: React.FC<ArtistFormProps> = ({ onSuccess }) => {
           </div>
         </div>
         
-        <Button type="submit" disabled={isSubmitting} className="w-full">
-          {isSubmitting ? (
+        <Button 
+          type="submit" 
+          disabled={externalIsSubmitting || isSubmitting} 
+          className="w-full"
+        >
+          {(externalIsSubmitting || isSubmitting) ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Adding Artist...
+              {initialData ? 'Updating Artist...' : 'Adding Artist...'}
             </>
           ) : (
-            'Add Artist'
+            initialData ? 'Update Artist' : 'Add Artist'
           )}
         </Button>
       </form>

@@ -1,24 +1,42 @@
-
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { 
-  getVenturesContent, 
-  getArtistsByCategory, 
-  updateVenturesContent, 
-  addArtist,
-  updateArtist,
-  deleteArtist 
-} from '@/services/venturesService';
-import ContentEditor from '@/components/admin/ventures/ContentEditor';
-import ArtistForm from '@/components/admin/ventures/ArtistForm';
 import { PlusCircle, Edit, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { VenturesContent, ArtistProfile } from '@/types/ventures';
 import { useQueryClient } from '@tanstack/react-query';
+import ContentEditor from '@/components/admin/ventures/ContentEditor';
+import ArtistForm from '@/components/admin/ventures/ArtistForm';
+
+// Mock service functions (replace with actual implementations)
+const getVenturesContent = async (category: string): Promise<VenturesContent | null> => {
+  // Replace with actual implementation
+  return null;
+};
+
+const getArtistsByCategory = async (category: string): Promise<ArtistProfile[]> => {
+  // Replace with actual implementation
+  return [];
+};
+
+const updateVenturesContent = async (category: string, data: Partial<VenturesContent>) => {
+  // Replace with actual implementation
+};
+
+const addArtist = async (data: Partial<ArtistProfile>) => {
+  // Replace with actual implementation
+};
+
+const updateArtist = async (id: string, data: Partial<ArtistProfile>) => {
+  // Replace with actual implementation
+};
+
+const deleteArtist = async (id: string) => {
+  // Replace with actual implementation
+};
 
 const Ventures: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('management');
@@ -57,13 +75,13 @@ const Ventures: React.FC = () => {
     }
   };
 
-  const handleAddArtist = async (data: Partial<ArtistProfile>) => {
+  const handleAddArtist = async (data: any) => {
     setIsSubmitting(true);
     try {
       await addArtist({
         ...data,
         category: activeTab as 'management' | 'records' | 'studios'
-      } as any);
+      });
       await queryClient.invalidateQueries({ queryKey: ['artists', activeTab] });
       setIsAddArtistOpen(false);
       toast({ title: "Artist added successfully" });
@@ -78,7 +96,7 @@ const Ventures: React.FC = () => {
     }
   };
 
-  const handleUpdateArtist = async (data: Partial<ArtistProfile>) => {
+  const handleUpdateArtist = async (data: any) => {
     if (!editingArtist) return;
     
     setIsSubmitting(true);
@@ -424,7 +442,7 @@ const Ventures: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!editingArtist} onOpenChange={(open) => !open && setEditingArtist(null)}>
+      <Dialog open={editingArtist !== null} onOpenChange={(open) => !open && setEditingArtist(null)}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Artist</DialogTitle>

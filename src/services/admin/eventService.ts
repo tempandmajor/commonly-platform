@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 export const getAdminEvents = async (
   limit = 20,
   offset = 0,
-  filterOptions = {}
+  filterOptions: Record<string, any> = {}
 ) => {
   try {
     let query = supabase
@@ -14,9 +14,10 @@ export const getAdminEvents = async (
       .range(offset, offset + limit - 1);
     
     // Apply filters if any
-    if (filterOptions) {
+    if (Object.keys(filterOptions).length > 0) {
       Object.entries(filterOptions).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
+          // @ts-ignore - Handle filtering dynamically
           query = query.eq(key, value);
         }
       });

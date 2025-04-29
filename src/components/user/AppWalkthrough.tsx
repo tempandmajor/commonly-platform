@@ -3,8 +3,7 @@ import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { doc, updateDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { supabase } from "@/integrations/supabase/client";
 
 const steps = [
   {
@@ -48,8 +47,12 @@ const AppWalkthrough: React.FC = () => {
     
     // Update user data to indicate walkthrough has been completed
     try {
-      const userDocRef = doc(db, "users", currentUser.uid);
-      await updateDoc(userDocRef, { recentLogin: false });
+      const { error } = await supabase
+        .from('users')
+        .update({ recent_login: false })
+        .eq('id', currentUser.id);
+        
+      if (error) throw error;
     } catch (error) {
       console.error("Error updating walkthrough status:", error);
     }

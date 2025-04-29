@@ -19,6 +19,23 @@ interface UserDetailsSheetProps {
 const UserDetailsSheet: React.FC<UserDetailsSheetProps> = ({ user, toggleAdminStatus, onClose }) => {
   if (!user) return null;
 
+  const formatDate = (dateValue: string | Date | undefined) => {
+    if (!dateValue) return 'Unknown';
+    
+    try {
+      if (typeof dateValue === 'string') {
+        return new Date(dateValue).toLocaleString();
+      }
+      // Handle Firebase Timestamp objects if they exist
+      if (typeof dateValue === 'object' && 'seconds' in dateValue) {
+        return new Date(dateValue.seconds * 1000).toLocaleString();
+      }
+      return dateValue.toLocaleString();
+    } catch (error) {
+      return 'Invalid date';
+    }
+  };
+
   return (
     <SheetContent>
       <SheetHeader>
@@ -56,12 +73,7 @@ const UserDetailsSheet: React.FC<UserDetailsSheetProps> = ({ user, toggleAdminSt
           
           <div>
             <h4 className="text-sm font-medium text-gray-500">Joined</h4>
-            <p>
-              {user.createdAt ? 
-                new Date(user.createdAt.seconds * 1000).toLocaleString() : 
-                'Unknown'
-              }
-            </p>
+            <p>{formatDate(user.createdAt)}</p>
           </div>
           
           <div>

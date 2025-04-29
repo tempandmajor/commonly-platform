@@ -36,6 +36,23 @@ interface UserRowProps {
 }
 
 const UserRow: React.FC<UserRowProps> = ({ user, toggleAdminStatus, setSelectedUser }) => {
+  const formatDate = (dateValue: string | Date | undefined) => {
+    if (!dateValue) return 'Unknown';
+    
+    try {
+      if (typeof dateValue === 'string') {
+        return new Date(dateValue).toLocaleDateString();
+      }
+      // Handle Firebase Timestamp objects if they exist
+      if (typeof dateValue === 'object' && 'seconds' in dateValue) {
+        return new Date(dateValue.seconds * 1000).toLocaleDateString();
+      }
+      return dateValue.toLocaleDateString();
+    } catch (error) {
+      return 'Invalid date';
+    }
+  };
+
   return (
     <TableRow key={user.uid}>
       <TableCell>
@@ -73,12 +90,7 @@ const UserRow: React.FC<UserRowProps> = ({ user, toggleAdminStatus, setSelectedU
           )}
         </div>
       </TableCell>
-      <TableCell>
-        {user.createdAt ? 
-          new Date(user.createdAt.seconds * 1000).toLocaleDateString() : 
-          'Unknown'
-        }
-      </TableCell>
+      <TableCell>{formatDate(user.createdAt)}</TableCell>
       <TableCell className="text-right">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

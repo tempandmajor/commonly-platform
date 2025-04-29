@@ -32,7 +32,11 @@ export const distributeCredits = async (
       if (userError) throw userError;
       
       const wallet = userData.wallet || {};
-      const currentCredits = wallet.platform_credits || 0;
+      
+      // We need to properly handle the wallet data which can be a json object
+      const currentCredits = typeof wallet === 'object' && wallet !== null && 'platform_credits' in wallet 
+        ? wallet.platform_credits || 0
+        : 0;
       
       const { error: updateError } = await supabase
         .from('users')
