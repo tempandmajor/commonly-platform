@@ -4,7 +4,7 @@ import { useChannelEvents } from './agora/useChannelEvents';
 import { useChannelActions } from './agora/useChannelActions';
 import { AgoraClientConfig, AgoraHookReturn } from '@/types/agora';
 
-export { MediaStatus, AgoraClientConfig } from '@/types/agora';
+export type { MediaStatus, AgoraClientConfig } from '@/types/agora';
 
 export const useAgora = (
   channelName: string,
