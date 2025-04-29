@@ -70,6 +70,7 @@ export const getMessages = async (chatId: string): Promise<ChatMessage[]> => {
     const data = doc.data();
     return {
       id: doc.id,
+      chatId,
       senderId: data.senderId,
       recipientId: data.recipientId,
       text: data.text,
@@ -144,6 +145,7 @@ export const subscribeToMessages = (
       const data = doc.data();
       return {
         id: doc.id,
+        chatId,
         senderId: data.senderId,
         recipientId: data.recipientId,
         text: data.text,

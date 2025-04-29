@@ -18,7 +18,9 @@ export const getAdminEvents = async (
       Object.entries(filterOptions).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
           // Handle filtering dynamically
-          query = query.eq(key, value);
+          if (query) {
+            query = query.eq(key, value);
+          }
         }
       });
     }
@@ -94,7 +96,9 @@ export const likeEvent = async (eventId: string, userId: string) => {
     }
 
     // Update likes count
-    const { error: updateError } = await supabase.rpc('increment_likes_count', { event_id: eventId });
+    const { error: updateError } = await supabase.rpc('increment_likes_count', { 
+      event_id: eventId as any 
+    });
     if (updateError) throw updateError;
     
   } catch (error) {
@@ -114,7 +118,9 @@ export const unlikeEvent = async (eventId: string, userId: string) => {
     if (error) throw error;
 
     // Update likes count
-    const { error: updateError } = await supabase.rpc('decrement_likes_count', { event_id: eventId });
+    const { error: updateError } = await supabase.rpc('decrement_likes_count', { 
+      event_id: eventId as any 
+    });
     if (updateError) throw updateError;
     
   } catch (error) {
@@ -132,7 +138,9 @@ export const shareEvent = async (eventId: string, userId: string) => {
     if (error) throw error;
 
     // Update shares count
-    const { error: updateError } = await supabase.rpc('increment_shares_count', { event_id: eventId });
+    const { error: updateError } = await supabase.rpc('increment_shares_count', { 
+      event_id: eventId as any 
+    });
     if (updateError) throw updateError;
     
     return true;

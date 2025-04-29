@@ -55,6 +55,7 @@ export interface Transaction {
 }
 
 export interface UserWallet {
+  id?: string; // Added to match usage in services
   userId: string;
   availableBalance: number;
   pendingBalance: number;
@@ -64,6 +65,8 @@ export interface UserWallet {
   stripeConnectId?: string;
   transactions: Transaction[];
   lastUpdated: string | Date;
+  createdAt?: string | Date; // Added to match usage in services
+  updatedAt?: string | Date; // Added to match usage in services
 }
 
 export interface PaymentMethod {
@@ -93,6 +96,7 @@ export interface ChatMessage {
   id: string;
   chatId: string;
   senderId: string;
+  recipientId: string; // Added this field to fix errors
   text: string;
   timestamp: any; // Firebase timestamp or Date
   read: boolean;
@@ -118,8 +122,12 @@ export interface MerchantStore {
   description?: string;
   logoUrl?: string;
   bannerUrl?: string;
-  createdAt: string | Date;
-  updatedAt: string | Date;
+  logo?: string; // Added to match usage in services
+  banner?: string; // Added to match usage in services
+  ownerId?: string; // Added to match usage in services
+  isActive?: boolean; // Added to match usage in services
+  createdAt: string | Date | any; // Modified to account for Firebase FieldValue
+  updatedAt: string | Date | any; // Modified to account for Firebase FieldValue
   isVerified: boolean;
   productCount: number;
   orderCount: number;
@@ -137,8 +145,9 @@ export interface Product {
   inventory: number;
   isDigital: boolean;
   isAvailable: boolean;
-  createdAt: string | Date;
-  updatedAt: string | Date;
+  isActive?: boolean; // Added to match usage in services
+  createdAt: string | Date | any; // Modified to account for Firebase FieldValue
+  updatedAt: string | Date | any; // Modified to account for Firebase FieldValue
   salesCount?: number;
 }
 

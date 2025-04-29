@@ -108,7 +108,11 @@ export const uploadStoreLogo = async (storeId: string, file: File): Promise<stri
     await uploadBytes(logoRef, file);
     const downloadURL = await getDownloadURL(logoRef);
     
-    await updateMerchantStore(storeId, { logo: downloadURL });
+    const storeRef = doc(db, "merchantStores", storeId);
+    await updateDoc(storeRef, { 
+      logo: downloadURL,
+      updatedAt: serverTimestamp()
+    });
     
     return downloadURL;
   } catch (error) {
@@ -124,7 +128,11 @@ export const uploadStoreBanner = async (storeId: string, file: File): Promise<st
     await uploadBytes(bannerRef, file);
     const downloadURL = await getDownloadURL(bannerRef);
     
-    await updateMerchantStore(storeId, { banner: downloadURL });
+    const storeRef = doc(db, "merchantStores", storeId);
+    await updateDoc(storeRef, { 
+      banner: downloadURL,
+      updatedAt: serverTimestamp()
+    });
     
     return downloadURL;
   } catch (error) {
@@ -145,6 +153,8 @@ export const createProduct = async (storeId: string, productData: Partial<Produc
       images: productData.images || [],
       category: productData.category || "Other",
       inventory: productData.inventory || 0,
+      isDigital: productData.isDigital || false,
+      isAvailable: productData.isAvailable || true,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       isActive: true

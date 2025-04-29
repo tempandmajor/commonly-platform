@@ -1,4 +1,3 @@
-
 import { db, functions } from "@/lib/firebase";
 import { 
   collection, 
@@ -46,8 +45,15 @@ export const getUserWallet = async (userId: string): Promise<UserWallet | null> 
     
     return {
       id: walletDoc.id,
-      ...walletData,
-      transactions
+      userId,
+      availableBalance: walletData.availableBalance || 0,
+      pendingBalance: walletData.pendingBalance || 0,
+      totalEarnings: walletData.totalEarnings || 0,
+      platformCredits: walletData.platformCredits || 0,
+      hasPayoutMethod: walletData.hasPayoutMethod || false,
+      stripeConnectId: walletData.stripeConnectId,
+      transactions,
+      lastUpdated: walletData.updatedAt || Timestamp.now()
     } as UserWallet;
   } catch (error) {
     console.error("Error fetching user wallet:", error);
@@ -65,19 +71,22 @@ const createUserWallet = async (userId: string): Promise<UserWallet> => {
       pendingBalance: 0,
       platformCredits: 0,
       hasPayoutMethod: false,
-      transactions: [],
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
+      lastUpdated: serverTimestamp()
     };
     
     await updateDoc(doc(db, "wallets", userId), newWallet);
     
     return {
       id: userId,
-      ...newWallet,
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
-      transactions: []
+      userId,
+      totalEarnings: 0,
+      availableBalance: 0,
+      pendingBalance: 0,
+      platformCredits: 0,
+      hasPayoutMethod: false,
+      transactions: [],
+      lastUpdated: Timestamp.now()
     };
   } catch (error) {
     console.error("Error creating user wallet:", error);
@@ -90,8 +99,8 @@ const createUserWallet = async (userId: string): Promise<UserWallet> => {
       pendingBalance: 0,
       platformCredits: 0,
       hasPayoutMethod: false,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
+      lastUpdated: serverTimestamp()
     });
     
     return {
@@ -103,8 +112,7 @@ const createUserWallet = async (userId: string): Promise<UserWallet> => {
       platformCredits: 0,
       hasPayoutMethod: false,
       transactions: [],
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now()
+      lastUpdated: Timestamp.now()
     };
   }
 };
@@ -197,6 +205,7 @@ export const getUserReferralStats = async (
   } catch (error) {
     console.error("Error fetching referral stats:", error);
     return {
+      userId,
       totalReferrals: 0,
       conversionRate: 0,
       totalEarnings: 0,

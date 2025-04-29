@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { Json } from '@/integrations/supabase/types';
 
 export const distributeCredits = async (
   userIds: string[], 
@@ -35,14 +36,14 @@ export const distributeCredits = async (
       
       // We need to properly handle the wallet data which can be a json object
       const currentCredits = typeof wallet === 'object' && wallet !== null && 'platform_credits' in wallet 
-        ? wallet.platform_credits || 0
+        ? Number(wallet.platform_credits || 0)
         : 0;
       
       const { error: updateError } = await supabase
         .from('users')
         .update({
           wallet: {
-            ...wallet,
+            ...(wallet as object),
             platform_credits: currentCredits + amount
           }
         })
