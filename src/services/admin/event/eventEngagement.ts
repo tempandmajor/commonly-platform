@@ -1,135 +1,125 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { EventEngagement } from '@/types/event';
 
 /**
- * Add a like to an event
- * @param eventId The ID of the event to like
- * @param userId The ID of the user liking the event
+ * Get engagement metrics for an event
  */
-export const likeEvent = async (eventId: string, userId: string) => {
+export const getEventEngagement = async (eventId: string): Promise<EventEngagement> => {
   try {
-    const { data: existingLike, error: checkError } = await supabase
+    const { data: eventData, error: eventError } = await supabase
+      .from('events')
+      .select('likes_count, shares_count')
+      .eq('id', eventId)
+      .single();
+    
+    if (eventError) throw eventError;
+    
+    return {
+      likes: eventData.likes_count || 0,
+      shares: eventData.shares_count || 0,
+    };
+  } catch (error) {
+    console.error('Error getting event engagement:', error);
+    return {
+      likes: 0,
+      shares: 0,
+    };
+  }
+};
+
+/**
+ * Increase the like count for an event
+ */
+export const likeEvent = async (
+  eventId: string,
+  userId: string
+): Promise<boolean> => {
+  try {
+    // Check if user already liked the event
+    const { data: existingLike } = await supabase
       .from('event_likes')
       .select('id')
       .eq('event_id', eventId)
       .eq('user_id', userId)
       .single();
-
-    if (checkError && checkError.code !== 'PGRST116') { // Not PGRST116 (not found)
-      throw checkError;
+    
+    if (existingLike) {
+      return false; // User already liked this event
     }
-
-    // If like doesn't exist, create it
-    if (!existingLike) {
-      const { error } = await supabase
-        .from('event_likes')
-        .insert({
-          event_id: eventId as any, // Type assertion to fix error
-          user_id: userId,
-          created_at: new Date().toISOString()
-        });
-
-      if (error) throw error;
-
-      // Increment like count in events table
-      const { error: updateError } = await supabase.rpc(
-        'increment_event_likes',
-        { event_id: eventId }
-      );
-
-      if (updateError) throw updateError;
-    }
-
-    return true;
-  } catch (error) {
-    console.error("Error liking event:", error);
-    throw error;
-  }
-};
-
-/**
- * Remove a like from an event
- * @param eventId The ID of the event to unlike
- * @param userId The ID of the user unliking the event
- */
-export const unlikeEvent = async (eventId: string, userId: string) => {
-  try {
-    const { error } = await supabase
+    
+    // Add like record
+    const { error: likeError } = await supabase
       .from('event_likes')
-      .delete()
-      .eq('event_id', eventId)
-      .eq('user_id', userId);
-
-    if (error) throw error;
-
-    // Decrement like count in events table
-    const { error: updateError } = await supabase.rpc(
-      'decrement_event_likes',
-      { event_id: eventId as any } // Type assertion to fix error
-    );
-
+      .insert([{ event_id: eventId, user_id: userId }]);
+    
+    if (likeError) throw likeError;
+    
+    // Increment likes count in events table
+    const { error: updateError } = await supabase.rpc('increment_event_likes', { 
+      event_id_param: eventId 
+    });
+    
     if (updateError) throw updateError;
-
+    
     return true;
   } catch (error) {
-    console.error("Error unliking event:", error);
-    throw error;
+    console.error('Error liking event:', error);
+    return false;
   }
 };
 
 /**
- * Check if a user has liked an event
+ * Record a share for an event
  */
-export const checkIfUserLiked = async (eventId: string, userId: string) => {
+export const shareEvent = async (
+  eventId: string,
+  userId: string
+): Promise<boolean> => {
+  try {
+    // Record share
+    const { error: shareError } = await supabase
+      .from('event_shares')
+      .insert([{ event_id: eventId, user_id: userId }]);
+    
+    if (shareError) throw shareError;
+    
+    // Increment shares count in events table
+    const { error: updateError } = await supabase.rpc('increment_event_shares', { 
+      event_id_param: eventId 
+    });
+    
+    if (updateError) throw updateError;
+    
+    return true;
+  } catch (error) {
+    console.error('Error sharing event:', error);
+    return false;
+  }
+};
+
+/**
+ * Check if a user has already liked an event
+ */
+export const hasUserLikedEvent = async (
+  eventId: string,
+  userId: string
+): Promise<boolean> => {
   try {
     const { data, error } = await supabase
       .from('event_likes')
       .select('id')
-      .eq('event_id', eventId as any) // Type assertion to fix error
+      .eq('event_id', eventId)
       .eq('user_id', userId)
       .single();
-
-    if (error) {
-      if (error.code === 'PGRST116') { // Not found
-        return false;
-      }
+    
+    if (error && error.code !== 'PGRST116') {
       throw error;
     }
-
-    return !!data;
+    
+    return !!data; // Returns true if like exists, false otherwise
   } catch (error) {
-    console.error("Error checking if user liked event:", error);
-    throw error;
-  }
-};
-
-/**
- * Record a share of an event
- */
-export const shareEvent = async (eventId: string, userId: string, platform: string) => {
-  try {
-    const { error } = await supabase
-      .from('event_shares')
-      .insert({
-        event_id: eventId,
-        user_id: userId,
-        platform,
-        created_at: new Date().toISOString()
-      });
-
-    if (error) throw error;
-
-    // Increment share count in events table
-    const { error: updateError } = await supabase.rpc(
-      'increment_event_shares',
-      { event_id: eventId }
-    );
-
-    if (updateError) throw updateError;
-
-    return true;
-  } catch (error) {
-    console.error("Error recording event share:", error);
-    throw error;
+    console.error('Error checking if user liked event:', error);
+    return false;
   }
 };

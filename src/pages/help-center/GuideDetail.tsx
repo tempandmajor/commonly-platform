@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import Navbar from '@/components/layout/Navbar';
 import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ContentData } from '@/components/admin/content/types';
 
 interface GuideContent {
   title?: string;
@@ -42,9 +43,15 @@ const GuideDetail = () => {
             throw error;
           }
         } else {
+          // Properly type-cast the content data
+          const contentData = data.content as unknown as ContentData;
+          
           setGuide({
             title: data.title,
-            content: data.content
+            content: {
+              description: contentData.description || '',
+              sections: contentData.sections || []
+            }
           });
         }
       } catch (err) {
@@ -106,9 +113,9 @@ const GuideDetail = () => {
               Back to Help Center
             </Button>
             
-            <h1 className="text-3xl font-bold mb-2">{guide.title}</h1>
+            <h1 className="text-3xl font-bold mb-2">{guide?.title}</h1>
             
-            {guide.content?.description && (
+            {guide?.content?.description && (
               <div className="text-gray-600 mt-4">
                 {guide.content.description.split('\n').map((paragraph, idx) => (
                   <p key={idx} className="mb-4">{paragraph}</p>
@@ -118,7 +125,7 @@ const GuideDetail = () => {
           </div>
           
           <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-            {guide.content?.sections?.map((section, index) => (
+            {guide?.content?.sections?.map((section, index) => (
               <div 
                 key={index} 
                 className={`p-6 ${index < guide.content!.sections.length - 1 ? 'border-b' : ''}`}
@@ -147,7 +154,7 @@ const GuideDetail = () => {
               </div>
             ))}
             
-            {!guide.content?.sections || guide.content.sections.length === 0 ? (
+            {!guide?.content?.sections || guide.content.sections.length === 0 ? (
               <div className="p-6 text-center text-gray-500">
                 <p>This guide is still being written. Check back soon!</p>
               </div>
