@@ -33,6 +33,9 @@ import AdminRoutes from "./pages/admin/AdminRoutes";
 import Management from "./pages/ventures/Management";
 import Records from "./pages/ventures/Records";
 import Studios from "./pages/ventures/Studios";
+import ContentPage from "./pages/ContentPage";
+import HelpCenter from "./pages/help-center/HelpCenter";
+import GuideDetail from "./pages/help-center/GuideDetail";
 
 function App() {
   return (
@@ -51,6 +54,21 @@ function App() {
           <Route path="/podcasts" element={<Podcasts />} />
           <Route path="/podcasts/:id" element={<PodcastDetails />} />
           <Route path="/user/:userId/podcasts" element={<UserPodcasts />} />
+          
+          {/* Content Pages */}
+          <Route path="/content/:slug" element={<ContentPage />} />
+          <Route path="/for-creators" element={<ContentPage />} />
+          <Route path="/for-sponsors" element={<ContentPage />} />
+          <Route path="/blog" element={<ContentPage />} />
+          <Route path="/guidelines" element={<ContentPage />} />
+          <Route path="/careers" element={<ContentPage />} />
+          <Route path="/privacy-policy" element={<ContentPage />} />
+          <Route path="/terms-of-service" element={<ContentPage />} />
+          <Route path="/cookie-policy" element={<ContentPage />} />
+          
+          {/* Help Center */}
+          <Route path="/help-center" element={<HelpCenter />} />
+          <Route path="/help-center/guides/:slug" element={<GuideDetail />} />
           
           {/* Ventures Routes */}
           <Route path="/ventures/management" element={<Management />} />

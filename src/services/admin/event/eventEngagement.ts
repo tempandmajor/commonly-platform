@@ -22,7 +22,7 @@ export const likeEvent = async (eventId: string, userId: string) => {
     // Cast parameters to proper type to avoid "not assignable to parameter of type 'never'" error
     const { error: updateError } = await supabase.rpc(
       'increment_likes_count', 
-      { event_id: eventId } as unknown as Record<string, never>
+      { event_id: eventId } as any
     );
     
     if (updateError) throw updateError;
@@ -49,7 +49,7 @@ export const unlikeEvent = async (eventId: string, userId: string) => {
     // Update likes count
     const { error: updateError } = await supabase.rpc(
       'decrement_likes_count',
-      { event_id: eventId } as unknown as Record<string, never>
+      { event_id: eventId } as any
     );
     
     if (updateError) throw updateError;
@@ -74,7 +74,7 @@ export const shareEvent = async (eventId: string, userId: string) => {
     // Update shares count
     const { error: updateError } = await supabase.rpc(
       'increment_shares_count',
-      { event_id: eventId } as unknown as Record<string, never>
+      { event_id: eventId } as any
     );
     
     if (updateError) throw updateError;
@@ -82,6 +82,29 @@ export const shareEvent = async (eventId: string, userId: string) => {
     return true;
   } catch (error) {
     console.error("Error sharing event:", error);
+    throw error;
+  }
+};
+
+/**
+ * Checks if a user has already liked an event
+ */
+export const checkIfUserLiked = async (eventId: string, userId: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('event_likes')
+      .select('*')
+      .eq('event_id', eventId)
+      .eq('user_id', userId)
+      .single();
+      
+    if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned" error
+      throw error;
+    }
+    
+    return !!data;
+  } catch (error) {
+    console.error("Error checking if user liked event:", error);
     throw error;
   }
 };

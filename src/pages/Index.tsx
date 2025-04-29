@@ -3,17 +3,18 @@ import React, { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import AuthDialog from "@/components/auth/AuthDialog";
 import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
 import EventList from '@/components/events/EventList';
 
 const Index = () => {
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 flex flex-col">
       <Navbar />
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 flex-grow">
         <div className="text-center max-w-2xl mx-auto mb-12">
           <h1 className="text-4xl font-bold mb-6">Welcome to Commonly</h1>
           <p className="text-xl text-gray-600 mb-8">
@@ -27,6 +28,8 @@ const Index = () => {
           <EventList />
         </section>
       </main>
+
+      <Footer />
 
       {/* Auth Dialog */}
       <AuthDialog
