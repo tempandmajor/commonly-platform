@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
@@ -34,24 +34,56 @@ import AddProduct from './pages/AddProduct';
 import { initializeNotifications } from './services/notificationService';
 import { setupPresenceSystem } from './services/userPresenceService';
 import NotificationSettings from './pages/NotificationSettings';
+import { useToast } from './components/ui/use-toast';
 
 const AppContent = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, isLoading: authLoading } = useAuth();
+  const { toast } = useToast();
+  const [isServiceInitialized, setIsServiceInitialized] = useState(false);
   
   // Initialize notifications and presence system when user logs in
   useEffect(() => {
-    if (!currentUser?.uid) return;
+    if (authLoading) return;
     
-    // Initialize notifications
-    initializeNotifications(currentUser.uid).catch(console.error);
-    
-    // Setup presence system
-    const cleanupPresence = setupPresenceSystem(currentUser.uid);
-    
-    return () => {
-      cleanupPresence();
-    };
-  }, [currentUser]);
+    if (currentUser?.uid) {
+      // Initialize notifications
+      const initializeServices = async () => {
+        try {
+          await initializeNotifications(currentUser.uid);
+          const cleanupPresence = setupPresenceSystem(currentUser.uid);
+          setIsServiceInitialized(true);
+          return () => {
+            cleanupPresence();
+          };
+        } catch (error) {
+          console.error("Failed to initialize services:", error);
+          toast({
+            title: "Connection Issue",
+            description: "Failed to initialize all services. Some features may not work properly.",
+            variant: "destructive",
+          });
+          setIsServiceInitialized(true); // Still mark as initialized to prevent blocking the UI
+        }
+      };
+      
+      initializeServices();
+    } else {
+      // No user, but we're done loading
+      setIsServiceInitialized(true);
+    }
+  }, [currentUser, authLoading, toast]);
+  
+  // Show app-wide loading state
+  if (authLoading && !isServiceInitialized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+          <p className="text-gray-500">Loading EventRoom...</p>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <ErrorBoundary>
