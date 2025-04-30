@@ -7,8 +7,18 @@ import { AlertTriangle, CheckCircle, Clock, RefreshCcw, ArrowRight } from "lucid
 import { checkMigrationStatus, decommissionFirebase, updateDocumentation } from "@/services/migrationCleanup";
 import { useToast } from "@/hooks/use-toast";
 
+// Define proper types
+interface MigrationFeatureStatus {
+  status: 'completed' | 'pending' | 'in_progress';
+  count: number;
+}
+
+interface MigrationStatusData {
+  [key: string]: MigrationFeatureStatus;
+}
+
 const MigrationStatus = () => {
-  const [status, setStatus] = useState<any>(null);
+  const [status, setStatus] = useState<MigrationStatusData | null>(null);
   const [loading, setLoading] = useState(true);
   const [decommissioning, setDecommissioning] = useState(false);
   const { toast } = useToast();
@@ -17,7 +27,7 @@ const MigrationStatus = () => {
     try {
       setLoading(true);
       const migrationStatus = await checkMigrationStatus();
-      setStatus(migrationStatus);
+      setStatus(migrationStatus as MigrationStatusData);
     } catch (error) {
       console.error("Error fetching migration status:", error);
       toast({
@@ -48,7 +58,7 @@ const MigrationStatus = () => {
       
       // Refresh status
       await fetchStatus();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error during decommissioning:", error);
       toast({
         title: "Error",
@@ -105,7 +115,7 @@ const MigrationStatus = () => {
             <Progress value={getProgress()} className="h-2" />
             
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {status && Object.entries(status).map(([key, value]: [string, any]) => (
+              {status && Object.entries(status).map(([key, value]) => (
                 <div 
                   key={key} 
                   className="flex items-center justify-between p-4 border rounded-md"
