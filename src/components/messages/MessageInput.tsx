@@ -1,5 +1,4 @@
-
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
@@ -8,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 
 interface MessageInputProps {
   onSendMessage: (e: React.FormEvent, text: string, file: File | null, voiceBlob: Blob | null) => void;
+  onTyping?: (isTyping: boolean) => void;
   sending: boolean;
   isUploading: boolean;
   uploadProgress: number;
@@ -15,6 +15,7 @@ interface MessageInputProps {
 
 const MessageInput: React.FC<MessageInputProps> = ({
   onSendMessage,
+  onTyping,
   sending,
   isUploading,
   uploadProgress
@@ -25,6 +26,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [recordedVoice, setRecordedVoice] = useState<Blob | null>(null);
+  const [lastTypingTime, setLastTypingTime] = useState<number>(0);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -32,6 +34,33 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const timerIntervalRef = useRef<number | null>(null);
   
   const { toast } = useToast();
+
+  // Track typing status
+  useEffect(() => {
+    if (!onTyping) return;
+    
+    const now = Date.now();
+    
+    // If user started or continued typing
+    if (newMessage && now - lastTypingTime > 1000) {
+      setLastTypingTime(now);
+      onTyping(true);
+    }
+    
+    // If user stopped typing (message is empty)
+    if (!newMessage) {
+      onTyping(false);
+    }
+    
+    // Reset typing status after some inactivity
+    const timeoutId = setTimeout(() => {
+      if (lastTypingTime && now - lastTypingTime > 3000) {
+        onTyping(false);
+      }
+    }, 3000);
+    
+    return () => clearTimeout(timeoutId);
+  }, [newMessage, onTyping, lastTypingTime]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -150,6 +179,11 @@ const MessageInput: React.FC<MessageInputProps> = ({
     setNewMessage("");
     setRecordedVoice(null);
     // The image will be cleared in the parent component after successful upload
+    
+    // Reset typing status after sending
+    if (onTyping) {
+      onTyping(false);
+    }
   };
 
   return (
@@ -261,7 +295,10 @@ const MessageInput: React.FC<MessageInputProps> = ({
         
         <Input
           value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
+          onChange={(e) => {
+            setNewMessage(e.target.value);
+            setLastTypingTime(Date.now());
+          }}
           placeholder="Type a message..."
           className="flex-1 mx-2"
           disabled={sending || isUploading || isRecording}

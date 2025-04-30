@@ -1,27 +1,20 @@
-
 import { db } from "@/lib/firebase";
 import { 
   collection, 
   addDoc, 
-  query, 
-  where, 
-  orderBy, 
-  onSnapshot, 
-  getDocs, 
-  serverTimestamp, 
-  updateDoc,
   doc,
-  getDoc
+  updateDoc,
+  serverTimestamp,
+  getDoc,
+  getDocs,
+  query,
+  where,
+  orderBy
 } from "firebase/firestore";
+import { createNotification } from "@/services/notificationService";
 import { ChatMessage } from "@/types/auth";
-import { createNotification } from "../notificationService";
-import { getUserProfile } from "../userService";
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
-import { storage } from "@/lib/firebase";
+import { markAllAsRead } from "./unreadService";
 
-/**
- * Send a text message in a chat
- */
 export const sendMessage = async (chatId: string, senderId: string, recipientId: string, text: string) => {
   if (!text.trim()) return null;
   
@@ -48,8 +41,9 @@ export const sendMessage = async (chatId: string, senderId: string, recipientId:
   
   // Create notification for the recipient
   try {
-    const senderDoc = await getUserProfile(senderId);
-    const senderName = senderDoc?.displayName || "Someone";
+    const senderDoc = await getDoc(doc(db, "users", senderId));
+    const senderData = senderDoc.data();
+    const senderName = senderData?.displayName || "Someone";
     
     await createNotification(
       recipientId,
@@ -60,7 +54,7 @@ export const sendMessage = async (chatId: string, senderId: string, recipientId:
         chatId, 
         senderId
       },
-      senderDoc?.photoURL || undefined
+      senderData?.photoURL || undefined
     );
   } catch (error) {
     console.error("Error creating message notification:", error);
@@ -69,9 +63,6 @@ export const sendMessage = async (chatId: string, senderId: string, recipientId:
   return messageRef.id;
 };
 
-/**
- * Get all messages in a chat
- */
 export const getMessages = async (chatId: string): Promise<ChatMessage[]> => {
   const messagesRef = collection(db, "chats", chatId, "messages");
   const q = query(messagesRef, orderBy("timestamp", "asc"));
@@ -87,82 +78,9 @@ export const getMessages = async (chatId: string): Promise<ChatMessage[]> => {
       recipientId: data.recipientId,
       text: data.text,
       timestamp: data.timestamp,
-      read: data.read,
-      imageUrl: data.imageUrl,
-      voiceUrl: data.voiceUrl
+      read: data.read
     };
   });
-};
-
-/**
- * Subscribe to messages in a chat
- */
-export const subscribeToMessages = (
-  chatId: string, 
-  callback: (messages: ChatMessage[]) => void
-) => {
-  const messagesRef = collection(db, "chats", chatId, "messages");
-  const q = query(messagesRef, orderBy("timestamp", "asc"));
-  
-  return onSnapshot(q, (querySnapshot) => {
-    const messages = querySnapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        chatId,
-        senderId: data.senderId,
-        recipientId: data.recipientId,
-        text: data.text,
-        timestamp: data.timestamp,
-        read: data.read,
-        imageUrl: data.imageUrl,
-        voiceUrl: data.voiceUrl
-      };
-    });
-    
-    callback(messages);
-  });
-};
-
-/**
- * Mark messages as read
- */
-export const markMessagesAsRead = async (chatId: string, currentUserId: string) => {
-  // Get all unread messages sent to the current user
-  const messagesRef = collection(db, "chats", chatId, "messages");
-  const q = query(
-    messagesRef,
-    where("recipientId", "==", currentUserId),
-    where("read", "==", false)
-  );
-  
-  const querySnapshot = await getDocs(q);
-  
-  // Mark each message as read
-  const updatePromises = querySnapshot.docs.map(doc => 
-    updateDoc(doc.ref, { read: true })
-  );
-  
-  await Promise.all(updatePromises);
-  
-  // Check if the last message needs to be updated as well
-  const chatDoc = await getDoc(doc(db, "chats", chatId));
-  const chatData = chatDoc.data();
-  
-  if (chatData && chatData.lastMessage && 
-      chatData.lastMessage.recipientId === currentUserId && 
-      !chatData.lastMessage.read) {
-    await updateDoc(doc(db, "chats", chatId), {
-      "lastMessage.read": true
-    });
-  }
-};
-
-/**
- * Count unread messages in a chat
- */
-export const getUnreadCount = (messages: ChatMessage[], currentUserId: string): number => {
-  return messages.filter(msg => msg.recipientId === currentUserId && !msg.read).length;
 };
 
 /**
@@ -201,8 +119,9 @@ export const sendMessageWithImage = async (
     
     // Create notification for the recipient
     try {
-      const senderDoc = await getUserProfile(senderId);
-      const senderName = senderDoc?.displayName || "Someone";
+      const senderDoc = await getDoc(doc(db, "users", senderId));
+      const senderData = senderDoc.data();
+      const senderName = senderData?.displayName || "Someone";
       
       await createNotification(
         recipientId,
@@ -213,7 +132,7 @@ export const sendMessageWithImage = async (
           chatId, 
           senderId 
         },
-        senderDoc?.photoURL || undefined
+        senderData?.photoURL || undefined
       );
     } catch (error) {
       console.error("Error creating message notification:", error);
@@ -227,7 +146,7 @@ export const sendMessageWithImage = async (
 };
 
 /**
- * Send a message with a voice attachment
+ * Send a message with a voice recording
  */
 export const sendMessageWithVoice = async (
   chatId: string,
@@ -262,8 +181,9 @@ export const sendMessageWithVoice = async (
     
     // Create notification for the recipient
     try {
-      const senderDoc = await getUserProfile(senderId);
-      const senderName = senderDoc?.displayName || "Someone";
+      const senderDoc = await getDoc(doc(db, "users", senderId));
+      const senderData = senderDoc.data();
+      const senderName = senderData?.displayName || "Someone";
       
       await createNotification(
         recipientId,
@@ -274,7 +194,7 @@ export const sendMessageWithVoice = async (
           chatId, 
           senderId 
         },
-        senderDoc?.photoURL || undefined
+        senderData?.photoURL || undefined
       );
     } catch (error) {
       console.error("Error creating message notification:", error);
@@ -284,5 +204,37 @@ export const sendMessageWithVoice = async (
   } catch (error) {
     console.error("Error sending message with voice:", error);
     return null;
+  }
+};
+
+/**
+ * Update typing status for a user in a chat
+ */
+export const updateTypingStatus = async (
+  chatId: string, 
+  userId: string, 
+  isTyping: boolean
+): Promise<void> => {
+  try {
+    // Store typing status in a separate collection for better performance
+    const typingRef = doc(db, "chats", chatId, "typing", userId);
+    
+    await updateDoc(typingRef, {
+      isTyping,
+      timestamp: serverTimestamp()
+    }).catch(async (error) => {
+      // If document doesn't exist, create it
+      if (error.code === 'not-found') {
+        await updateDoc(typingRef, {
+          userId,
+          isTyping,
+          timestamp: serverTimestamp()
+        });
+      } else {
+        throw error;
+      }
+    });
+  } catch (error) {
+    console.error("Error updating typing status:", error);
   }
 };

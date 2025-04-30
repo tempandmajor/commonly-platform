@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Navbar from "@/components/layout/Navbar";
 import { useChat } from "@/hooks/useChat";
 import { Smile } from "lucide-react";
@@ -22,10 +22,12 @@ const Messages = () => {
     isUploading,
     uploadProgress,
     showEmojiPicker,
+    isOtherUserTyping,
     setShowEmojiPicker,
     handleSendMessage,
     handleEmojiSelect,
-    handleMarkMessagesAsRead
+    handleMarkMessagesAsRead,
+    handleUserTyping
   } = useChat();
 
   const [newMessage, setNewMessage] = useState<string>("");
@@ -45,6 +47,7 @@ const Messages = () => {
             otherUser={otherUser}
             isOnline={isOnline}
             lastSeen={lastSeen}
+            isTyping={isOtherUserTyping}
           />
           
           {/* Message display area */}
@@ -73,6 +76,7 @@ const Messages = () => {
               setNewMessage("");
               handleSendMessage(e, text, file, voiceBlob);
             }}
+            onTyping={handleUserTyping}
             sending={sending}
             isUploading={isUploading}
             uploadProgress={uploadProgress}
