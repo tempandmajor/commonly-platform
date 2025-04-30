@@ -6,6 +6,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Agora customer credentials
+const customerId = Deno.env.get("AGORA_CUSTOMER_ID") || "";
+const customerSecret = Deno.env.get("AGORA_CUSTOMER_SECRET") || "";
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -13,136 +17,57 @@ serve(async (req) => {
   }
 
   try {
-    const appID = Deno.env.get("AGORA_APP_ID");
-    const customerID = Deno.env.get("AGORA_CUSTOMER_ID");
-    const customerSecret = Deno.env.get("AGORA_CUSTOMER_SECRET");
-
-    if (!appID || !customerID || !customerSecret) {
-      return new Response(
-        JSON.stringify({
-          error: "Agora credentials not configured",
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 500,
-        }
-      );
+    if (!customerId || !customerSecret) {
+      throw new Error("Missing Agora customer credentials");
     }
 
-    const { resourceId, channelName, uid } = await req.json();
-
-    if (!resourceId || !channelName || !uid) {
-      return new Response(
-        JSON.stringify({
-          error: "Missing required parameters",
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 400,
-        }
-      );
-    }
-
-    // Try to acquire the sid from the resourceId
-    const basicAuth = btoa(`${customerID}:${customerSecret}`);
-    const queryUrl = `https://api.agora.io/v1/apps/${appID}/cloud_recording/resourceid/${resourceId}/query`;
+    const { channelName, uid, resourceId } = await req.json();
     
-    const queryResponse = await fetch(queryUrl, {
-      method: "GET",
+    if (!channelName || !uid || !resourceId) {
+      throw new Error("Missing required parameters");
+    }
+
+    // Stop recording
+    const auth = btoa(`${customerId}:${customerSecret}`);
+    const stopUrl = `https://api.agora.io/v1/apps/${Deno.env.get("AGORA_APP_ID")}/cloud_recording/resourceid/${resourceId}/sid/${resourceId}/mode/mix/stop`;
+
+    const stopResponse = await fetch(stopUrl, {
+      method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Basic ${basicAuth}`,
-      }
+        "Authorization": `Basic ${auth}`
+      },
+      body: JSON.stringify({
+        cname: channelName,
+        uid: uid.toString(),
+        clientRequest: {}
+      })
     });
-    
-    if (!queryResponse.ok) {
-      const errorData = await queryResponse.json();
-      return new Response(
-        JSON.stringify({
-          error: "Failed to query recording session",
-          details: errorData,
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: queryResponse.status,
-        }
-      );
-    }
-    
-    const queryData = await queryResponse.json();
-    const sid = queryData.sid;
-    
-    if (!sid) {
-      return new Response(
-        JSON.stringify({
-          error: "No active recording session found",
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 404,
-        }
-      );
-    }
-    
-    // Stop the recording using the acquired sid
-    const stopResponse = await fetch(
-      `https://api.agora.io/v1/apps/${appID}/cloud_recording/resourceid/${resourceId}/sid/${sid}/mode/mix/stop`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Basic ${basicAuth}`,
-        },
-        body: JSON.stringify({
-          cname: channelName,
-          uid: uid,
-          clientRequest: {},
-        }),
-      }
-    );
-
-    if (!stopResponse.ok) {
-      const errorData = await stopResponse.json();
-      return new Response(
-        JSON.stringify({
-          error: "Failed to stop recording",
-          details: errorData,
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: stopResponse.status,
-        }
-      );
-    }
 
     const stopData = await stopResponse.json();
     
-    // Extract the recording URL
-    let recordingUrl = "Unknown";
-    if (stopData.serverResponse && 
-        stopData.serverResponse.fileList && 
-        stopData.serverResponse.fileList.length > 0) {
-      recordingUrl = stopData.serverResponse.fileList[0].fileName;
+    if (!stopResponse.ok) {
+      throw new Error(`Failed to stop recording: ${JSON.stringify(stopData)}`);
     }
-    
+
+    // Extract recording URL from response
+    const recordingUrl = stopData.serverResponse?.fileList?.[0]?.fileUrl || "";
+
+    // Return the recording URL
     return new Response(
-      JSON.stringify({
-        resourceId: resourceId,
-        sid: sid,
-        status: "stopped",
-        recordingUrl: recordingUrl,
-      }),
+      JSON.stringify({ recordingUrl }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
   } catch (error) {
-    console.error("Error stopping recording:", error);
+    console.error("Error stopping recording:", error.message);
+    
     return new Response(
-      JSON.stringify({ error: "Failed to stop recording" }),
+      JSON.stringify({ error: error.message }),
       {
+        status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500,
       }
     );
   }

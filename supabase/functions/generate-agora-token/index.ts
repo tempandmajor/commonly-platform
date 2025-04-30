@@ -7,6 +7,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Load environment variables
+const appId = Deno.env.get("AGORA_APP_ID") || "";
+const appCertificate = Deno.env.get("AGORA_APP_CERTIFICATE") || "";
+
+// Handle CORS and token generation
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -14,74 +19,54 @@ serve(async (req) => {
   }
 
   try {
-    // Get the Agora App ID and App Certificate from environment variables
-    const appID = Deno.env.get("AGORA_APP_ID");
-    const appCertificate = Deno.env.get("AGORA_APP_CERTIFICATE");
-
-    if (!appID || !appCertificate) {
-      return new Response(
-        JSON.stringify({
-          error: "Agora credentials not configured",
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 500,
-        }
-      );
+    if (!appId || !appCertificate) {
+      throw new Error("Missing Agora credentials in environment variables");
     }
 
-    // Get request body
     const { channelName, uid, role } = await req.json();
-
-    if (!channelName || !uid) {
-      return new Response(
-        JSON.stringify({
-          error: "Missing required parameters: channelName and uid",
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 400,
-        }
-      );
+    
+    if (!channelName) {
+      throw new Error("Channel name is required");
     }
 
-    // Set the role
-    const userRole = role === "host" ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER;
+    // User ID can be string or number
+    const userId = typeof uid === "string" ? uid : String(uid);
+    
+    // Set role type (default to publisher)
+    const roleType = role === "audience" 
+      ? RtcRole.SUBSCRIBER 
+      : RtcRole.PUBLISHER;
 
-    // Set token expiration time in seconds (24 hours)
-    const expirationTimeInSeconds = 86400;
+    // Set expiration time (1 hour)
+    const expirationTimeInSeconds = 3600;
     const currentTimestamp = Math.floor(Date.now() / 1000);
     const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
 
     // Generate token
     const token = RtcTokenBuilder.buildTokenWithUid(
-      appID,
+      appId,
       appCertificate,
       channelName,
-      uid,
-      userRole,
+      userId,
+      roleType,
       privilegeExpiredTs
     );
 
-    // Return the token
+    // Return token in response
     return new Response(
-      JSON.stringify({
-        token: token,
-        channelName: channelName,
-        uid: uid,
-        expiresAt: new Date((privilegeExpiredTs) * 1000).toISOString(),
-      }),
+      JSON.stringify({ token }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     );
   } catch (error) {
-    console.error("Error generating token:", error);
+    console.error("Error generating token:", error.message);
+    
     return new Response(
-      JSON.stringify({ error: "Failed to generate token" }),
+      JSON.stringify({ error: error.message }),
       {
+        status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500,
       }
     );
   }

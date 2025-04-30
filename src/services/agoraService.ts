@@ -1,16 +1,13 @@
 
-import { httpsCallable } from "firebase/functions";
-import { functions } from "@/lib/firebase";
 import { supabase } from "@/integrations/supabase/client";
 
-// Generate token for joining a channel (done via Supabase edge function)
+// Generate token for joining a channel
 export const generateAgoraToken = async (
   channelName: string,
   uid: string,
   role: "host" | "audience"
 ): Promise<string> => {
   try {
-    // Use Supabase edge function to generate token
     const { data, error } = await supabase.functions.invoke('generate-agora-token', {
       body: { channelName, uid, role }
     });

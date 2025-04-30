@@ -1,121 +1,115 @@
 
-import { 
-  doc, 
-  getDoc, 
-  setDoc, 
-  updateDoc, 
-  serverTimestamp,
-  query,
-  collection,
-  where,
-  getDocs
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { Subscription, UserData } from "@/types/auth";
+import { supabase } from "@/integrations/supabase/client";
 
-// Check if user is eligible for Pro subscription (1000+ followers)
-export const checkSubscriptionEligibility = async (userId: string): Promise<boolean> => {
+/**
+ * Check if a user has Pro status
+ * @param userId User ID to check
+ * @returns Boolean indicating Pro status
+ */
+export const isUserPro = async (userId: string): Promise<boolean> => {
   try {
-    const userDoc = await getDoc(doc(db, "users", userId));
+    // First, check the user record for direct isPro flag
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("is_pro")
+      .eq("id", userId)
+      .single();
     
-    if (userDoc.exists()) {
-      const userData = userDoc.data() as UserData;
-      return (userData.followerCount || 0) >= 1000;
+    if (userError) throw userError;
+    
+    if (userData?.is_pro) {
+      return true;
+    }
+    
+    // Next, check for active subscription
+    const { data: subscriptionData, error: subscriptionError } = await supabase
+      .from("subscriptions")
+      .select("plan, status")
+      .eq("user_id", userId)
+      .eq("status", "active")
+      .limit(1);
+    
+    if (subscriptionError) throw subscriptionError;
+    
+    if (subscriptionData && subscriptionData.length > 0) {
+      const subscription = subscriptionData[0];
+      return subscription.plan === "pro" && subscription.status === "active";
     }
     
     return false;
   } catch (error) {
-    console.error("Error checking subscription eligibility:", error);
-    throw error;
+    console.error("Error checking user Pro status:", error);
+    return false; // Default to false on error
   }
 };
 
-// Get user subscription status
-export const getUserSubscription = async (userId: string): Promise<Subscription | null> => {
+/**
+ * Get user subscription details
+ */
+export const getUserSubscription = async (userId: string) => {
   try {
-    const q = query(
-      collection(db, "subscriptions"),
-      where("userId", "==", userId),
-      where("status", "==", "active")
-    );
+    const { data, error } = await supabase
+      .from("subscriptions")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(1);
     
-    const subSnap = await getDocs(q);
+    if (error) throw error;
     
-    if (!subSnap.empty) {
-      const doc = subSnap.docs[0];
-      return { id: doc.id, ...doc.data() } as Subscription;
-    }
-    
-    return null;
+    return data && data.length > 0 ? data[0] : null;
   } catch (error) {
     console.error("Error getting user subscription:", error);
     throw error;
   }
 };
 
-// Create a new subscription record
-export const createSubscription = async (
+/**
+ * Cancel a subscription
+ */
+export const cancelSubscription = async (userId: string, stripeSubscriptionId: string) => {
+  try {
+    // We'll call an edge function for handling the Stripe API call
+    const { data, error } = await supabase.functions.invoke('cancel-subscription', {
+      body: { userId, stripeSubscriptionId }
+    });
+    
+    if (error) throw error;
+    
+    return data;
+  } catch (error) {
+    console.error("Error cancelling subscription:", error);
+    throw error;
+  }
+};
+
+/**
+ * Create checkout session for subscription
+ */
+export const createCheckoutSession = async (
   userId: string,
-  stripeSubscriptionId: string,
-  currentPeriodEnd: Date
-): Promise<string> => {
+  email: string,
+  plan: string,
+  successUrl: string,
+  cancelUrl: string
+) => {
   try {
-    const subscriptionRef = doc(collection(db, "subscriptions"));
-    
-    await setDoc(subscriptionRef, {
-      userId,
-      stripeSubscriptionId,
-      status: "active",
-      plan: "pro",
-      currentPeriodEnd: currentPeriodEnd,
-      createdAt: serverTimestamp()
-    });
-    
-    // Update user's pro status
-    await updateDoc(doc(db, "users", userId), {
-      isPro: true
-    });
-    
-    return subscriptionRef.id;
-  } catch (error) {
-    console.error("Error creating subscription:", error);
-    throw error;
-  }
-};
-
-// Update subscription status
-export const updateSubscriptionStatus = async (
-  subscriptionId: string,
-  status: "active" | "canceled" | "past_due",
-  currentPeriodEnd?: Date
-): Promise<void> => {
-  try {
-    const updateData: any = { status };
-    
-    if (currentPeriodEnd) {
-      updateData.currentPeriodEnd = currentPeriodEnd;
-    }
-    
-    await updateDoc(doc(db, "subscriptions", subscriptionId), updateData);
-    
-    // If canceling, update user's pro status
-    if (status === "canceled") {
-      const subDoc = await getDoc(doc(db, "subscriptions", subscriptionId));
-      if (subDoc.exists()) {
-        const subData = subDoc.data() as Subscription;
-        await updateDoc(doc(db, "users", subData.userId), {
-          isPro: false
-        });
+    // Call our edge function to create checkout session
+    const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+      body: { 
+        userId, 
+        email, 
+        plan, 
+        successUrl, 
+        cancelUrl 
       }
-    }
+    });
+    
+    if (error) throw error;
+    
+    return data.sessionUrl;
   } catch (error) {
-    console.error("Error updating subscription status:", error);
+    console.error("Error creating checkout session:", error);
     throw error;
   }
-};
-
-// Check if user has pro subscription
-export const isUserPro = async (userId: string): Promise<boolean> => {
-  const subscription = await getUserSubscription(userId);
-  return !!subscription && subscription.status === 'active';
 };

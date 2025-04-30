@@ -4,8 +4,7 @@ import { useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { sendMessage, sendMessageWithImage, sendMessageWithVoice } from "@/services/chat";
 import { useToast } from "@/hooks/use-toast";
-import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
-import { storage } from "@/lib/firebase";
+import { uploadFile } from "@/services/storageService";
 
 export const useMessageSender = (otherUserId: string | null) => {
   const { chatId } = useParams<{ chatId: string }>();
@@ -30,77 +29,84 @@ export const useMessageSender = (otherUserId: string | null) => {
     
     try {
       if (selectedFile) {
-        // Upload image first
+        // Upload image first using Supabase Storage
         setIsUploading(true);
-        const storageRef = ref(storage, `chat-images/${Date.now()}_${selectedFile.name}`);
-        const uploadTask = uploadBytesResumable(storageRef, selectedFile);
         
-        uploadTask.on(
-          'state_changed',
-          (snapshot) => {
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            setUploadProgress(progress);
-          },
-          (error) => {
-            console.error("Error uploading image:", error);
-            toast({
-              title: "Error",
-              description: "Failed to upload image",
-              variant: "destructive"
+        try {
+          // Show upload progress simulation since Supabase doesn't have built-in progress reporting
+          const simulateProgress = setInterval(() => {
+            setUploadProgress(prev => {
+              const newProgress = prev + 10;
+              return newProgress <= 90 ? newProgress : 90;
             });
-            setIsUploading(false);
-          },
-          async () => {
-            // Upload completed
-            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-            await sendMessageWithImage(
-              chatId,
-              currentUser.uid,
-              otherUserId,
-              newMessage.trim(),
-              downloadURL
-            );
-            
-            setIsUploading(false);
-            setUploadProgress(0);
-          }
-        );
+          }, 300);
+          
+          const downloadURL = await uploadFile(selectedFile, "chat-images");
+          
+          // Clear progress simulation
+          clearInterval(simulateProgress);
+          setUploadProgress(100);
+          
+          await sendMessageWithImage(
+            chatId,
+            currentUser.uid,
+            otherUserId,
+            newMessage.trim(),
+            downloadURL
+          );
+          
+          setIsUploading(false);
+          setUploadProgress(0);
+        } catch (error) {
+          console.error("Error uploading image:", error);
+          toast({
+            title: "Error",
+            description: "Failed to upload image",
+            variant: "destructive"
+          });
+          setIsUploading(false);
+        }
       } else if (voiceBlob) {
         // Upload voice recording
         setIsUploading(true);
-        const storageRef = ref(storage, `chat-voice/${Date.now()}_voice.mp3`);
-        const uploadTask = uploadBytesResumable(storageRef, voiceBlob);
         
-        uploadTask.on(
-          'state_changed',
-          (snapshot) => {
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            setUploadProgress(progress);
-          },
-          (error) => {
-            console.error("Error uploading voice:", error);
-            toast({
-              title: "Error",
-              description: "Failed to upload voice message",
-              variant: "destructive"
+        try {
+          // Convert Blob to File
+          const voiceFile = new File([voiceBlob], "voice-message.mp3", { type: "audio/mp3" });
+          
+          // Show upload progress simulation
+          const simulateProgress = setInterval(() => {
+            setUploadProgress(prev => {
+              const newProgress = prev + 10;
+              return newProgress <= 90 ? newProgress : 90;
             });
-            setIsUploading(false);
-          },
-          async () => {
-            // Upload completed
-            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-            await sendMessageWithVoice(
-              chatId,
-              currentUser.uid,
-              otherUserId,
-              newMessage.trim(),
-              downloadURL
-            );
-            
-            setIsUploading(false);
-            setUploadProgress(0);
-          }
-        );
+          }, 300);
+          
+          const downloadURL = await uploadFile(voiceFile, "chat-voice");
+          
+          // Clear progress simulation
+          clearInterval(simulateProgress);
+          setUploadProgress(100);
+          
+          await sendMessageWithVoice(
+            chatId,
+            currentUser.uid,
+            otherUserId,
+            newMessage.trim(),
+            downloadURL
+          );
+          
+          setIsUploading(false);
+          setUploadProgress(0);
+        } catch (error) {
+          console.error("Error uploading voice:", error);
+          toast({
+            title: "Error",
+            description: "Failed to upload voice message",
+            variant: "destructive"
+          });
+          setIsUploading(false);
+        }
       } else {
         // Send text-only message
         await sendMessage(

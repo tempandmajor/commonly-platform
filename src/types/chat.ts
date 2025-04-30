@@ -1,8 +1,24 @@
 
-import { Chat, UserData } from "./auth";
+import { UserData } from "./auth";
 
-// Extended chat type with user data and unread count
-export interface ChatWithUser extends Chat {
+export interface ChatWithUser {
+  id: string;
+  participants: string[];
+  lastMessage?: {
+    text: string;
+    senderId: string;
+    timestamp: any;
+    read: boolean;
+    recipientId: string;
+  };
+  createdAt: any;
+  updatedAt: any;
   user: UserData;
   unreadCount?: number;
+}
+
+export interface TypingStatus {
+  userId: string;
+  isTyping: boolean;
+  timestamp: any;
 }

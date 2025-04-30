@@ -1,34 +1,34 @@
 
-import { User } from "firebase/auth";
-import { UserData } from "./auth";
-
-export type PodcastType = "audio" | "video";
-
 export interface Podcast {
   id: string;
   title: string;
   description: string;
-  creatorId: string;
-  creatorName: string;
-  thumbnailUrl?: string;
+  imageUrl: string;
   audioUrl?: string;
   videoUrl?: string;
-  duration: number; // in seconds
-  type: PodcastType;
+  duration: number;
+  creatorId: string;
+  creatorName: string;
+  type: "audio" | "video";
   category: string;
-  isExternal: boolean; // Whether it was recorded on Commonly or uploaded
-  visibility: "public" | "private" | "unlisted";
-  listens: number;
-  createdAt: any; // Firebase timestamp
-  updatedAt: any;
+  categoryId: string;
+  createdAt: string;
+  updatedAt: string;
+  published: boolean;
+  viewCount: number;
+  likeCount: number;
+  shareCount: number;
+  featured: boolean;
   tags?: string[];
+  visibility: "public" | "private" | "unlisted";
+  userId: string;
 }
 
 export interface PodcastCategory {
   id: string;
   name: string;
-  description: string;
-  imageUrl?: string;
+  description?: string;
+  icon?: string;
 }
 
 export interface PodcastComment {
@@ -38,8 +38,8 @@ export interface PodcastComment {
   userName: string;
   userPhotoUrl?: string;
   content: string;
-  createdAt: any;
-  likes: number;
+  createdAt: string;
+  updatedAt?: string;
 }
 
 export interface PodcastSession {
@@ -47,13 +47,11 @@ export interface PodcastSession {
   hostId: string;
   title: string;
   description?: string;
-  scheduledFor: any;
-  duration: number; // scheduled duration in minutes
-  participants: string[]; // User IDs
-  status: "scheduled" | "live" | "completed" | "canceled";
+  scheduledFor: string;
+  duration: number;
+  participants: string[];
+  status: "scheduled" | "live" | "ended" | "cancelled";
   agoraChannelName: string;
-  agoraToken?: string;
   recordingUrl?: string;
-  createdAt: any;
-  thumbnailUrl?: string;
+  createdAt: string;
 }

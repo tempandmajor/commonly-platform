@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -16,86 +15,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle, RefreshCcw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-// Helper functions to replace Firebase services
-const getPodcasts = async (
-  limit = 12,
-  lastDoc = null,
-  category = "",
-  searchTerm = ""
-) => {
-  try {
-    let query = supabase.from("podcasts").select("*");
-
-    // Apply filters
-    if (category) {
-      query = query.eq("category_id", category);
-    }
-    
-    if (searchTerm) {
-      query = query.ilike("title", `%${searchTerm}%`);
-    }
-    
-    // Filter for published podcasts only
-    query = query.eq("published", true);
-    
-    // Add pagination
-    if (lastDoc) {
-      query = query.gt("id", lastDoc);
-    }
-    
-    // Order and limit
-    query = query.order("created_at", { ascending: false }).limit(limit);
-    
-    const { data, error } = await query;
-    
-    if (error) throw error;
-    
-    const podcasts = data.map(item => ({
-      id: item.id,
-      title: item.title,
-      description: item.description,
-      imageUrl: item.image_url,
-      audioUrl: item.audio_url,
-      duration: item.duration,
-      userId: item.user_id,
-      categoryId: item.category_id,
-      createdAt: item.created_at,
-      updatedAt: item.updated_at,
-      published: item.published,
-      viewCount: item.view_count,
-      likeCount: item.like_count,
-      shareCount: item.share_count,
-      featured: item.featured
-    }));
-    
-    return {
-      podcasts,
-      lastDoc: data.length > 0 ? data[data.length - 1].id : null,
-    };
-  } catch (error) {
-    console.error("Error getting podcasts:", error);
-    throw error;
-  }
-};
-
-const getPodcastCategories = async () => {
-  try {
-    const { data, error } = await supabase.from("podcast_categories").select("*");
-    
-    if (error) throw error;
-    
-    return data.map(item => ({
-      id: item.id,
-      name: item.name,
-      description: item.description,
-      icon: item.icon
-    }));
-  } catch (error) {
-    console.error("Error getting podcast categories:", error);
-    throw error;
-  }
-};
+import { getPodcasts, getPodcastCategories } from "@/services/podcast";
 
 const Podcasts = () => {
   const [activeTab, setActiveTab] = useState<string>("all");
@@ -105,7 +25,7 @@ const Podcasts = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [initialLoad, setInitialLoad] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [lastDoc, setLastDoc] = useState<any>(null);
+  const [lastId, setLastId] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState<boolean>(true);
   const [categories, setCategories] = useState<PodcastCategory[]>([]);
   const [isProUser, setIsProUser] = useState<boolean>(false);
@@ -121,8 +41,8 @@ const Podcasts = () => {
       setLoading(true);
       setError(null);
       
-      // Using Supabase functions instead of Firebase
-      const result = await getPodcasts(12, reset ? null : lastDoc, selectedCategory, searchTerm);
+      // Using updated service function
+      const result = await getPodcasts(12, reset ? null : lastId, selectedCategory, searchTerm);
       
       if (reset) {
         setPodcasts(result.podcasts || []);
@@ -130,7 +50,7 @@ const Podcasts = () => {
         setPodcasts(prev => [...prev, ...(result.podcasts || [])]);
       }
       
-      setLastDoc(result.lastDoc);
+      setLastId(result.lastId);
       setHasMore(result.podcasts?.length === 12);
     } catch (error: any) {
       console.error("Error fetching podcasts:", error);
@@ -200,7 +120,7 @@ const Podcasts = () => {
   }, [selectedCategory, searchTerm]);
 
   const handleLoadMore = () => {
-    if (!lastDoc || loading) return;
+    if (!lastId || loading) return;
     fetchPodcasts();
   };
 

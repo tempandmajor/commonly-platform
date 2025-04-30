@@ -1,225 +1,244 @@
 
-import { 
-  doc, 
-  getDoc, 
-  getDocs, 
-  collection,
-  query,
-  where,
-  limit,
-  orderBy,
-  startAfter 
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { UserData, FollowStats } from "@/types/auth";
-import { Event } from "@/types/event";
+import { supabase } from "@/integrations/supabase/client";
+import { UserData } from "@/types/auth";
 
-// Get user profile by ID
-export const getUserProfile = async (userId: string): Promise<UserData | null> => {
+/**
+ * Get user data by ID
+ */
+export const getUserById = async (userId: string): Promise<UserData> => {
   try {
-    const userDoc = await getDoc(doc(db, "users", userId));
+    const { data, error } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", userId)
+      .single();
     
-    if (userDoc.exists()) {
-      return userDoc.data() as UserData;
-    }
+    if (error) throw error;
     
-    return null;
+    if (!data) throw new Error("User not found");
+    
+    return {
+      uid: data.id,
+      email: data.email,
+      displayName: data.display_name,
+      photoURL: data.photo_url,
+      isAdmin: data.is_admin || false,
+      isPro: data.is_pro || false,
+      isMerchant: data.is_merchant || false,
+      merchantStoreId: data.merchant_store_id,
+      followers: data.followers,
+      following: data.following,
+      followerCount: data.follower_count,
+      followingCount: data.following_count,
+      isPrivate: data.is_private,
+      hasTwoFactorEnabled: data.has_two_factor_enabled,
+      bio: data.bio,
+      recentLogin: data.recent_login,
+      createdAt: data.created_at,
+    };
   } catch (error) {
-    console.error("Error fetching user profile:", error);
+    console.error("Error getting user by ID:", error);
     throw error;
   }
 };
 
-// Get multiple users by their IDs
+/**
+ * Get user data by multiple IDs
+ */
 export const getUsersByIds = async (userIds: string[]): Promise<UserData[]> => {
   if (!userIds.length) return [];
   
   try {
-    const users: UserData[] = [];
+    const { data, error } = await supabase
+      .from("users")
+      .select("*")
+      .in("id", userIds);
     
-    // Firebase doesn't support 'in' queries with too many values,
-    // so we batch them
-    const batchSize = 10;
-    for (let i = 0; i < userIds.length; i += batchSize) {
-      const batch = userIds.slice(i, i + batchSize);
-      
-      const q = query(
-        collection(db, "users"),
-        where("uid", "in", batch)
-      );
-      
-      const querySnapshot = await getDocs(q);
-      querySnapshot.forEach((doc) => {
-        users.push(doc.data() as UserData);
-      });
-    }
+    if (error) throw error;
     
-    return users;
+    return data.map(user => ({
+      uid: user.id,
+      email: user.email,
+      displayName: user.display_name,
+      photoURL: user.photo_url,
+      isAdmin: user.is_admin || false,
+      isPro: user.is_pro || false,
+      isMerchant: user.is_merchant || false,
+      merchantStoreId: user.merchant_store_id,
+      followers: user.followers,
+      following: user.following,
+      followerCount: user.follower_count,
+      followingCount: user.following_count,
+      isPrivate: user.is_private,
+      hasTwoFactorEnabled: user.has_two_factor_enabled,
+      bio: user.bio,
+      recentLogin: user.recent_login,
+      createdAt: user.created_at,
+    }));
   } catch (error) {
-    console.error("Error fetching users by IDs:", error);
+    console.error("Error getting users by IDs:", error);
     throw error;
   }
 };
 
-// Get user's followers
-export const getUserFollowers = async (userId: string): Promise<UserData[]> => {
+/**
+ * Search users by name or email
+ */
+export const searchUsers = async (query: string): Promise<UserData[]> => {
+  if (!query || query.length < 2) return [];
+  
   try {
-    const userDoc = await getDoc(doc(db, "users", userId));
+    const { data, error } = await supabase
+      .from("users")
+      .select("*")
+      .or(`display_name.ilike.%${query}%,email.ilike.%${query}%`)
+      .limit(10);
     
-    if (!userDoc.exists()) {
-      throw new Error("User not found");
-    }
+    if (error) throw error;
     
-    const userData = userDoc.data() as UserData;
-    const followerIds = userData.followers || [];
-    
-    return await getUsersByIds(followerIds);
-  } catch (error) {
-    console.error("Error fetching user followers:", error);
-    throw error;
-  }
-};
-
-// Get users that a user is following
-export const getUserFollowing = async (userId: string): Promise<UserData[]> => {
-  try {
-    const userDoc = await getDoc(doc(db, "users", userId));
-    
-    if (!userDoc.exists()) {
-      throw new Error("User not found");
-    }
-    
-    const userData = userDoc.data() as UserData;
-    const followingIds = userData.following || [];
-    
-    return await getUsersByIds(followingIds);
-  } catch (error) {
-    console.error("Error fetching user following:", error);
-    throw error;
-  }
-};
-
-// Get user's events feed (events from followed users)
-export const getUserEventsFeed = async (
-  userId: string, 
-  lastEventDate?: Date,
-  pageSize: number = 10
-): Promise<Event[]> => {
-  try {
-    const userDoc = await getDoc(doc(db, "users", userId));
-    
-    if (!userDoc.exists()) {
-      throw new Error("User not found");
-    }
-    
-    const userData = userDoc.data() as UserData;
-    const followingIds = userData.following || [];
-    
-    if (!followingIds.length) {
-      return [];
-    }
-    
-    let eventsQuery = query(
-      collection(db, "events"),
-      where("organizerId", "in", followingIds.slice(0, 10)), // Firebase limits 'in' queries to 10 items
-      where("published", "==", true),
-      orderBy("date", "desc")
-    );
-    
-    if (lastEventDate) {
-      eventsQuery = query(eventsQuery, startAfter(lastEventDate));
-    }
-    
-    eventsQuery = query(eventsQuery, limit(pageSize));
-    
-    const eventsSnap = await getDocs(eventsQuery);
-    const events: Event[] = [];
-    
-    eventsSnap.forEach((doc) => {
-      events.push({ id: doc.id, ...doc.data() } as Event);
-    });
-    
-    // If there are more than 10 followingIds, we need to make additional queries
-    if (followingIds.length > 10) {
-      for (let i = 10; i < followingIds.length; i += 10) {
-        const batch = followingIds.slice(i, i + 10);
-        
-        let batchQuery = query(
-          collection(db, "events"),
-          where("organizerId", "in", batch),
-          where("published", "==", true),
-          orderBy("date", "desc")
-        );
-        
-        if (lastEventDate) {
-          batchQuery = query(batchQuery, startAfter(lastEventDate));
-        }
-        
-        batchQuery = query(batchQuery, limit(pageSize));
-        
-        const batchSnap = await getDocs(batchQuery);
-        batchSnap.forEach((doc) => {
-          events.push({ id: doc.id, ...doc.data() } as Event);
-        });
-      }
-      
-      // Sort combined results by date
-      events.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      // Limit to pageSize
-      return events.slice(0, pageSize);
-    }
-    
-    return events;
-  } catch (error) {
-    console.error("Error fetching user events feed:", error);
-    throw error;
-  }
-};
-
-// Get popular users (most followers)
-export const getPopularUsers = async (limitCount: number = 10): Promise<UserData[]> => {
-  try {
-    const q = query(
-      collection(db, "users"),
-      orderBy("followerCount", "desc"),
-      limit(limitCount)
-    );
-    
-    const usersSnap = await getDocs(q);
-    const users: UserData[] = [];
-    
-    usersSnap.forEach((doc) => {
-      users.push({ ...doc.data() } as UserData);
-    });
-    
-    return users;
-  } catch (error) {
-    console.error("Error fetching popular users:", error);
-    throw error;
-  }
-};
-
-// Search users by name
-export const searchUsers = async (searchQuery: string, limitCount: number = 10): Promise<UserData[]> => {
-  try {
-    // Firebase doesn't support native text search, so we search by prefix
-    const q = query(
-      collection(db, "users"),
-      where("displayName", ">=", searchQuery),
-      where("displayName", "<=", searchQuery + '\uf8ff'),
-      limit(limitCount)
-    );
-    
-    const usersSnap = await getDocs(q);
-    const users: UserData[] = [];
-    
-    usersSnap.forEach((doc) => {
-      users.push({ ...doc.data() } as UserData);
-    });
-    
-    return users;
+    return data.map(user => ({
+      uid: user.id,
+      email: user.email,
+      displayName: user.display_name,
+      photoURL: user.photo_url,
+      isAdmin: user.is_admin || false,
+      isPro: user.is_pro || false,
+      isMerchant: user.is_merchant || false,
+      merchantStoreId: user.merchant_store_id,
+      followers: user.followers,
+      following: user.following,
+      followerCount: user.follower_count,
+      followingCount: user.following_count,
+      isPrivate: user.is_private,
+      hasTwoFactorEnabled: user.has_two_factor_enabled,
+      bio: user.bio,
+      recentLogin: user.recent_login,
+      createdAt: user.created_at,
+    }));
   } catch (error) {
     console.error("Error searching users:", error);
+    throw error;
+  }
+};
+
+/**
+ * Follow a user
+ */
+export const followUser = async (currentUserId: string, targetUserId: string): Promise<void> => {
+  try {
+    // Get current user data
+    const { data: currentUserData, error: currentUserError } = await supabase
+      .from("users")
+      .select("following, following_count")
+      .eq("id", currentUserId)
+      .single();
+    
+    if (currentUserError) throw currentUserError;
+    
+    // Get target user data
+    const { data: targetUserData, error: targetUserError } = await supabase
+      .from("users")
+      .select("followers, follower_count")
+      .eq("id", targetUserId)
+      .single();
+    
+    if (targetUserError) throw targetUserError;
+    
+    // Update following for current user
+    const currentUserFollowing = [...(currentUserData.following || [])];
+    if (!currentUserFollowing.includes(targetUserId)) {
+      currentUserFollowing.push(targetUserId);
+      
+      const { error: updateError } = await supabase
+        .from("users")
+        .update({
+          following: currentUserFollowing,
+          following_count: (currentUserData.following_count || 0) + 1
+        })
+        .eq("id", currentUserId);
+      
+      if (updateError) throw updateError;
+    }
+    
+    // Update followers for target user
+    const targetUserFollowers = [...(targetUserData.followers || [])];
+    if (!targetUserFollowers.includes(currentUserId)) {
+      targetUserFollowers.push(currentUserId);
+      
+      const { error: updateError } = await supabase
+        .from("users")
+        .update({
+          followers: targetUserFollowers,
+          follower_count: (targetUserData.follower_count || 0) + 1
+        })
+        .eq("id", targetUserId);
+      
+      if (updateError) throw updateError;
+    }
+  } catch (error) {
+    console.error("Error following user:", error);
+    throw error;
+  }
+};
+
+/**
+ * Unfollow a user
+ */
+export const unfollowUser = async (currentUserId: string, targetUserId: string): Promise<void> => {
+  try {
+    // Get current user data
+    const { data: currentUserData, error: currentUserError } = await supabase
+      .from("users")
+      .select("following, following_count")
+      .eq("id", currentUserId)
+      .single();
+    
+    if (currentUserError) throw currentUserError;
+    
+    // Get target user data
+    const { data: targetUserData, error: targetUserError } = await supabase
+      .from("users")
+      .select("followers, follower_count")
+      .eq("id", targetUserId)
+      .single();
+    
+    if (targetUserError) throw targetUserError;
+    
+    // Update following for current user
+    const currentUserFollowing = [...(currentUserData.following || [])];
+    const followingIndex = currentUserFollowing.indexOf(targetUserId);
+    if (followingIndex !== -1) {
+      currentUserFollowing.splice(followingIndex, 1);
+      
+      const { error: updateError } = await supabase
+        .from("users")
+        .update({
+          following: currentUserFollowing,
+          following_count: Math.max((currentUserData.following_count || 0) - 1, 0)
+        })
+        .eq("id", currentUserId);
+      
+      if (updateError) throw updateError;
+    }
+    
+    // Update followers for target user
+    const targetUserFollowers = [...(targetUserData.followers || [])];
+    const followerIndex = targetUserFollowers.indexOf(currentUserId);
+    if (followerIndex !== -1) {
+      targetUserFollowers.splice(followerIndex, 1);
+      
+      const { error: updateError } = await supabase
+        .from("users")
+        .update({
+          followers: targetUserFollowers,
+          follower_count: Math.max((targetUserData.follower_count || 0) - 1, 0)
+        })
+        .eq("id", targetUserId);
+      
+      if (updateError) throw updateError;
+    }
+  } catch (error) {
+    console.error("Error unfollowing user:", error);
     throw error;
   }
 };
