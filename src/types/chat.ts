@@ -27,12 +27,12 @@ export interface ChatWithUser extends Chat {
 
 export interface ChatMessage {
   id: string;
-  chatId: string;
-  senderId: string;
-  recipientId: string | null;
+  chat_id: string;
+  sender_id: string;
+  recipient_id: string | null;
   text?: string;
-  imageUrl?: string;
-  voiceUrl?: string;
+  image_url?: string;
+  voice_url?: string;
   timestamp: string;
   read: boolean;
 }

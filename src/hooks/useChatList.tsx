@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from '@/contexts/AuthContext';
 import { Chat, ChatWithUser } from '@/types/chat';
+import { getUserProfile } from '@/services/userService';
 
 export function useChatList() {
   const [chats, setChats] = useState<ChatWithUser[]>([]);
@@ -10,7 +11,18 @@ export function useChatList() {
   const [error, setError] = useState<Error | null>(null);
   const { currentUser } = useAuth();
 
-  const mapDbChatToChat = useCallback((dbChat: any): ChatWithUser => {
+  const mapDbChatToChat = useCallback(async (dbChat: any): Promise<ChatWithUser> => {
+    // Find the other user's ID (not the current user)
+    const otherUserId = dbChat.participants.find(
+      (id: string) => id !== currentUser?.uid
+    );
+    
+    let userData = null;
+    
+    if (otherUserId) {
+      userData = await getUserProfile(otherUserId);
+    }
+    
     return {
       id: dbChat.id,
       participants: dbChat.participants || [],
@@ -20,16 +32,18 @@ export function useChatList() {
         timestamp: dbChat.last_message.timestamp || new Date().toISOString(),
         read: dbChat.last_message.read ?? false,
       } : undefined,
-      user: dbChat.user ? {
-        uid: dbChat.user.id,
-        displayName: dbChat.user.display_name,
-        photoURL: dbChat.user.photo_url,
-        email: dbChat.user.email,
+      user: userData ? {
+        uid: userData.uid,
+        displayName: userData.displayName,
+        photoURL: userData.photoURL,
+        email: userData.email,
+        isOnline: userData.isOnline || false,
+        lastSeen: userData.lastSeen
       } : null,
       createdAt: dbChat.created_at,
       updatedAt: dbChat.updated_at,
     };
-  }, []);
+  }, [currentUser]);
 
   const fetchChats = useCallback(async () => {
     if (!currentUser) return;
@@ -41,49 +55,22 @@ export function useChatList() {
       const { data: chatData, error: chatError } = await supabase
         .from('chats')
         .select('*')
-        .contains('participants', [currentUser.id]);
+        .contains('participants', [currentUser.uid])
+        .order('updated_at', { ascending: false });
       
       if (chatError) throw chatError;
       
+      if (!chatData) {
+        setChats([]);
+        return;
+      }
+      
       // For each chat, get the other user's data
       const chatsWithUserData = await Promise.all(
-        chatData.map(async (chat) => {
-          // Find the other user's ID
-          const otherUserId = chat.participants.find(
-            (id: string) => id !== currentUser.id
-          );
-          
-          if (!otherUserId) {
-            return { ...chat, user: null };
-          }
-          
-          // Get other user's data
-          const { data: userData, error: userError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', otherUserId)
-            .single();
-          
-          if (userError) {
-            console.error('Error fetching user data:', userError);
-            return { ...chat, user: null };
-          }
-          
-          return { ...chat, user: userData };
-        })
+        chatData.map(mapDbChatToChat)
       );
       
-      // Map the data to our Chat type
-      const mappedChats = chatsWithUserData.map(mapDbChatToChat);
-      
-      // Sort by last message timestamp
-      mappedChats.sort((a, b) => {
-        const timeA = a.lastMessage?.timestamp ? new Date(a.lastMessage.timestamp).getTime() : 0;
-        const timeB = b.lastMessage?.timestamp ? new Date(b.lastMessage.timestamp).getTime() : 0;
-        return timeB - timeA;
-      });
-      
-      setChats(mappedChats);
+      setChats(chatsWithUserData);
     } catch (err) {
       setError(err as Error);
       console.error("Error fetching chats:", err);
@@ -101,7 +88,7 @@ export function useChatList() {
         event: '*',
         schema: 'public',
         table: 'chats',
-        filter: `participants=cs.{${currentUser.id}}`,
+        filter: `participants=cs.{${currentUser.uid}}`
       }, () => {
         fetchChats();
       })

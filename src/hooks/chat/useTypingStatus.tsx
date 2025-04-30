@@ -2,17 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { updateTypingStatus } from "@/services/chat";
-import { collection, query, onSnapshot, DocumentData } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-
-// Define interface for typing status document
-interface TypingStatus {
-  id: string;
-  userId: string;
-  isTyping: boolean;
-  timestamp?: any;
-}
+import { supabase } from "@/integrations/supabase/client";
 
 export const useTypingStatus = () => {
   const { chatId } = useParams<{ chatId: string }>();
@@ -24,37 +14,51 @@ export const useTypingStatus = () => {
   useEffect(() => {
     if (!chatId || !currentUser) return;
 
-    const typingQuery = query(collection(db, "chats", chatId, "typing"));
-    
-    const unsubscribeTyping = onSnapshot(typingQuery, (snapshot) => {
-      const typingData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as TypingStatus[];
+    // Set up channel subscription for typing status
+    const channel = supabase
+      .channel(`typing_${chatId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'user_typing',
+        filter: `chat_id=eq.${chatId}`
+      }, (payload) => {
+        const typingData = payload.new as any;
+        
+        // If the typing status is from another user
+        if (typingData && typingData.user_id !== currentUser.uid) {
+          setIsOtherUserTyping(typingData.is_typing);
+        }
+      })
+      .subscribe();
       
-      // Find if other user is typing
-      const otherUserTypingData = typingData.find(data => 
-        data.id !== currentUser.uid && data.userId !== currentUser.uid && data.isTyping === true
-      );
-      
-      if (otherUserTypingData) {
-        setIsOtherUserTyping(true);
-      } else {
-        setIsOtherUserTyping(false);
-      }
-    });
-    
     return () => {
-      unsubscribeTyping();
+      supabase.removeChannel(channel);
     };
   }, [chatId, currentUser]);
 
   // Handle user typing
-  const handleUserTyping = useCallback((isTyping: boolean) => {
-    if (!currentUser || !chatId) return;
+  const handleUserTyping = useCallback(async (isTyping: boolean) => {
+    if (!currentUser?.uid || !chatId) return;
     
-    // Update typing status
-    updateTypingStatus(chatId, currentUser.uid, isTyping);
+    try {
+      // Update typing status in the database
+      const { error } = await supabase
+        .from('user_typing')
+        .upsert({
+          chat_id: chatId,
+          user_id: currentUser.uid,
+          is_typing: isTyping,
+          updated_at: new Date().toISOString()
+        })
+        .select();
+        
+      if (error) {
+        console.error('Error updating typing status:', error);
+      }
+    } catch (error) {
+      console.error('Error handling typing status:', error);
+    }
     
     // Clear previous timeout
     if (typingTimeoutRef.current) {
@@ -64,8 +68,21 @@ export const useTypingStatus = () => {
     
     // If user is typing, set a timeout to automatically set typing to false
     if (isTyping) {
-      typingTimeoutRef.current = window.setTimeout(() => {
-        updateTypingStatus(chatId, currentUser.uid, false);
+      typingTimeoutRef.current = window.setTimeout(async () => {
+        try {
+          await supabase
+            .from('user_typing')
+            .upsert({
+              chat_id: chatId,
+              user_id: currentUser.uid,
+              is_typing: false,
+              updated_at: new Date().toISOString()
+            })
+            .select();
+        } catch (error) {
+          console.error('Error resetting typing status:', error);
+        }
+        
         typingTimeoutRef.current = null;
       }, 5000); // Stop typing indicator after 5 seconds of inactivity
     }

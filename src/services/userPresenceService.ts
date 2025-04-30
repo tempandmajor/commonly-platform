@@ -1,19 +1,22 @@
 
-import { db } from "@/lib/firebase";
-import { doc, setDoc, onSnapshot, serverTimestamp } from "firebase/firestore";
+import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Update user's online status in Firestore
+ * Update user's online status in Supabase
  */
 export const updateUserPresence = async (userId: string, isOnline: boolean): Promise<void> => {
   try {
-    const userStatusRef = doc(db, "userStatus", userId);
-    await setDoc(userStatusRef, {
-      userId,
-      isOnline,
-      lastSeen: isOnline ? null : serverTimestamp(),
-      updatedAt: serverTimestamp()
-    }, { merge: true });
+    // Update user's online status
+    const { error } = await supabase
+      .from('users')
+      .update({
+        is_online: isOnline,
+        last_seen: isOnline ? null : new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', userId);
+    
+    if (error) throw error;
   } catch (error) {
     console.error("Error updating user presence:", error);
   }
@@ -26,19 +29,54 @@ export const subscribeToUserPresence = (
   userId: string,
   callback: (isOnline: boolean, lastSeen: Date | null) => void
 ) => {
-  const userStatusRef = doc(db, "userStatus", userId);
-  
-  return onSnapshot(userStatusRef, (doc) => {
-    if (doc.exists()) {
-      const data = doc.data();
-      callback(
-        data.isOnline || false,
-        data.lastSeen ? (data.lastSeen.toDate ? data.lastSeen.toDate() : new Date(data.lastSeen)) : null
-      );
-    } else {
-      callback(false, null);
-    }
+  // Initial fetch
+  fetchUserPresence(userId).then(({ isOnline, lastSeen }) => {
+    callback(isOnline, lastSeen);
   });
+  
+  // Set up real-time subscription
+  const channel = supabase
+    .channel(`presence_${userId}`)
+    .on('postgres_changes', {
+      event: 'UPDATE',
+      schema: 'public',
+      table: 'users',
+      filter: `id=eq.${userId}`
+    }, (payload) => {
+      const userData = payload.new as any;
+      const isOnline = Boolean(userData.is_online);
+      const lastSeen = userData.last_seen ? new Date(userData.last_seen) : null;
+      callback(isOnline, lastSeen);
+    })
+    .subscribe();
+  
+  // Return unsubscribe function
+  return () => {
+    supabase.removeChannel(channel);
+  };
+};
+
+/**
+ * Fetch a user's current presence status
+ */
+const fetchUserPresence = async (userId: string): Promise<{ isOnline: boolean; lastSeen: Date | null }> => {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('is_online, last_seen')
+      .eq('id', userId)
+      .single();
+    
+    if (error) throw error;
+    
+    return {
+      isOnline: Boolean(data?.is_online),
+      lastSeen: data?.last_seen ? new Date(data.last_seen) : null
+    };
+  } catch (error) {
+    console.error("Error fetching user presence:", error);
+    return { isOnline: false, lastSeen: null };
+  }
 };
 
 /**

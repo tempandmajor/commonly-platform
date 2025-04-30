@@ -1,33 +1,38 @@
 
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { getMessages, subscribeToMessages, markMessagesAsRead } from "@/services/chat";
-import { ChatMessage } from "@/types/auth";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { ChatMessage } from "@/types/chat";
 
 export const useMessages = () => {
   const { chatId } = useParams<{ chatId: string }>();
   const { currentUser } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const navigate = useNavigate();
   const { toast } = useToast();
 
   // Load initial messages and subscribe to updates
   useEffect(() => {
     if (!currentUser || !chatId) {
-      navigate('/');
       return;
     }
 
     setLoading(true);
 
-    // Load initial messages
-    const loadMessages = async () => {
+    // Function to fetch messages
+    const fetchMessages = async () => {
       try {
-        const messagesData = await getMessages(chatId);
-        setMessages(messagesData);
+        const { data, error } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('chat_id', chatId)
+          .order('timestamp', { ascending: true });
+        
+        if (error) throw error;
+        
+        setMessages(data || []);
       } catch (error) {
         console.error("Error loading messages:", error);
         toast({
@@ -40,24 +45,67 @@ export const useMessages = () => {
       }
     };
 
-    loadMessages();
+    // Fetch initial messages
+    fetchMessages();
 
-    // Subscribe to real-time updates
-    const unsubscribe = subscribeToMessages(chatId, (updatedMessages) => {
-      setMessages(updatedMessages);
-    });
+    // Set up real-time subscription
+    const channel = supabase
+      .channel(`messages:${chatId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'messages',
+        filter: `chat_id=eq.${chatId}`
+      }, () => {
+        fetchMessages();
+      })
+      .subscribe();
     
     return () => {
-      unsubscribe();
+      supabase.removeChannel(channel);
     };
-  }, [chatId, currentUser, navigate, toast]);
+  }, [chatId, currentUser, toast]);
 
   // Handle marking messages as read
   const handleMarkMessagesAsRead = async () => {
     if (!currentUser || !chatId) return;
     
     try {
-      await markMessagesAsRead(chatId, currentUser.uid);
+      // Update all unread messages where the current user is the recipient
+      const { error: messagesError } = await supabase
+        .from('messages')
+        .update({ read: true })
+        .eq('chat_id', chatId)
+        .eq('recipient_id', currentUser.uid)
+        .eq('read', false);
+      
+      if (messagesError) throw messagesError;
+      
+      // Check if the last message needs to be updated as well
+      const { data: chat, error: chatError } = await supabase
+        .from('chats')
+        .select('last_message')
+        .eq('id', chatId)
+        .single();
+      
+      if (chatError) throw chatError;
+      
+      if (chat && chat.last_message && 
+          chat.last_message.recipient_id === currentUser.uid && 
+          !chat.last_message.read) {
+        
+        const { error: updateError } = await supabase
+          .from('chats')
+          .update({
+            last_message: {
+              ...chat.last_message,
+              read: true
+            }
+          })
+          .eq('id', chatId);
+        
+        if (updateError) throw updateError;
+      }
     } catch (error) {
       console.error("Error marking messages as read:", error);
     }

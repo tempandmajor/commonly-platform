@@ -25,14 +25,13 @@ export const useOtherUser = (userId: string | null) => {
         // Get user presence from users table
         const { data: presenceData } = await supabase
           .from('users')
-          .select('*')
+          .select('is_online, last_seen')
           .eq('id', userId)
           .single();
           
         if (presenceData) {
-          // Use the appropriate field names based on your database structure
-          setIsOnline(Boolean(presenceData.recent_login));
-          setLastSeen(presenceData.updated_at || null);
+          setIsOnline(Boolean(presenceData.is_online));
+          setLastSeen(presenceData.last_seen || null);
         }
       } catch (err) {
         setError(err as Error);
@@ -44,7 +43,7 @@ export const useOtherUser = (userId: string | null) => {
     fetchUser();
     
     // Subscribe to presence changes using Supabase Realtime
-    const presenceSubscription = supabase
+    const channel = supabase
       .channel(`presence_${userId}`)
       .on('postgres_changes', {
         event: 'UPDATE',
@@ -53,13 +52,13 @@ export const useOtherUser = (userId: string | null) => {
         filter: `id=eq.${userId}`
       }, (payload) => {
         const userData = payload.new as any;
-        setIsOnline(Boolean(userData.recent_login));
-        setLastSeen(userData.updated_at || null);
+        setIsOnline(Boolean(userData.is_online));
+        setLastSeen(userData.last_seen || null);
       })
       .subscribe();
       
     return () => {
-      presenceSubscription.unsubscribe();
+      supabase.removeChannel(channel);
     };
   }, [userId]);
 
