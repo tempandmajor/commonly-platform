@@ -23,18 +23,16 @@ export const useOtherUser = (userId: string | null) => {
         setUser(userData);
         
         // Get user presence from users table
-        // Note: We need to make sure is_online and last_seen columns exist
         try {
           const { data: presenceData, error: presenceError } = await supabase
             .from('users')
-            .select('id')
+            .select('is_online, last_seen')
             .eq('id', userId)
             .single();
             
           if (presenceData) {
-            // For now, default to false/null until we add these columns
-            setIsOnline(false);
-            setLastSeen(null);
+            setIsOnline(presenceData.is_online || false);
+            setLastSeen(presenceData.last_seen || null);
           }
         } catch (presenceError) {
           console.error("Error fetching presence data:", presenceError);
@@ -60,9 +58,8 @@ export const useOtherUser = (userId: string | null) => {
         // Use type assertion to access is_online and last_seen
         const userData = payload.new as any;
         if (userData) {
-          // For now, use defaults until we add these columns
-          setIsOnline(false);
-          setLastSeen(null);
+          setIsOnline(userData.is_online || false);
+          setLastSeen(userData.last_seen || null);
         }
       })
       .subscribe();

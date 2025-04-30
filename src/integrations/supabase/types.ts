@@ -733,6 +733,35 @@ export type Database = {
           },
         ]
       }
+      user_typing: {
+        Row: {
+          chat_id: string
+          is_typing: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          chat_id: string
+          is_typing?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          chat_id?: string
+          is_typing?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_typing_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "chats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           bio: string | null
@@ -748,9 +777,11 @@ export type Database = {
           id: string
           is_admin: boolean | null
           is_merchant: boolean | null
+          is_online: boolean | null
           is_podcaster: boolean | null
           is_private: boolean | null
           is_pro: boolean | null
+          last_seen: string | null
           merchant_store_id: string | null
           photo_url: string | null
           podcast_channel_name: string | null
@@ -773,9 +804,11 @@ export type Database = {
           id?: string
           is_admin?: boolean | null
           is_merchant?: boolean | null
+          is_online?: boolean | null
           is_podcaster?: boolean | null
           is_private?: boolean | null
           is_pro?: boolean | null
+          last_seen?: string | null
           merchant_store_id?: string | null
           photo_url?: string | null
           podcast_channel_name?: string | null
@@ -798,9 +831,11 @@ export type Database = {
           id?: string
           is_admin?: boolean | null
           is_merchant?: boolean | null
+          is_online?: boolean | null
           is_podcaster?: boolean | null
           is_private?: boolean | null
           is_pro?: boolean | null
+          last_seen?: string | null
           merchant_store_id?: string | null
           photo_url?: string | null
           podcast_channel_name?: string | null

@@ -11,7 +11,7 @@ export const updateTypingStatus = async (
   isTyping: boolean
 ): Promise<void> => {
   try {
-    // Use direct table operations since RPC might not be available yet
+    // Use direct table operations with the user_typing table
     await supabase
       .from('user_typing')
       .upsert({
