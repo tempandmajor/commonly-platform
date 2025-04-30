@@ -1,191 +1,236 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { Chat, ChatWithUser } from "@/types/chat";
-import { getUserProfile } from "../userService";
 import { toast } from "@/hooks/use-toast";
 
-// Create a new chat between two users
-export const createChat = async (participantIds: string[]): Promise<{ id?: string; error?: string }> => {
+/**
+ * Create a new chat between users
+ */
+export const createChat = async (
+  currentUserId: string,
+  otherUserId: string
+): Promise<{ chat: Chat | null; error?: string }> => {
   try {
-    if (!participantIds || participantIds.length < 2) {
-      return { error: "At least two participants are required" };
-    }
-
-    // Check for existing chat with these participants
-    const { data: existingChats, error: queryError } = await supabase
+    // Check if chat already exists between these users
+    const { data: existingChats, error: fetchError } = await supabase
       .from('chats')
       .select('*')
-      .contains('participants', participantIds);
+      .contains('participants', [currentUserId, otherUserId]);
 
-    if (queryError) {
-      console.error("Error checking existing chats:", queryError);
-      return { error: queryError.message };
+    if (fetchError) {
+      console.error("Error checking for existing chat:", fetchError);
+      return { chat: null, error: fetchError.message };
     }
 
-    // If chat exists, return the first match
+    // If chat already exists, return it
     if (existingChats && existingChats.length > 0) {
-      // Verify exact participant match (no additional participants)
-      const exactMatch = existingChats.find(
-        chat => chat.participants.length === participantIds.length &&
-               chat.participants.every(id => participantIds.includes(id))
-      );
-      
-      if (exactMatch) return { id: exactMatch.id };
+      return { chat: existingChats[0] as Chat };
     }
 
-    // Create a new chat - rely on database defaults where possible
-    const { data, error } = await supabase
+    // Create new chat if none exists
+    const { data: newChat, error: insertError } = await supabase
       .from('chats')
       .insert({
-        participants: participantIds,
-        // Let DB handle created_at, updated_at with defaults
-        last_message: null
+        participants: [currentUserId, otherUserId],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       })
       .select()
       .single();
 
-    if (error) {
-      console.error("Error creating chat:", error);
-      return { error: error.message };
+    if (insertError) {
+      console.error("Error creating chat:", insertError);
+      return { chat: null, error: insertError.message };
     }
-    
-    if (!data) {
-      return { error: "No data returned when creating chat" };
-    }
-    
-    return { id: data.id };
+
+    return { chat: newChat as Chat };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error("Exception in createChat:", errorMessage);
-    return { error: errorMessage };
+    return { chat: null, error: errorMessage };
   }
 };
 
-// Get all chats for a user with the most recent message
-export const getUserChats = async (userId: string): Promise<{ chats: ChatWithUser[]; error?: string }> => {
+/**
+ * Get all chats for a user
+ */
+export const getChatsForUser = async (
+  userId: string
+): Promise<{ chats: Chat[]; error?: string }> => {
   try {
-    if (!userId) {
-      return { chats: [], error: "User ID is required" };
-    }
-    
-    // Fetch all chats where the user is a participant
-    const { data: chatData, error } = await supabase
+    const { data, error } = await supabase
       .from('chats')
       .select('*')
       .contains('participants', [userId])
       .order('updated_at', { ascending: false });
 
     if (error) {
-      console.error("Error fetching user chats:", error);
+      console.error("Error fetching chats:", error);
       return { chats: [], error: error.message };
     }
 
-    if (!chatData || chatData.length === 0) {
-      return { chats: [] };
-    }
-
-    // Collect all unique participant IDs (excluding the current user)
-    const otherUserIds = new Set<string>();
-    chatData.forEach(chat => {
-      chat.participants.forEach(id => {
-        if (id !== userId) {
-          otherUserIds.add(id);
-        }
-      });
-    });
-
-    // Fetch all user profiles in one batch
-    const userProfiles = new Map();
-    for (const id of otherUserIds) {
-      try {
-        const profile = await getUserProfile(id);
-        if (profile) {
-          userProfiles.set(id, profile);
-        }
-      } catch (e) {
-        console.error(`Error fetching user ${id}:`, e);
-        toast({
-          title: "Error",
-          description: "Failed to load some user profiles",
-          variant: "destructive"
-        });
-      }
-    }
-
-    // Map chats to include user information
-    const chatsWithUsers: ChatWithUser[] = chatData.map(chat => {
-      // Find the other user in this chat
-      const otherUserId = chat.participants.find(id => id !== userId);
-      
-      // Get their profile (or null if not found)
-      const otherUser = otherUserId ? userProfiles.get(otherUserId) : null;
-      
-      // Handle last_message properly with type safety
-      let lastMessage = null;
-      if (chat.last_message) {
-        const lastMsg = chat.last_message as any; // Type assertion to help with JSON data
-        lastMessage = {
-          text: lastMsg.text || '',
-          senderId: lastMsg.senderId || '',
-          timestamp: lastMsg.timestamp || '',
-          read: lastMsg.read ?? false // Use nullish coalescing to default to false if null
-        };
-      }
-      
-      // Convert Supabase chat to our app's format
-      return {
-        id: chat.id,
-        participants: chat.participants,
-        lastMessage: lastMessage,
-        createdAt: chat.created_at,
-        updatedAt: chat.updated_at,
-        user: otherUser ? {
-          uid: otherUser.uid,
-          displayName: otherUser.displayName || 'Unknown User',
-          photoURL: otherUser.photoURL,
-          email: otherUser.email || '',
-          isOnline: false, // Default until we implement presence
-          lastSeen: null // Default until we implement presence
-        } : null
-      };
-    });
-
-    return { chats: chatsWithUsers };
+    return { chats: data as Chat[] };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error("Exception in getUserChats:", errorMessage);
+    console.error("Exception in getChatsForUser:", errorMessage);
     return { chats: [], error: errorMessage };
   }
 };
 
 /**
- * Check if a chat exists between two users
+ * Get a specific chat by ID
  */
-export const checkChatExists = async (userIds: string[]): Promise<{ exists: boolean; chatId?: string; error?: string }> => {
+export const getChatById = async (
+  chatId: string
+): Promise<{ chat: Chat | null; error?: string }> => {
   try {
-    if (!userIds || userIds.length < 2) {
-      return { exists: false, error: "At least two user IDs required" };
-    }
-
     const { data, error } = await supabase
       .from('chats')
-      .select('id')
-      .contains('participants', userIds)
-      .filter(`array_length(participants, 1) = ${userIds.length}`)
-      .maybeSingle(); // Use maybeSingle instead of single
+      .select('*')
+      .eq('id', chatId)
+      .maybeSingle();
 
     if (error) {
-      console.error("Error checking if chat exists:", error);
-      return { exists: false, error: error.message };
+      console.error("Error fetching chat:", error);
+      return { chat: null, error: error.message };
     }
 
-    return {
-      exists: !!data,
-      chatId: data?.id
-    };
+    return { chat: data as Chat };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error("Exception in checkChatExists:", errorMessage);
-    return { exists: false, error: errorMessage };
+    console.error("Exception in getChatById:", errorMessage);
+    return { chat: null, error: errorMessage };
+  }
+};
+
+/**
+ * Update the last message in a chat
+ */
+export const updateLastMessage = async (
+  chatId: string,
+  messageData: {
+    text?: string;
+    senderId: string;
+    timestamp: string;
+    read: boolean;
+  }
+): Promise<{ success: boolean; error?: string }> => {
+  try {
+    const { error } = await supabase
+      .from('chats')
+      .update({
+        last_message: messageData,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', chatId);
+
+    if (error) {
+      console.error("Error updating last message:", error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error("Exception in updateLastMessage:", errorMessage);
+    return { success: false, error: errorMessage };
+  }
+};
+
+/**
+ * Delete a chat by ID
+ */
+export const deleteChat = async (
+  chatId: string,
+  userId: string
+): Promise<{ success: boolean; error?: string }> => {
+  try {
+    // First check if the user is a participant in this chat
+    const { data: chat, error: fetchError } = await supabase
+      .from('chats')
+      .select('*')
+      .eq('id', chatId)
+      .maybeSingle();
+
+    if (fetchError) {
+      console.error("Error fetching chat to delete:", fetchError);
+      return { success: false, error: fetchError.message };
+    }
+
+    if (!chat || !chat.participants.includes(userId)) {
+      return { 
+        success: false, 
+        error: "Unauthorized: You cannot delete a chat you're not part of" 
+      };
+    }
+
+    // Delete the chat
+    const { error: deleteError } = await supabase
+      .from('chats')
+      .delete()
+      .eq('id', chatId);
+
+    if (deleteError) {
+      console.error("Error deleting chat:", deleteError);
+      return { success: false, error: deleteError.message };
+    }
+
+    // With cascade delete enabled, this will automatically delete related messages and typing statuses
+
+    return { success: true };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error("Exception in deleteChat:", errorMessage);
+    return { success: false, error: errorMessage };
+  }
+};
+
+/**
+ * Mark a chat as read
+ */
+export const markChatAsRead = async (chatId: string, userId: string): Promise<{ success: boolean; error?: string }> => {
+  try {
+    // We need to get the current last message first
+    const { data: chat, error: fetchError } = await supabase
+      .from('chats')
+      .select('last_message')
+      .eq('id', chatId)
+      .single();
+    
+    if (fetchError) {
+      console.error("Error fetching chat for marking as read:", fetchError);
+      return { success: false, error: fetchError.message };
+    }
+    
+    if (!chat || !chat.last_message) {
+      // No last message to mark as read
+      return { success: true };
+    }
+    
+    const lastMessage = chat.last_message as any;
+    
+    // Only update if the current user is the recipient and message is unread
+    if (lastMessage.recipientId === userId && !lastMessage.read) {
+      const { error: updateError } = await supabase
+        .from('chats')
+        .update({
+          last_message: {
+            ...lastMessage,
+            read: true
+          }
+        })
+        .eq('id', chatId);
+      
+      if (updateError) {
+        console.error("Error marking chat as read:", updateError);
+        return { success: false, error: updateError.message };
+      }
+    }
+    
+    return { success: true };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error("Exception in markChatAsRead:", errorMessage);
+    return { success: false, error: errorMessage };
   }
 };

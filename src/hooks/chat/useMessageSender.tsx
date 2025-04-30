@@ -3,7 +3,6 @@ import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { sendMessage } from "@/services/chat";
-import { sendMessageWithImage, sendMessageWithVoice } from "@/services/chat/index";
 import { useToast } from "@/hooks/use-toast";
 import { uploadFile } from "@/services/storageService";
 

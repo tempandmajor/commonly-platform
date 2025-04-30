@@ -1,88 +1,79 @@
 
-import { db } from "@/lib/firebase";
-import { 
-  collection, 
-  addDoc, 
-  doc,
-  updateDoc,
-  serverTimestamp,
-  getDoc
-} from "firebase/firestore";
-import { createNotification } from "@/services/notificationService";
+import { supabase } from "@/integrations/supabase/client";
+import { updateLastMessage } from "./chatService";
 
-export const sendMessage = async (chatId: string, senderId: string, recipientId: string, text: string) => {
-  if (!text.trim()) return null;
-  
-  const messageRef = await addDoc(collection(db, "chats", chatId, "messages"), {
-    senderId,
-    recipientId,
-    text,
-    timestamp: serverTimestamp(),
-    read: false
-  });
-  
-  // Update the chat's updatedAt timestamp
-  await updateDoc(doc(db, "chats", chatId), {
-    updatedAt: serverTimestamp(),
-    "lastMessage": {
-      id: messageRef.id,
-      senderId,
-      recipientId,
-      text,
-      timestamp: serverTimestamp(),
-      read: false
+/**
+ * Send a message in a chat
+ */
+export const sendMessage = async (
+  chatId: string,
+  senderId: string,
+  recipientId: string,
+  text?: string,
+  imageUrl?: string,
+  voiceUrl?: string
+): Promise<{ messageId?: string; error?: string }> => {
+  try {
+    if (!text && !imageUrl && !voiceUrl) {
+      return { error: "Message cannot be empty" };
     }
-  });
-  
-  // Create notification for the recipient
-  await createMessageNotification(senderId, recipientId, text, chatId);
-  
-  return messageRef.id;
+
+    const timestamp = new Date().toISOString();
+
+    // Insert the message into the messages table
+    const { data, error } = await supabase
+      .from('messages')
+      .insert({
+        chat_id: chatId,
+        sender_id: senderId,
+        recipient_id: recipientId,
+        text: text || null,
+        image_url: imageUrl || null,
+        voice_url: voiceUrl || null,
+        timestamp,
+        read: false
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error sending message:", error);
+      return { error: error.message };
+    }
+
+    // Update the last message in the chat
+    await updateLastMessage(chatId, {
+      senderId,
+      text: text || (imageUrl ? "📷 Image" : "🎤 Voice message"),
+      timestamp,
+      read: false
+    });
+
+    return { messageId: data.id };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error("Exception in sendMessage:", errorMessage);
+    return { error: errorMessage };
+  }
 };
 
 /**
- * Send a message with an image attachment
+ * Send a message with an image
  */
 export const sendMessageWithImage = async (
   chatId: string,
   senderId: string,
   recipientId: string,
-  text: string,
-  imageUrl: string
-): Promise<string | null> => {
-  try {
-    const messageRef = await addDoc(collection(db, "chats", chatId, "messages"), {
-      senderId,
-      recipientId,
-      text,
-      imageUrl,
-      timestamp: serverTimestamp(),
-      read: false
-    });
-    
-    // Update the chat's updatedAt timestamp
-    await updateDoc(doc(db, "chats", chatId), {
-      updatedAt: serverTimestamp(),
-      "lastMessage": {
-        id: messageRef.id,
-        senderId,
-        recipientId,
-        text: imageUrl ? "📷 Image" : text,
-        timestamp: serverTimestamp(),
-        read: false,
-        hasImage: !!imageUrl
-      }
-    });
-    
-    // Create notification for the recipient
-    const notificationText = imageUrl ? "sent you an image" : text;
-    await createMessageNotification(senderId, recipientId, notificationText, chatId);
-    
-    return messageRef.id;
-  } catch (error) {
-    console.error("Error sending message with image:", error);
-    return null;
-  }
+  imageUrl: string,
+  text?: string
+): Promise<{ messageId?: string; error?: string }> => {
+  return sendMessage(
+    chatId,
+    senderId,
+    recipientId,
+    text,
+    imageUrl
+  );
 };
 
 /**
@@ -92,77 +83,41 @@ export const sendMessageWithVoice = async (
   chatId: string,
   senderId: string,
   recipientId: string,
-  text: string,
-  voiceUrl: string
-): Promise<string | null> => {
-  try {
-    const messageRef = await addDoc(collection(db, "chats", chatId, "messages"), {
-      senderId,
-      recipientId,
-      text,
-      voiceUrl,
-      timestamp: serverTimestamp(),
-      read: false
-    });
-    
-    // Update the chat's updatedAt timestamp
-    await updateDoc(doc(db, "chats", chatId), {
-      updatedAt: serverTimestamp(),
-      "lastMessage": {
-        id: messageRef.id,
-        senderId,
-        recipientId,
-        text: voiceUrl ? "🎤 Voice message" : text,
-        timestamp: serverTimestamp(),
-        read: false,
-        hasVoice: !!voiceUrl
-      }
-    });
-    
-    // Create notification for the recipient
-    const notificationText = voiceUrl ? "sent you a voice message" : text;
-    await createMessageNotification(senderId, recipientId, notificationText, chatId);
-    
-    return messageRef.id;
-  } catch (error) {
-    console.error("Error sending message with voice:", error);
-    return null;
-  }
+  voiceUrl: string,
+  text?: string
+): Promise<{ messageId?: string; error?: string }> => {
+  return sendMessage(
+    chatId,
+    senderId,
+    recipientId,
+    text,
+    undefined,
+    voiceUrl
+  );
 };
 
 /**
- * Helper function to create notifications for messages
+ * Get messages by chat ID
  */
-const createMessageNotification = async (
-  senderId: string, 
-  recipientId: string, 
-  text: string,
+export const getMessagesByChatId = async (
   chatId: string
-) => {
+): Promise<{ messages: any[]; error?: string }> => {
   try {
-    const senderDoc = await getDoc(doc(db, "users", senderId));
-    const senderData = senderDoc.data();
-    const senderName = senderData?.displayName || "Someone";
-    
-    let notificationText = text;
-    if (!text.includes("sent you")) {
-      notificationText = `${senderName} sent you a message: ${text.length > 30 ? text.substring(0, 30) + '...' : text}`;
-    } else {
-      notificationText = `${senderName} ${text}`;
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('chat_id', chatId)
+      .order('timestamp', { ascending: true });
+
+    if (error) {
+      console.error("Error getting messages:", error);
+      return { messages: [], error: error.message };
     }
-    
-    await createNotification(
-      recipientId,
-      'message',
-      'New Message',
-      notificationText,
-      { 
-        chatId, 
-        senderId 
-      },
-      senderData?.photoURL || undefined
-    );
+
+    return { messages: data || [] };
   } catch (error) {
-    console.error("Error creating message notification:", error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error("Exception in getMessagesByChatId:", errorMessage);
+    return { messages: [], error: errorMessage };
   }
 };
