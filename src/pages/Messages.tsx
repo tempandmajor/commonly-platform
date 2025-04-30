@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Navbar from "@/components/layout/Navbar";
 import { useChat } from "@/hooks/chat";
 import { Smile } from "lucide-react";
@@ -46,7 +46,7 @@ const Messages = () => {
           <ChatHeader 
             otherUser={otherUser}
             isOnline={isOnline}
-            lastSeen={lastSeen ? new Date(lastSeen) : undefined}
+            lastSeen={lastSeen ? new Date(lastSeen) : null}
             isTyping={isOtherUserTyping}
           />
           
