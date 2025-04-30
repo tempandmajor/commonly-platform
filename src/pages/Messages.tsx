@@ -10,7 +10,7 @@ import {
   sendMessageWithImage,
   subscribeToMessages, 
   markMessagesAsRead 
-} from "@/services/chatService";
+} from "@/services/chat";
 import { ChatMessage, UserData } from "@/types/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";

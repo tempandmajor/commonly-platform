@@ -20,7 +20,7 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, otherUser }) => {
     "";
   
   // Check if message contains an image
-  const hasImage = 'imageUrl' in message && message.imageUrl;
+  const hasImage = message.imageUrl !== undefined && message.imageUrl !== null;
   
   return (
     <div className={`flex ${isOwnMessage ? "justify-end" : "justify-start"} mb-4`}>
@@ -36,7 +36,7 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, otherUser }) => {
             <DialogTrigger asChild>
               <div className="mb-2 cursor-pointer">
                 <img 
-                  src={message.imageUrl} 
+                  src={message.imageUrl as string} 
                   alt="Message attachment" 
                   className="max-h-48 rounded-md object-cover"
                 />
@@ -44,7 +44,7 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, otherUser }) => {
             </DialogTrigger>
             <DialogContent className="max-w-3xl p-0 overflow-hidden">
               <img 
-                src={message.imageUrl} 
+                src={message.imageUrl as string} 
                 alt="Message attachment" 
                 className="w-full h-full object-contain"
               />

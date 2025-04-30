@@ -96,10 +96,11 @@ export interface ChatMessage {
   id: string;
   chatId: string;
   senderId: string;
-  recipientId: string; // Added this field to fix errors
+  recipientId: string;
   text: string;
   timestamp: any; // Firebase timestamp or Date
   read: boolean;
+  imageUrl?: string;
 }
 
 export interface Chat {
@@ -108,9 +109,13 @@ export interface Chat {
   createdAt: any; // Firebase timestamp or Date
   updatedAt: any; // Firebase timestamp or Date
   lastMessage?: {
+    id?: string;
     text: string;
     timestamp: any; // Firebase timestamp or Date
     senderId: string;
+    recipientId: string;
+    read: boolean;
+    hasImage?: boolean;
   };
 }
 

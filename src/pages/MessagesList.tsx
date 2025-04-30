@@ -1,9 +1,13 @@
-
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { getUsersByIds } from "@/services/userService";
-import { getUserChats, subscribeToChats, getTotalUnreadMessages } from "@/services/chatService";
+import { 
+  getUserChats, 
+  subscribeToChats, 
+  getTotalUnreadMessages, 
+  createChat 
+} from "@/services/chat";
 import Navbar from "@/components/layout/Navbar";
 import { UserData, Chat } from "@/types/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -15,7 +19,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { searchUsers } from "@/services/userService";
-import { createChat } from "@/services/chatService";
 import { useNavigate } from "react-router-dom";
 
 interface ChatWithUser extends Chat {
