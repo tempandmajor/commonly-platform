@@ -23,6 +23,7 @@ export interface Podcast {
   tags?: string[];
   creatorId?: string;
   creatorName?: string;
+  isExternal?: boolean;
 }
 
 export interface PodcastCategory {

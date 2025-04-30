@@ -28,7 +28,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
-import { supabase } from "@/integrations/supabase/client";
 
 const CATEGORIES = [
   "All",
@@ -37,6 +36,50 @@ const CATEGORIES = [
   "Accessories",
   "Home",
   "Books",
+];
+
+// Mock data for products
+const MOCK_PRODUCTS: (Product & { images?: ProductImage[] })[] = [
+  {
+    id: "1",
+    merchantId: "merchant1",
+    name: "Wireless Headphones",
+    description: "High quality wireless headphones with noise cancellation",
+    price: 129.99,
+    imageUrl: "https://example.com/headphones.jpg",
+    inventoryCount: 15,
+    isDigital: false,
+    category: "Electronics",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "2",
+    merchantId: "merchant1",
+    name: "Digital Marketing eBook",
+    description: "Comprehensive guide to digital marketing strategies",
+    price: 24.99,
+    imageUrl: "https://example.com/ebook.jpg",
+    inventoryCount: 999,
+    isDigital: true,
+    digitalFileUrl: "https://example.com/files/ebook.pdf",
+    category: "Books",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: "3",
+    merchantId: "merchant2",
+    name: "Premium T-Shirt",
+    description: "100% cotton premium quality t-shirt",
+    price: 29.99,
+    imageUrl: "https://example.com/tshirt.jpg",
+    inventoryCount: 50,
+    isDigital: false,
+    category: "Clothing",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
 ];
 
 const StoreMarketplace: React.FC = () => {
@@ -50,49 +93,29 @@ const StoreMarketplace: React.FC = () => {
   const [inStockOnly, setInStockOnly] = useState(false);
 
   useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        
+        // Use mock data instead of Supabase
+        setTimeout(() => {
+          setProducts(MOCK_PRODUCTS);
+          setLoading(false);
+        }, 500);
+        
+      } catch (error) {
+        console.error("Error fetching products:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load products. Please try again.",
+          variant: "destructive",
+        });
+        setLoading(false);
+      }
+    };
+    
     fetchProducts();
-  }, []);
-
-  const fetchProducts = async () => {
-    try {
-      setLoading(true);
-
-      // Fetch products from Supabase
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('inventory_count', inStockOnly ? '> 0' : '>= 0')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-
-      // For each product, fetch its images
-      const productsWithImages = await Promise.all(data.map(async (product) => {
-        const { data: imageData, error: imageError } = await supabase
-          .from('product_images')
-          .select('*')
-          .eq('product_id', product.id);
-        
-        if (imageError) {
-          console.error('Error fetching product images:', imageError);
-          return { ...product, images: [] };
-        }
-        
-        return { ...product, images: imageData || [] };
-      }));
-
-      setProducts(productsWithImages);
-    } catch (error) {
-      console.error("Error fetching products:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load products. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [toast]);
 
   // Get main image for a product
   const getMainImage = (product: Product & { images?: ProductImage[] }) => {

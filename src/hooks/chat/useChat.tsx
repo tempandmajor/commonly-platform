@@ -13,17 +13,13 @@ export const useChat = () => {
   const { currentUser } = useAuth();
   
   // Get messages and read status
-  const { messages, loading, handleMarkMessagesAsRead } = useMessages();
+  const { messages, loading, handleMarkMessagesAsRead } = useMessages(chatId);
   
   // Get info about the other user
-  const { otherUser, isOnline, lastSeen } = useOtherUser();
+  const { user: otherUser, isOnline, lastSeen } = useOtherUser(chatId);
   
   // Typing status handling
-  const { isOtherUserTyping, handleUserTyping } = useTypingStatus(
-    chatId || "", 
-    currentUser?.uid || "", 
-    otherUser?.uid || ""
-  );
+  const { isOtherUserTyping, handleUserTyping } = useTypingStatus(chatId || "");
   
   // Message sending functionality
   const { 

@@ -67,4 +67,6 @@ export interface MerchantStore {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  logo?: File; // Added for form handling
+  banner?: File; // Added for form handling
 }

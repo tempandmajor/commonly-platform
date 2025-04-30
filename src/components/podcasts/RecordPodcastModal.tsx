@@ -100,9 +100,9 @@ const RecordPodcastModal: React.FC<RecordPodcastModalProps> = ({
           creatorId: currentUser.uid,
           creatorName: userData.displayName || "Unknown Creator",
           type: formData.type,
-          categoryId: formData.category, // Changing to categoryId to match type
+          categoryId: formData.category,
           duration: duration,
-          isExternal: false,
+          published: formData.visibility === "public",
           visibility: formData.visibility,
           tags: formData.tags,
           videoUrl: formData.type === "video" ? recordingUrl : undefined,

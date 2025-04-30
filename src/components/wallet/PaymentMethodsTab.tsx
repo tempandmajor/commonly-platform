@@ -5,7 +5,7 @@ import { PlusCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { PaymentMethod } from "@/types/merchant";
-import { LoadingSpinner } from "@/components/merchant/common/LoadingSpinner";
+import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import PaymentMethodCard from "./payment/PaymentMethodCard";
 import EmptyPaymentMethods from "./payment/EmptyPaymentMethods";
 
@@ -37,42 +37,25 @@ const generateMockPaymentMethods = (userId: string): PaymentMethod[] => {
   ];
 };
 
-const PaymentMethodsTab: React.FC = () => {
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+interface PaymentMethodsTabProps {
+  paymentMethods: PaymentMethod[];
+  refreshPaymentMethods: () => Promise<void>;
+  hasStripeConnect: boolean;
+  onConnectAccount: () => Promise<void>;
+  connectAccountLoading: boolean;
+}
+
+const PaymentMethodsTab: React.FC<PaymentMethodsTabProps> = ({
+  paymentMethods,
+  refreshPaymentMethods,
+  hasStripeConnect,
+  onConnectAccount,
+  connectAccountLoading
+}) => {
+  const [loading, setLoading] = useState<boolean>(false);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const { toast } = useToast();
   const { currentUser } = useAuth();
-
-  useEffect(() => {
-    const fetchPaymentMethods = async () => {
-      if (!currentUser?.uid) return;
-      
-      try {
-        setLoading(true);
-        
-        // Use mock data since we don't have the actual table
-        const mockData = generateMockPaymentMethods(currentUser.uid);
-        
-        // Simulate API delay
-        setTimeout(() => {
-          setPaymentMethods(mockData);
-          setLoading(false);
-        }, 500);
-        
-      } catch (error) {
-        console.error("Error fetching payment methods:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load payment methods",
-          variant: "destructive",
-        });
-        setLoading(false);
-      }
-    };
-
-    fetchPaymentMethods();
-  }, [currentUser, toast]);
 
   const handleSetDefaultMethod = async (id: string) => {
     if (!currentUser?.uid) return;
@@ -84,17 +67,14 @@ const PaymentMethodsTab: React.FC = () => {
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Update local state
-      setPaymentMethods(prev => 
-        prev.map(method => ({
-          ...method,
-          isDefault: method.id === id
-        }))
-      );
+      // This would be handled by the parent component through refreshPaymentMethods
       
       toast({
         title: "Success",
         description: "Default payment method updated",
       });
+      
+      await refreshPaymentMethods();
     } catch (error) {
       console.error("Error setting default payment method:", error);
       toast({
@@ -129,13 +109,14 @@ const PaymentMethodsTab: React.FC = () => {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Update local state
-      setPaymentMethods(prev => prev.filter(method => method.id !== id));
+      // This would be handled by the parent component through refreshPaymentMethods
       
       toast({
         title: "Success",
         description: "Payment method removed",
       });
+      
+      await refreshPaymentMethods();
     } catch (error) {
       console.error("Error removing payment method:", error);
       toast({

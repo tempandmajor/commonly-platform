@@ -16,7 +16,7 @@ export interface Chat {
     senderId: string;
     timestamp: string;
     read: boolean;
-  };
+  } | null;
   createdAt: string;
   updatedAt: string;
 }

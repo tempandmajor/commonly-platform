@@ -28,6 +28,23 @@ import { isUserPro } from "@/services/subscriptionService";
 import SubscriptionTab from "@/components/profile/SubscriptionTab";
 import MerchantStoreTab from "@/components/profile/MerchantStoreTab";
 
+// Define the props for UserList
+interface UserListProps {
+  userId: string;
+  listType: 'followers' | 'following';
+}
+
+// Define the props for MerchantStoreTab
+interface MerchantStoreTabProps {
+  userId: string;
+  merchantStoreId: string;
+}
+
+// Define the props for SubscriptionTab
+interface SubscriptionTabProps {
+  userId: string;
+}
+
 const UserProfile = () => {
   const { userId } = useParams();
   const { currentUser, userData: currentUserData, followUser, unfollowUser, isFollowing } = useAuth();
@@ -236,7 +253,7 @@ const UserProfile = () => {
                 </div>
                 <div className="flex items-center">
                   <Activity className="h-4 w-4 mr-1" />
-                  {profileUser.isOnline ? "Online now" : profileUser.lastSeen ? `Last seen ${new Date(profileUser.lastSeen).toLocaleDateString()}` : "Not recently active"}
+                  {profileUser.recentLogin ? "Online now" : profileUser.createdAt ? `Last seen ${new Date(profileUser.createdAt).toLocaleDateString()}` : "Not recently active"}
                 </div>
               </div>
             </div>
@@ -267,11 +284,11 @@ const UserProfile = () => {
         </TabsContent>
         
         <TabsContent value="followers">
-          <UserList type="followers" userId={profileUser.uid} />
+          <UserList userId={profileUser.uid} listType="followers" />
         </TabsContent>
         
         <TabsContent value="following">
-          <UserList type="following" userId={profileUser.uid} />
+          <UserList userId={profileUser.uid} listType="following" />
         </TabsContent>
         
         {showSubscriptionTab && (
@@ -282,7 +299,7 @@ const UserProfile = () => {
         
         {showMerchantTab && (
           <TabsContent value="store">
-            <MerchantStoreTab userId={profileUser.uid} storeId={profileUser.merchantStoreId || ''} />
+            <MerchantStoreTab userId={profileUser.uid} merchantStoreId={profileUser.merchantStoreId || ''} />
           </TabsContent>
         )}
       </Tabs>

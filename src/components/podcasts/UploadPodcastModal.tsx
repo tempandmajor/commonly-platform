@@ -68,9 +68,9 @@ const UploadPodcastModal: React.FC<UploadPodcastModalProps> = ({
           creatorId: currentUser.uid,
           creatorName: userData.displayName || "Unknown Creator",
           type: data.type,
-          categoryId: data.category, // Changed from category to categoryId
+          categoryId: data.category,
           duration: data.duration,
-          isExternal: true,
+          published: data.visibility === "public",
           visibility: data.visibility,
           tags: data.tags,
         },
