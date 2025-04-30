@@ -14,10 +14,136 @@ import {
   getDoc,
   setDoc,
   serverTimestamp,
-  limit
+  limit,
+  onSnapshot
 } from "firebase/firestore";
-import { Notification, NotificationType } from "@/types/auth";
+import { Notification, NotificationType, NotificationSettings } from "@/types/auth";
 import { v4 as uuidv4 } from 'uuid';
+
+/**
+ * Initialize notifications for a user
+ */
+export const initializeNotifications = async (userId: string): Promise<void> => {
+  // Check if badge count document exists, if not create it
+  const badgeRef = doc(db, "notificationBadges", userId);
+  const badgeDoc = await getDoc(badgeRef);
+  
+  if (!badgeDoc.exists()) {
+    await setDoc(badgeRef, {
+      unreadCount: 0,
+      lastChecked: serverTimestamp()
+    });
+  }
+  
+  // Check if notification settings exist, if not create default ones
+  const settingsRef = doc(db, "notificationSettings", userId);
+  const settingsDoc = await getDoc(settingsRef);
+  
+  if (!settingsDoc.exists()) {
+    await setDoc(settingsRef, getDefaultNotificationSettings());
+  }
+};
+
+/**
+ * Subscribe to notifications in real-time
+ */
+export const subscribeToNotifications = (
+  userId: string,
+  callback: (notifications: Notification[]) => void
+): () => void => {
+  const notificationsRef = collection(db, "notifications");
+  const q = query(
+    notificationsRef,
+    where("userId", "==", userId),
+    orderBy("createdAt", "desc"),
+    limit(10)
+  );
+  
+  const unsubscribe = onSnapshot(q, (snapshot) => {
+    const notifications = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as Notification));
+    
+    callback(notifications);
+  }, (error) => {
+    console.error("Error listening to notifications:", error);
+  });
+  
+  return unsubscribe;
+};
+
+/**
+ * Subscribe to unread notification count in real-time
+ */
+export const subscribeToUnreadNotificationCount = (
+  userId: string,
+  callback: (count: number) => void
+): () => void => {
+  const badgeRef = doc(db, "notificationBadges", userId);
+  
+  const unsubscribe = onSnapshot(badgeRef, (doc) => {
+    if (doc.exists()) {
+      const data = doc.data();
+      callback(data.unreadCount || 0);
+    } else {
+      callback(0);
+    }
+  }, (error) => {
+    console.error("Error listening to notification badge:", error);
+  });
+  
+  return unsubscribe;
+};
+
+/**
+ * Get default notification settings
+ */
+export const getDefaultNotificationSettings = (): NotificationSettings => {
+  return {
+    email: {
+      eventUpdates: true,
+      newFollowers: true,
+      messages: true,
+      earnings: true,
+      marketing: false
+    },
+    push: {
+      eventUpdates: true,
+      newFollowers: true,
+      messages: true,
+      earnings: true
+    },
+    inApp: {
+      eventUpdates: true,
+      newFollowers: true,
+      messages: true,
+      earnings: true
+    }
+  };
+};
+
+/**
+ * Get notification settings for a user
+ */
+export const getNotificationSettings = async (userId: string): Promise<NotificationSettings | null> => {
+  const settingsRef = doc(db, "notificationSettings", userId);
+  const settingsDoc = await getDoc(settingsRef);
+  
+  if (settingsDoc.exists()) {
+    return settingsDoc.data() as NotificationSettings;
+  }
+  
+  return null;
+};
+
+/**
+ * Update notification settings for a user
+ */
+export const updateNotificationSettings = async (userId: string, settings: NotificationSettings): Promise<void> => {
+  const settingsRef = doc(db, "notificationSettings", userId);
+  await setDoc(settingsRef, settings);
+};
 
 /**
  * Create a new notification
