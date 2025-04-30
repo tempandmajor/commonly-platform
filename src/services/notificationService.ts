@@ -1,23 +1,23 @@
-
 import { 
   collection, 
-  doc,
-  getDoc,
-  getDocs, 
   addDoc, 
-  updateDoc, 
+  serverTimestamp, 
   query, 
   where, 
   orderBy, 
+  getDocs, 
   limit, 
-  serverTimestamp, 
+  updateDoc,
+  getDoc,
+  doc,
+  deleteDoc,
   onSnapshot,
-  writeBatch,
-  FirebaseFirestore
+  Firestore
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { getToken, getMessaging, onMessage } from "firebase/messaging";
-import { Notification, NotificationSettings, NotificationType } from "@/types/auth";
+import { NotificationSettings, NotificationType } from "@/types/auth";
+import { Notification } from "@/types/notification";
 
 /**
  * Get notifications for a user
@@ -231,9 +231,7 @@ export const createNotification = async (
  */
 export const deleteNotification = async (notificationId: string): Promise<boolean> => {
   try {
-    await updateDoc(doc(db, "notifications", notificationId), {
-      deleted: true
-    });
+    await deleteDoc(doc(db, "notifications", notificationId));
     
     return true;
   } catch (error) {
