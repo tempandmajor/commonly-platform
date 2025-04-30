@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { UserData } from "@/types/auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,7 +27,7 @@ export const useOtherUser = (userId: string | null) => {
           .from('users')
           .select('id, email, display_name, photo_url, bio, is_online, last_seen')
           .eq('id', userId)
-          .single();
+          .maybeSingle(); // Use maybeSingle instead of single to prevent errors
           
         if (error) {
           console.error("Error fetching user data:", error);
@@ -36,6 +37,7 @@ export const useOtherUser = (userId: string | null) => {
             description: "Could not load user information",
             variant: "destructive"
           });
+          setLoading(false);
           return;
         }
           
@@ -50,7 +52,8 @@ export const useOtherUser = (userId: string | null) => {
           };
           
           setUser(userData);
-          setIsOnline(data.is_online || false);
+          // Use database defaults if values are null
+          setIsOnline(data.is_online ?? false);
           setLastSeen(data.last_seen || null);
           
           // Subscribe to presence changes using Supabase Realtime
@@ -66,7 +69,7 @@ export const useOtherUser = (userId: string | null) => {
                 // Use type assertion to access is_online and last_seen
                 const userData = payload.new as any;
                 if (userData) {
-                  setIsOnline(userData.is_online || false);
+                  setIsOnline(userData.is_online ?? false);
                   setLastSeen(userData.last_seen || null);
                 }
               } catch (err) {
@@ -78,6 +81,14 @@ export const useOtherUser = (userId: string | null) => {
                 console.error("Failed to subscribe to presence channel:", status);
               }
             });
+        } else {
+          // Handle case when user not found
+          console.log("No user found with ID:", userId);
+          toast({
+            title: "User not found",
+            description: "The requested user profile could not be found",
+            variant: "destructive"
+          });
         }
       } catch (err) {
         console.error("Error in useOtherUser hook:", err);

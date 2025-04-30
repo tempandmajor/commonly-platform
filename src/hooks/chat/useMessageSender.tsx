@@ -13,6 +13,7 @@ export const useMessageSender = (otherUserId: string | null) => {
   const [sending, setSending] = useState<boolean>(false);
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Handle sending messages
@@ -27,6 +28,7 @@ export const useMessageSender = (otherUserId: string | null) => {
     if ((!newMessage.trim() && !selectedFile && !voiceBlob) || !currentUser || !otherUserId || !chatId) return;
     
     setSending(true);
+    setError(null);
     
     try {
       if (selectedFile) {
@@ -48,7 +50,7 @@ export const useMessageSender = (otherUserId: string | null) => {
           clearInterval(simulateProgress);
           setUploadProgress(100);
           
-          await sendMessageWithImage(
+          const result = await sendMessage(
             chatId,
             currentUser.uid,
             otherUserId,
@@ -56,10 +58,21 @@ export const useMessageSender = (otherUserId: string | null) => {
             downloadURL
           );
           
+          if (result.error) {
+            setError(result.error);
+            toast({
+              title: "Error",
+              description: "Failed to send message with image",
+              variant: "destructive"
+            });
+          }
+          
           setIsUploading(false);
           setUploadProgress(0);
         } catch (error) {
-          console.error("Error uploading image:", error);
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          console.error("Error uploading image:", errorMessage);
+          setError(errorMessage);
           toast({
             title: "Error",
             description: "Failed to upload image",
@@ -89,18 +102,30 @@ export const useMessageSender = (otherUserId: string | null) => {
           clearInterval(simulateProgress);
           setUploadProgress(100);
           
-          await sendMessageWithVoice(
+          const result = await sendMessage(
             chatId,
             currentUser.uid,
             otherUserId,
             newMessage.trim(),
+            undefined,
             downloadURL
           );
+          
+          if (result.error) {
+            setError(result.error);
+            toast({
+              title: "Error",
+              description: "Failed to send voice message",
+              variant: "destructive"
+            });
+          }
           
           setIsUploading(false);
           setUploadProgress(0);
         } catch (error) {
-          console.error("Error uploading voice:", error);
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          console.error("Error uploading voice:", errorMessage);
+          setError(errorMessage);
           toast({
             title: "Error",
             description: "Failed to upload voice message",
@@ -110,15 +135,26 @@ export const useMessageSender = (otherUserId: string | null) => {
         }
       } else {
         // Send text-only message
-        await sendMessage(
+        const result = await sendMessage(
           chatId,
           currentUser.uid,
           otherUserId,
           newMessage.trim()
         );
+        
+        if (result.error) {
+          setError(result.error);
+          toast({
+            title: "Error",
+            description: "Failed to send message",
+            variant: "destructive"
+          });
+        }
       }
     } catch (error) {
-      console.error("Error sending message:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error("Error sending message:", errorMessage);
+      setError(errorMessage);
       toast({
         title: "Error",
         description: "Failed to send message",
@@ -133,6 +169,7 @@ export const useMessageSender = (otherUserId: string | null) => {
     sending,
     isUploading,
     uploadProgress,
-    handleSendMessage
+    handleSendMessage,
+    error
   };
 };

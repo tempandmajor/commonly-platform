@@ -30,7 +30,8 @@ export const useTypingStatus = () => {
           if (currentUser && chatId) {
             updateTypingStatus(chatId, currentUser.uid, false)
               .catch(err => {
-                console.error("Error resetting typing status:", err);
+                const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+                console.error("Error resetting typing status:", errorMessage);
               });
           }
         }, 5000);
@@ -50,7 +51,7 @@ export const useTypingStatus = () => {
           .from('chats')
           .select('participants')
           .eq('id', chatId)
-          .single();
+          .maybeSingle();  // Use maybeSingle instead of single
           
         if (error) {
           console.error("Error fetching chat data:", error);
@@ -61,6 +62,10 @@ export const useTypingStatus = () => {
         if (chatData) {
           const otherUserId = chatData.participants.find(id => id !== currentUser.uid);
           return otherUserId || null;
+        } else {
+          // Handle case when chat not found
+          console.warn("Chat not found:", chatId);
+          return null;
         }
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
@@ -78,7 +83,7 @@ export const useTypingStatus = () => {
         
         if (!otherUserId) {
           console.warn("Could not find other user ID in chat");
-          return;
+          return null;
         }
         
         // Subscribe to user_typing table for other user
@@ -92,16 +97,19 @@ export const useTypingStatus = () => {
           }, (payload) => {
             try {
               if (payload.new) {
-                setIsOtherUserTyping((payload.new as any).is_typing || false);
+                // Use nullish coalescing to default to false if null
+                setIsOtherUserTyping((payload.new as any).is_typing ?? false);
               }
             } catch (err) {
-              console.error("Error processing typing update:", err);
+              const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+              console.error("Error processing typing update:", errorMessage);
+              setError(`Error processing typing update: ${errorMessage}`);
             }
           })
           .subscribe((status) => {
             if (status !== 'SUBSCRIBED') {
               console.error("Failed to subscribe to typing channel:", status);
-              setError("Failed to monitor typing status");
+              setError(`Failed to monitor typing status: ${status}`);
             }
           });
           
@@ -127,14 +135,16 @@ export const useTypingStatus = () => {
         updateTypingStatus(chatId, currentUser.uid, false)
           .then(() => clearTypingStatus(currentUser.uid))
           .catch(err => {
-            console.error("Error cleaning up typing status on unmount:", err);
+            const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+            console.error("Error cleaning up typing status on unmount:", errorMessage);
           });
       }
       
       // Remove the subscription
       if (channel) {
         supabase.removeChannel(channel).catch(err => {
-          console.error("Error removing typing channel:", err);
+          const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+          console.error("Error removing typing channel:", errorMessage);
         });
       }
     };

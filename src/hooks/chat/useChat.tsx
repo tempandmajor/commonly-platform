@@ -51,12 +51,12 @@ export const useChat = () => {
 
   // Handle and display errors
   useEffect(() => {
-    const combinedError = [messagesError, userError, typingError, sendError]
+    const errors = [messagesError, userError, typingError, sendError]
       .filter(Boolean)
       .join("; ");
       
-    if (combinedError) {
-      setError(combinedError);
+    if (errors) {
+      setError(errors);
       toast({
         title: "Chat Error",
         description: "There was an error in the chat. Please try refreshing the page.",

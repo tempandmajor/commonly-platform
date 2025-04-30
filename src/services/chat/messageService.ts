@@ -20,9 +20,7 @@ export const sendMessage = async (
       return { error: "Message must have text, image, or voice content" };
     }
 
-    // Create the message
-    const timestamp = new Date().toISOString();
-    
+    // Create the message - only specifying necessary fields, let DB defaults handle the rest
     const messageData = {
       chat_id: chatId,
       sender_id: senderId,
@@ -30,8 +28,7 @@ export const sendMessage = async (
       text,
       image_url: imageUrl,
       voice_url: voiceUrl,
-      timestamp,
-      read: false
+      // No need to set 'read' and 'timestamp' as they have defaults in the database
     };
     
     const { data: message, error: messageError } = await supabase
@@ -54,7 +51,7 @@ export const sendMessage = async (
       text: text || (imageUrl ? "📷 Image" : "🎤 Voice message"),
       senderId,
       recipientId,
-      timestamp,
+      timestamp: message.timestamp, // Use timestamp from the created message
       read: false
     };
     
@@ -62,7 +59,7 @@ export const sendMessage = async (
       .from('chats')
       .update({
         last_message: lastMessage,
-        updated_at: timestamp
+        // Let the database handle the updated_at timestamp
       })
       .eq('id', chatId);
       
@@ -133,7 +130,7 @@ export const markMessagesAsRead = async (
       .from('chats')
       .select('last_message')
       .eq('id', chatId)
-      .single();
+      .maybeSingle(); // Use maybeSingle instead of single
     
     if (chatError) {
       console.error("Error fetching chat for read status update:", chatError);
@@ -152,6 +149,7 @@ export const markMessagesAsRead = async (
               ...lastMessage,
               read: true
             }
+            // Let the database handle the updated_at timestamp
           })
           .eq('id', chatId);
         

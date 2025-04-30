@@ -33,13 +33,12 @@ export const createChat = async (participantIds: string[]): Promise<{ id?: strin
       if (exactMatch) return { id: exactMatch.id };
     }
 
-    // Create a new chat
+    // Create a new chat - rely on database defaults where possible
     const { data, error } = await supabase
       .from('chats')
       .insert({
         participants: participantIds,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        // Let DB handle created_at, updated_at with defaults
         last_message: null
       })
       .select()
@@ -129,7 +128,7 @@ export const getUserChats = async (userId: string): Promise<{ chats: ChatWithUse
           text: lastMsg.text || '',
           senderId: lastMsg.senderId || '',
           timestamp: lastMsg.timestamp || '',
-          read: lastMsg.read || false
+          read: lastMsg.read ?? false // Use nullish coalescing to default to false if null
         };
       }
       
@@ -142,9 +141,9 @@ export const getUserChats = async (userId: string): Promise<{ chats: ChatWithUse
         updatedAt: chat.updated_at,
         user: otherUser ? {
           uid: otherUser.uid,
-          displayName: otherUser.displayName,
+          displayName: otherUser.displayName || 'Unknown User',
           photoURL: otherUser.photoURL,
-          email: otherUser.email,
+          email: otherUser.email || '',
           isOnline: false, // Default until we implement presence
           lastSeen: null // Default until we implement presence
         } : null
@@ -173,7 +172,7 @@ export const checkChatExists = async (userIds: string[]): Promise<{ exists: bool
       .select('id')
       .contains('participants', userIds)
       .filter(`array_length(participants, 1) = ${userIds.length}`)
-      .maybeSingle();
+      .maybeSingle(); // Use maybeSingle instead of single
 
     if (error) {
       console.error("Error checking if chat exists:", error);

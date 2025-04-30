@@ -20,13 +20,14 @@ export const updateTypingStatus = async (
     }
     
     // Use direct table operations with the user_typing table
+    // Let database handle default values for updated_at
     const { error } = await supabase
       .from('user_typing')
       .upsert({
         chat_id: chatId,
         user_id: userId,
         is_typing: isTyping,
-        updated_at: new Date().toISOString()
+        // Let the database handle updated_at with default
       });
       
     if (error) {
@@ -74,7 +75,7 @@ export const getTypingStatus = async (chatId: string): Promise<{ data: UserTypin
       };
     }
     
-    return { data: data as UserTyping[] };
+    return { data: data as UserTyping[] || [] };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Exception getting typing status:', errorMessage);
