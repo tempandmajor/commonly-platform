@@ -3,8 +3,11 @@ import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { setupPresenceSystem } from './services/userPresenceService';
 import { useAuth } from './contexts/AuthContext';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 import Messages from './pages/Messages';
+import MessagesList from './pages/MessagesList';
 import { Toaster } from "@/components/ui/toaster";
+import UserProfile from './pages/UserProfile';
 
 function App() {
   const { currentUser, loading } = useAuth();
@@ -27,9 +30,33 @@ function App() {
     <>
       <Router>
         <Routes>
-          <Route path="/messages/:chatId" element={<Messages />} />
-          <Route path="/messages" element={<Messages />} />
-          <Route path="*" element={<Navigate to="/messages" replace />} />
+          {/* Authentication */}
+          <Route path="/login" element={<Navigate to="/" replace />} />
+          
+          {/* Messages */}
+          <Route path="/messages/:chatId" element={
+            <ProtectedRoute>
+              <Messages />
+            </ProtectedRoute>
+          } />
+          <Route path="/messages" element={
+            <ProtectedRoute>
+              <MessagesList />
+            </ProtectedRoute>
+          } />
+          
+          {/* User Profile */}
+          <Route path="/profile/:userId" element={<UserProfile />} />
+          
+          {/* Default Route */}
+          <Route path="/" element={
+            currentUser ? 
+            <Navigate to="/messages" replace /> : 
+            <Navigate to="/login" replace />
+          } />
+          
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
       <Toaster />

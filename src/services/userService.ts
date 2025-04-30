@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { UserData } from "@/types/auth";
 
@@ -11,7 +12,22 @@ export const getUserProfile = async (userId: string): Promise<UserData | null> =
     
     if (error) throw error;
     
-    return data as UserData;
+    return {
+      uid: data.id,
+      email: data.email || '',
+      displayName: data.display_name || '',
+      photoURL: data.photo_url || null,
+      bio: data.bio || null,
+      isAdmin: data.is_admin || false,
+      isPro: data.is_pro || false,
+      isMerchant: data.is_merchant || false,
+      isOnline: data.is_online || false,
+      lastSeen: data.last_seen || null,
+      followerCount: data.follower_count || 0,
+      followingCount: data.following_count || 0,
+      merchantStoreId: data.merchant_store_id || null,
+      createdAt: data.created_at
+    };
   } catch (error) {
     console.error("Error fetching user profile:", error);
     return null;
@@ -64,8 +80,10 @@ export const getUserFollowing = async (userId: string) => {
   }
 };
 
+// Create user_follows table for follow functionality
 export const followUser = async (followerId: string, followingId: string) => {
   try {
+    // Check if this follow relationship already exists
     const { data: existingFollow, error: checkError } = await supabase
       .from('user_follows')
       .select('*')
@@ -92,7 +110,7 @@ export const followUser = async (followerId: string, followingId: string) => {
         .insert({
           follower_id: followerId,
           following_id: followingId,
-          created_at: new Date()
+          created_at: new Date().toISOString()
         });
       
       if (error) throw error;
@@ -106,9 +124,16 @@ export const followUser = async (followerId: string, followingId: string) => {
 
 export const updateUserProfile = async (userId: string, profileData: Partial<UserData>) => {
   try {
+    // Transform from our app model to database model
+    const dbData: any = {};
+    
+    if ('displayName' in profileData) dbData.display_name = profileData.displayName;
+    if ('photoURL' in profileData) dbData.photo_url = profileData.photoURL;
+    if ('bio' in profileData) dbData.bio = profileData.bio;
+    
     const { error } = await supabase
       .from('users')
-      .update(profileData)
+      .update(dbData)
       .eq('id', userId);
     
     if (error) throw error;
@@ -120,7 +145,7 @@ export const updateUserProfile = async (userId: string, profileData: Partial<Use
   }
 };
 
-export const searchUsers = async (query: string) => {
+export const searchUsers = async (query: string): Promise<UserData[]> => {
   try {
     const { data, error } = await supabase
       .from('users')
@@ -138,6 +163,10 @@ export const searchUsers = async (query: string) => {
       isAdmin: user.is_admin,
       isPro: user.is_pro,
       isMerchant: user.is_merchant,
+      bio: user.bio,
+      isOnline: user.is_online,
+      lastSeen: user.last_seen,
+      createdAt: user.created_at,
     }));
   } catch (error) {
     console.error("Error searching users:", error);
@@ -188,83 +217,7 @@ export const isUserPro = async (userId: string): Promise<boolean> => {
  */
 export const toggleFollowUser = async (currentUserId: string, targetUserId: string): Promise<boolean> => {
   try {
-    // Get current following array for the current user
-    const { data: currentUserData, error: currentUserError } = await supabase
-      .from('users')
-      .select('following, followers')
-      .eq('id', currentUserId)
-      .single();
-    
-    if (currentUserError) throw currentUserError;
-    
-    // Get current followers array for the target user
-    const { data: targetUserData, error: targetUserError } = await supabase
-      .from('users')
-      .select('followers')
-      .eq('id', targetUserId)
-      .single();
-    
-    if (targetUserError) throw targetUserError;
-    
-    const currentUserFollowing = currentUserData?.following || [];
-    const targetUserFollowers = targetUserData?.followers || [];
-    
-    // Check if already following
-    const isFollowing = currentUserFollowing.includes(targetUserId);
-    
-    if (isFollowing) {
-      // Unfollow: Remove targetUserId from currentUser's following array
-      const updatedFollowing = currentUserFollowing.filter(id => id !== targetUserId);
-      
-      // Remove currentUserId from targetUser's followers array
-      const updatedFollowers = targetUserFollowers.filter(id => id !== currentUserId);
-      
-      // Update current user
-      await supabase
-        .from('users')
-        .update({ 
-          following: updatedFollowing,
-          following_count: updatedFollowing.length
-        })
-        .eq('id', currentUserId);
-      
-      // Update target user
-      await supabase
-        .from('users')
-        .update({
-          followers: updatedFollowers,
-          follower_count: updatedFollowers.length
-        })
-        .eq('id', targetUserId);
-      
-      return false; // No longer following
-    } else {
-      // Follow: Add targetUserId to currentUser's following array
-      const updatedFollowing = [...currentUserFollowing, targetUserId];
-      
-      // Add currentUserId to targetUser's followers array
-      const updatedFollowers = [...targetUserFollowers, currentUserId];
-      
-      // Update current user
-      await supabase
-        .from('users')
-        .update({ 
-          following: updatedFollowing,
-          following_count: updatedFollowing.length
-        })
-        .eq('id', currentUserId);
-      
-      // Update target user
-      await supabase
-        .from('users')
-        .update({
-          followers: updatedFollowers,
-          follower_count: updatedFollowers.length
-        })
-        .eq('id', targetUserId);
-      
-      return true; // Now following
-    }
+    return await followUser(currentUserId, targetUserId).then(result => result.followed);
   } catch (error) {
     console.error("Error toggling follow status:", error);
     throw error;

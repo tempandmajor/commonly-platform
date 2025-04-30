@@ -74,7 +74,7 @@ export interface PodcastSession {
   description?: string;
   participants: string[];
   duration?: number;
-  status: 'recording' | 'processing' | 'completed' | 'failed';
+  status: 'recording' | 'processing' | 'completed' | 'failed' | 'scheduled';
   recordingUrl?: string;
   createdAt?: string;
 }

@@ -155,7 +155,7 @@ const MerchantStoreTab: React.FC<MerchantStoreTabProps> = ({ userId, merchantSto
               <h3 className="font-semibold text-lg">Store Information</h3>
               <ul className="mt-1 space-y-2">
                 <li><span className="text-muted-foreground">Created:</span> {new Date(store.createdAt).toLocaleDateString()}</li>
-                <li><span className="text-muted-foreground">Status:</span> {store.isActive ? "Active" : "Inactive"}</li>
+                <li><span className="text-muted-foreground">Status:</span> {store.active ? "Active" : "Inactive"}</li>
                 <li><span className="text-muted-foreground">Products:</span> {products.length}</li>
               </ul>
             </div>

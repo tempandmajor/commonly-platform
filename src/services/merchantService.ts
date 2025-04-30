@@ -1,291 +1,201 @@
 
-import { 
-  doc, 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  getDoc, 
-  getDocs, 
-  query, 
-  where, 
-  orderBy, 
-  limit, 
-  deleteDoc,
-  Timestamp
-} from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
-import { db, storage } from "@/lib/firebase";
-import { MerchantStore, Product, UserData } from "@/types/auth";
+import { supabase } from "@/integrations/supabase/client";
+import { MerchantStore, Product } from "@/types/auth";
+import { toast } from "@/hooks/use-toast";
 
-// Create a new merchant store
-export const createMerchantStore = async (userId: string, storeData: Partial<MerchantStore>): Promise<string> => {
-  try {
-    const storeRef = collection(db, "merchantStores");
-    const newStore: Partial<MerchantStore> = {
-      ownerId: userId,
-      name: storeData.name || "My Store",
-      description: storeData.description || "",
-      logoUrl: storeData.logoUrl || null,
-      bannerUrl: storeData.bannerUrl || null,
-      createdAt: Timestamp.now().toDate().toISOString(),
-      updatedAt: Timestamp.now().toDate().toISOString(),
-      isActive: true
-    };
-    
-    const storeDoc = await addDoc(storeRef, newStore);
-    
-    // Update user record to mark as merchant
-    const userRef = doc(db, "users", userId);
-    await updateDoc(userRef, {
-      isMerchant: true,
-      merchantStoreId: storeDoc.id
-    });
-    
-    return storeDoc.id;
-  } catch (error) {
-    console.error("Error creating merchant store:", error);
-    throw error;
-  }
-};
-
-// Get a merchant store by ID
 export const getMerchantStore = async (storeId: string): Promise<MerchantStore | null> => {
   try {
-    const storeDoc = await getDoc(doc(db, "merchantStores", storeId));
+    const { data, error } = await supabase
+      .from('merchant_stores')
+      .select('*')
+      .eq('id', storeId)
+      .single();
+
+    if (error) throw error;
     
-    if (storeDoc.exists()) {
-      return { id: storeDoc.id, ...storeDoc.data() } as MerchantStore;
-    }
-    
-    return null;
+    // Map from database structure to our application type
+    return {
+      id: data.id,
+      name: data.name,
+      description: data.description,
+      userId: data.user_id,
+      logoUrl: data.logo_url,
+      bannerUrl: data.banner_url,
+      active: data.active,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at
+    };
   } catch (error) {
     console.error("Error fetching merchant store:", error);
-    throw error;
-  }
-};
-
-// Get store by owner ID
-export const getMerchantStoreByOwner = async (userId: string): Promise<MerchantStore | null> => {
-  try {
-    const q = query(
-      collection(db, "merchantStores"),
-      where("ownerId", "==", userId),
-      limit(1)
-    );
-    
-    const storesSnap = await getDocs(q);
-    
-    if (!storesSnap.empty) {
-      const storeDoc = storesSnap.docs[0];
-      return { id: storeDoc.id, ...storeDoc.data() } as MerchantStore;
-    }
-    
     return null;
-  } catch (error) {
-    console.error("Error fetching merchant store by owner:", error);
-    throw error;
   }
 };
 
-// Update merchant store
-export const updateMerchantStore = async (storeId: string, data: Partial<MerchantStore>): Promise<void> => {
+export const updateMerchantStore = async (storeId: string, storeData: Partial<MerchantStore>, logo?: File, banner?: File): Promise<MerchantStore | null> => {
   try {
-    const storeRef = doc(db, "merchantStores", storeId);
-    await updateDoc(storeRef, {
-      ...data,
-      updatedAt: Timestamp.now().toDate().toISOString()
-    });
-  } catch (error) {
-    console.error("Error updating merchant store:", error);
-    throw error;
-  }
-};
-
-// Upload store logo
-export const uploadStoreLogo = async (storeId: string, file: File): Promise<string> => {
-  try {
-    const logoRef = ref(storage, `store-logos/${storeId}`);
-    await uploadBytes(logoRef, file);
-    const downloadURL = await getDownloadURL(logoRef);
-    
-    const storeRef = doc(db, "merchantStores", storeId);
-    await updateDoc(storeRef, { 
-      logoUrl: downloadURL,
-      updatedAt: Timestamp.now().toDate().toISOString()
-    });
-    
-    return downloadURL;
-  } catch (error) {
-    console.error("Error uploading store logo:", error);
-    throw error;
-  }
-};
-
-// Upload store banner
-export const uploadStoreBanner = async (storeId: string, file: File): Promise<string> => {
-  try {
-    const bannerRef = ref(storage, `store-banners/${storeId}`);
-    await uploadBytes(bannerRef, file);
-    const downloadURL = await getDownloadURL(bannerRef);
-    
-    const storeRef = doc(db, "merchantStores", storeId);
-    await updateDoc(storeRef, { 
-      bannerUrl: downloadURL,
-      updatedAt: Timestamp.now().toDate().toISOString()
-    });
-    
-    return downloadURL;
-  } catch (error) {
-    console.error("Error uploading store banner:", error);
-    throw error;
-  }
-};
-
-// Create a new product
-export const createProduct = async (storeId: string, productData: Partial<Product>): Promise<string> => {
-  try {
-    const productRef = collection(db, "products");
-    const newProduct: Partial<Product> = {
-      storeId,
-      name: productData.name || "New Product",
-      description: productData.description || "",
-      price: productData.price || 0,
-      imageUrl: productData.imageUrl || [],
-      productCategory: productData.productCategory || "Other",
-      inventoryCount: productData.inventoryCount || 0,
-      isDigital: productData.isDigital || false,
-      isActive: productData.isActive || true,
-      createdAt: Timestamp.now().toDate().toISOString(),
-      updatedAt: Timestamp.now().toDate().toISOString()
+    // Map from our application type to database structure
+    const dbData: any = {
+      name: storeData.name,
+      description: storeData.description,
+      active: storeData.active,
     };
     
-    const productDoc = await addDoc(productRef, newProduct);
-    return productDoc.id;
-  } catch (error) {
-    console.error("Error creating product:", error);
-    throw error;
-  }
-};
+    // Update the store
+    const { data, error } = await supabase
+      .from('merchant_stores')
+      .update(dbData)
+      .eq('id', storeId)
+      .select()
+      .single();
 
-// Get a product by ID
-export const getProduct = async (productId: string): Promise<Product | null> => {
-  try {
-    const productDoc = await getDoc(doc(db, "products", productId));
-    
-    if (productDoc.exists()) {
-      return { id: productDoc.id, ...productDoc.data() } as Product;
-    }
-    
+    if (error) throw error;
+
+    // Map response back to our application type
+    return {
+      id: data.id,
+      name: data.name,
+      description: data.description,
+      userId: data.user_id,
+      logoUrl: data.logo_url,
+      bannerUrl: data.banner_url,
+      active: data.active,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at
+    };
+  } catch (error) {
+    console.error("Error updating merchant store:", error);
     return null;
-  } catch (error) {
-    console.error("Error fetching product:", error);
-    throw error;
   }
 };
 
-// Get products by store ID
 export const getProductsByStore = async (storeId: string): Promise<Product[]> => {
   try {
-    const q = query(
-      collection(db, "products"),
-      where("storeId", "==", storeId),
-      where("isActive", "==", true),
-      orderBy("createdAt", "desc")
-    );
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('merchant_id', storeId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
     
-    const productsSnap = await getDocs(q);
-    const products: Product[] = [];
-    
-    productsSnap.forEach((doc) => {
-      products.push({ id: doc.id, ...doc.data() } as Product);
-    });
-    
-    return products;
+    return data.map(item => ({
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      price: item.price,
+      merchantId: item.merchant_id,
+      imageUrl: item.image_url,
+      isDigital: item.is_digital,
+      digitalFileUrl: item.digital_file_url,
+      inventoryCount: item.inventory_count,
+      createdAt: item.created_at,
+      updatedAt: item.updated_at
+    }));
   } catch (error) {
-    console.error("Error fetching products by store:", error);
-    throw error;
+    console.error("Error fetching products:", error);
+    return [];
   }
 };
 
-// Search products in marketplace
-export const searchProducts = async (
-  searchTerm: string = "", 
-  category: string = "", 
-  limitCount: number = 20
-): Promise<Product[]> => {
+export const createProduct = async (productData: Partial<Product>, imageFile?: File): Promise<Product | null> => {
   try {
-    let q = query(
-      collection(db, "products"),
-      where("isActive", "==", true)
-    );
+    // Map from our application type to database structure
+    const dbData: any = {
+      name: productData.name,
+      description: productData.description,
+      price: productData.price,
+      merchant_id: productData.merchantId,
+      is_digital: productData.isDigital || false,
+      inventory_count: productData.inventoryCount || 0
+    };
     
-    if (category) {
-      q = query(q, where("productCategory", "==", category));
-    }
-    
-    q = query(q, orderBy("createdAt", "desc"), limit(limitCount));
-    
-    const productsSnap = await getDocs(q);
-    let products: Product[] = [];
-    
-    productsSnap.forEach((doc) => {
-      products.push({ id: doc.id, ...doc.data() } as Product);
-    });
-    
-    // Filter by search term if provided (client-side filtering since Firebase doesn't support text search)
-    if (searchTerm) {
-      const lowerSearchTerm = searchTerm.toLowerCase();
-      products = products.filter(product => 
-        product.name.toLowerCase().includes(lowerSearchTerm) || 
-        product.description.toLowerCase().includes(lowerSearchTerm)
-      );
-    }
-    
-    return products;
+    // Insert the product
+    const { data, error } = await supabase
+      .from('products')
+      .insert(dbData)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Map response back to our application type
+    return {
+      id: data.id,
+      name: data.name,
+      description: data.description,
+      price: data.price,
+      merchantId: data.merchant_id,
+      imageUrl: data.image_url,
+      isDigital: data.is_digital,
+      digitalFileUrl: data.digital_file_url,
+      inventoryCount: data.inventory_count,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at
+    };
   } catch (error) {
-    console.error("Error searching products:", error);
-    throw error;
+    console.error("Error creating product:", error);
+    return null;
   }
 };
 
-// Upload product image
-export const uploadProductImage = async (productId: string, file: File): Promise<string> => {
+export const updateProduct = async (productId: string, productData: Partial<Product>, imageFile?: File): Promise<Product | null> => {
   try {
-    const imageRef = ref(storage, `product-images/${productId}/${file.name}`);
-    await uploadBytes(imageRef, file);
-    const downloadURL = await getDownloadURL(imageRef);
+    // Map from our application type to database structure
+    const dbData: any = {
+      name: productData.name,
+      description: productData.description,
+      price: productData.price,
+      is_digital: productData.isDigital,
+      inventory_count: productData.inventoryCount
+    };
     
-    return downloadURL;
-  } catch (error) {
-    console.error("Error uploading product image:", error);
-    throw error;
-  }
-};
+    // Update the product
+    const { data, error } = await supabase
+      .from('products')
+      .update(dbData)
+      .eq('id', productId)
+      .select()
+      .single();
 
-// Update product
-export const updateProduct = async (productId: string, data: Partial<Product>): Promise<void> => {
-  try {
-    const productRef = doc(db, "products", productId);
-    await updateDoc(productRef, {
-      ...data,
-      updatedAt: Timestamp.now().toDate().toISOString()
-    });
+    if (error) throw error;
+    
+    // Map response back to our application type
+    return {
+      id: data.id,
+      name: data.name,
+      description: data.description,
+      price: data.price,
+      merchantId: data.merchant_id,
+      imageUrl: data.image_url,
+      isDigital: data.is_digital,
+      digitalFileUrl: data.digital_file_url,
+      inventoryCount: data.inventory_count,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at
+    };
   } catch (error) {
     console.error("Error updating product:", error);
-    throw error;
+    return null;
   }
 };
 
-// Delete a product (soft delete)
-export const deleteProduct = async (productId: string): Promise<void> => {
+export const deleteProduct = async (productId: string): Promise<boolean> => {
   try {
-    const productRef = doc(db, "products", productId);
-    await updateDoc(productRef, {
-      isActive: false,
-      updatedAt: Timestamp.now().toDate().toISOString()
-    });
+    const { error } = await supabase
+      .from('products')
+      .delete()
+      .eq('id', productId);
+
+    if (error) throw error;
+    
+    return true;
   } catch (error) {
     console.error("Error deleting product:", error);
-    throw error;
+    toast({
+      title: "Error",
+      description: "Failed to delete product",
+      variant: "destructive"
+    });
+    return false;
   }
 };
