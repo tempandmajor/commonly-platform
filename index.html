@@ -18,14 +18,17 @@
     <meta name="twitter:description" content="Discover and create community events with EventRoom - your platform for meaningful connections and experiences." />
     <meta name="twitter:image" content="/lovable-uploads/13680d9d-b642-446a-9311-a7707d98a527.png" />
     
-    <!-- Google Maps JavaScript API - Add your key in ENV or use a placeholder -->
+    <!-- Google Maps JavaScript API - Add your key or use conditional initialization -->
     <script>
-      // Prevent Google Maps API errors when key isn't available
+      // Initialize Google Maps API safely or handle missing key
       window.initMap = function() {
-        console.log("Map initialized with placeholder");
+        // Safe initialization that won't crash if key isn't available
+        console.log("Map initialized");
       };
     </script>
-    <script src="https://maps.googleapis.com/maps/api/js?key=REPLACE_WITH_ACTUAL_KEY&libraries=places&callback=initMap" async defer></script>
+    <script async defer
+      src="https://maps.googleapis.com/maps/api/js?libraries=places&callback=initMap">
+    </script>
   </head>
 
   <body>

@@ -18,7 +18,7 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);  // Add this loading state
 
   const authActions = useAuthActions(currentUser, userData, setUserData);
 
@@ -314,7 +314,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const value: AuthContextType = {
     currentUser,
     userData,
-    loading,
+    loading,  // Add loading to the context value
     followUser,
     unfollowUser,
     isFollowing,

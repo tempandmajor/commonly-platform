@@ -31,46 +31,21 @@ import Messages from './pages/Messages';
 import MessagesList from './pages/MessagesList';
 import StoreMarketplace from './pages/StoreMarketplace';
 import AddProduct from './pages/AddProduct';
-import { initializeNotifications } from './services/notificationService';
-import { setupPresenceSystem } from './services/userPresenceService';
 import NotificationSettings from './pages/NotificationSettings';
 import { useToast } from './components/ui/use-toast';
 
 const AppContent = () => {
-  const { currentUser, isLoading: authLoading } = useAuth();
+  const { currentUser, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [isServiceInitialized, setIsServiceInitialized] = useState(false);
   
-  // Initialize notifications and presence system when user logs in
+  // Initialize services when user logs in
   useEffect(() => {
     if (authLoading) return;
     
-    if (currentUser?.uid) {
-      // Initialize notifications
-      const initializeServices = async () => {
-        try {
-          await initializeNotifications(currentUser.uid);
-          const cleanupPresence = setupPresenceSystem(currentUser.uid);
-          setIsServiceInitialized(true);
-          return () => {
-            cleanupPresence();
-          };
-        } catch (error) {
-          console.error("Failed to initialize services:", error);
-          toast({
-            title: "Connection Issue",
-            description: "Failed to initialize all services. Some features may not work properly.",
-            variant: "destructive",
-          });
-          setIsServiceInitialized(true); // Still mark as initialized to prevent blocking the UI
-        }
-      };
-      
-      initializeServices();
-    } else {
-      // No user, but we're done loading
-      setIsServiceInitialized(true);
-    }
+    // No Firebase services to initialize, so just mark as initialized
+    setIsServiceInitialized(true);
+    
   }, [currentUser, authLoading, toast]);
   
   // Show app-wide loading state

@@ -41,16 +41,17 @@ const Podcasts = () => {
       setLoading(true);
       setError(null);
       
+      // Using Supabase functions instead of Firebase
       const result = await getPodcasts(12, reset ? null : lastDoc, selectedCategory, searchTerm);
       
       if (reset) {
-        setPodcasts(result.podcasts);
+        setPodcasts(result.podcasts || []);
       } else {
-        setPodcasts(prev => [...prev, ...result.podcasts]);
+        setPodcasts(prev => [...prev, ...(result.podcasts || [])]);
       }
       
       setLastDoc(result.lastDoc);
-      setHasMore(result.podcasts.length === 12);
+      setHasMore(result.podcasts?.length === 12);
     } catch (error: any) {
       console.error("Error fetching podcasts:", error);
       setError(error?.message || "Failed to load podcasts. Please try again later.");
@@ -68,7 +69,7 @@ const Podcasts = () => {
   const fetchCategories = async () => {
     try {
       const categoriesData = await getPodcastCategories();
-      setCategories(categoriesData);
+      setCategories(categoriesData || []);
     } catch (error: any) {
       console.error("Error fetching categories:", error);
       toast({
@@ -94,9 +95,13 @@ const Podcasts = () => {
   useEffect(() => {
     // Load data in sequence to avoid overwhelming the connection
     const loadInitialData = async () => {
-      await fetchCategories();
-      await fetchPodcasts(true);
-      await checkProStatus();
+      try {
+        await fetchCategories();
+        await fetchPodcasts(true);
+        await checkProStatus();
+      } catch (error) {
+        console.error("Error during initial data loading:", error);
+      }
     };
     
     loadInitialData();
