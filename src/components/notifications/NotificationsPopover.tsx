@@ -5,13 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Bell } from "lucide-react";
 import NotificationsList from "./NotificationsList";
 import { useAuth } from "@/contexts/AuthContext";
-import { 
-  getUserNotifications,
-  subscribeToNotifications,
-  subscribeToUnreadNotificationCount,
-  markAllNotificationsAsRead
-} from "@/services/notificationService";
-import { Notification } from "@/types/auth";
+import { supabase } from "@/integrations/supabase/client";
+import { Notification } from "@/types/notification";
 
 const NotificationsPopover: React.FC = () => {
   const { currentUser } = useAuth();
@@ -27,8 +22,34 @@ const NotificationsPopover: React.FC = () => {
     const fetchNotifications = async () => {
       setLoading(true);
       try {
-        const notificationData = await getUserNotifications(currentUser.uid);
+        const { data, error } = await supabase
+          .from('notifications')
+          .select('*')
+          .eq('user_id', currentUser.uid)
+          .order('created_at', { ascending: false })
+          .limit(10);
+        
+        if (error) throw error;
+        
+        // Map to our notification type
+        const notificationData: Notification[] = data.map(item => ({
+          id: item.id,
+          userId: item.user_id,
+          type: item.type,
+          title: item.title,
+          body: item.body,
+          imageUrl: item.image_url,
+          actionUrl: item.action_url,
+          read: item.read,
+          createdAt: item.created_at,
+          data: item.data
+        }));
+        
         setNotifications(notificationData);
+        
+        // Count unread notifications
+        const unreadItems = notificationData.filter(notification => !notification.read);
+        setUnreadCount(unreadItems.length);
       } catch (error) {
         console.error("Error fetching notifications:", error);
       } finally {
@@ -38,25 +59,35 @@ const NotificationsPopover: React.FC = () => {
     
     fetchNotifications();
     
-    // Subscribe to real-time updates
-    const unsubscribeNotifications = subscribeToNotifications(
-      currentUser.uid,
-      (updatedNotifications) => {
-        setNotifications(updatedNotifications);
-      }
-    );
-    
-    // Subscribe to unread count
-    const unsubscribeCount = subscribeToUnreadNotificationCount(
-      currentUser.uid,
-      (count) => {
-        setUnreadCount(count);
-      }
-    );
+    // Subscribe to real-time notifications
+    const channel = supabase
+      .channel('public:notifications')
+      .on('postgres_changes', {
+        event: 'INSERT', 
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${currentUser.uid}`,
+      }, (payload) => {
+        const newNotification: Notification = {
+          id: payload.new.id,
+          userId: payload.new.user_id,
+          type: payload.new.type,
+          title: payload.new.title,
+          body: payload.new.body,
+          imageUrl: payload.new.image_url,
+          actionUrl: payload.new.action_url,
+          read: payload.new.read,
+          createdAt: payload.new.created_at,
+          data: payload.new.data
+        };
+        
+        setNotifications(prev => [newNotification, ...prev]);
+        setUnreadCount(prev => prev + 1);
+      })
+      .subscribe();
     
     return () => {
-      unsubscribeNotifications();
-      unsubscribeCount();
+      supabase.removeChannel(channel);
     };
   }, [currentUser]);
   
@@ -65,19 +96,32 @@ const NotificationsPopover: React.FC = () => {
     
     // Mark all as read when closing the popover
     if (!isOpen && unreadCount > 0 && currentUser?.uid) {
-      markAllNotificationsAsRead(currentUser.uid).catch(console.error);
-      setUnreadCount(0);
+      // We don't await this as it's not critical for the UI flow
+      markAllAsRead();
     }
   };
   
-  const handleMarkAllAsRead = () => {
-    setUnreadCount(0);
-    setNotifications(prevNotifications => 
-      prevNotifications.map(notification => ({
-        ...notification,
-        read: true
-      }))
-    );
+  const markAllAsRead = async () => {
+    if (!currentUser?.uid) return;
+    
+    try {
+      await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('user_id', currentUser.uid)
+        .eq('read', false);
+      
+      setNotifications(prevNotifications => 
+        prevNotifications.map(notification => ({
+          ...notification,
+          read: true
+        }))
+      );
+      
+      setUnreadCount(0);
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+    }
   };
   
   return (
@@ -100,7 +144,7 @@ const NotificationsPopover: React.FC = () => {
           <NotificationsList 
             notifications={notifications}
             userId={currentUser.uid}
-            onMarkAllAsRead={handleMarkAllAsRead}
+            onMarkAllAsRead={markAllAsRead}
             loading={loading}
           />
         )}
@@ -111,7 +155,7 @@ const NotificationsPopover: React.FC = () => {
             asChild 
             className="text-xs text-gray-500"
           >
-            <a href="/settings">Manage Notifications</a>
+            <a href="/settings/notifications">Manage Notifications</a>
           </Button>
         </div>
       </PopoverContent>

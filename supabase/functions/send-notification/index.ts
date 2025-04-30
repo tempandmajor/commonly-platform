@@ -47,18 +47,26 @@ serve(async (req) => {
     }
     
     // Create notification
-    const notificationId = await supabase.rpc('create_notification', {
-      user_id_param: userId,
-      type_param: type,
-      title_param: title,
-      body_param: body || "",
-      image_url_param: imageUrl || null,
-      action_url_param: actionUrl || null,
-      data_param: data || null
-    });
+    const { data: notification, error } = await supabase
+      .from('notifications')
+      .insert([{
+        user_id: userId,
+        type,
+        title,
+        body: body || "",
+        image_url: imageUrl || null,
+        action_url: actionUrl || null,
+        data: data || null,
+        read: false,
+        created_at: new Date().toISOString()
+      }])
+      .select()
+      .single();
+    
+    if (error) throw error;
     
     return new Response(
-      JSON.stringify({ success: true, notificationId }),
+      JSON.stringify({ success: true, notificationId: notification.id }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

@@ -1,18 +1,41 @@
 
 import React, { useState, useEffect } from "react";
-import { Product, ProductImage } from "@/types/product";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { PlusCircle, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AddProductModal from "./AddProductModal";
 
+interface ProductImage {
+  id: string;
+  productId: string;
+  url: string;
+  isMainImage: boolean;
+  createdAt: string;
+}
+
+interface Product {
+  id: string;
+  merchantId: string;
+  name: string;
+  description?: string;
+  price: number;
+  imageUrl?: string;
+  inventoryCount: number;
+  isDigital: boolean;
+  digitalFileUrl?: string;
+  category?: string;
+  images?: ProductImage[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface StoreProductsProps {
   storeId: string;
 }
 
 const StoreProducts: React.FC<StoreProductsProps> = ({ storeId }) => {
-  const [products, setProducts] = useState<(Product & { images?: ProductImage[] })[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState<boolean>(false);
   const { toast } = useToast();
@@ -36,40 +59,21 @@ const StoreProducts: React.FC<StoreProductsProps> = ({ storeId }) => {
 
       if (productsError) throw productsError;
 
-      // Fetch product images for each product
-      const productIds = productsData.map((product) => product.id);
-      const { data: imagesData, error: imagesError } = await supabase
-        .from('product_images')
-        .select('*')
-        .in('product_id', productIds);
-
-      if (imagesError) throw imagesError;
-
       // Map products to our interface structure
-      const mappedProducts = productsData.map((product) => {
-        const productImages = imagesData.filter((img) => img.product_id === product.id);
-        return {
-          id: product.id,
-          merchantId: product.merchant_id,
-          name: product.name,
-          description: product.description || undefined,
-          price: product.price,
-          imageUrl: product.image_url,
-          inventoryCount: product.inventory_count,
-          isDigital: product.is_digital,
-          digitalFileUrl: product.digital_file_url,
-          createdAt: product.created_at,
-          updatedAt: product.updated_at,
-          category: product.category,
-          images: productImages.map((img) => ({
-            id: img.id,
-            productId: img.product_id,
-            url: img.url,
-            isMainImage: img.is_main_image,
-            createdAt: img.created_at
-          }))
-        };
-      });
+      const mappedProducts: Product[] = productsData.map((product) => ({
+        id: product.id,
+        merchantId: product.merchant_id,
+        name: product.name,
+        description: product.description || undefined,
+        price: product.price,
+        imageUrl: product.image_url,
+        inventoryCount: product.inventory_count,
+        isDigital: product.is_digital,
+        digitalFileUrl: product.digital_file_url,
+        createdAt: product.created_at,
+        updatedAt: product.updated_at,
+        category: product.category
+      }));
 
       setProducts(mappedProducts);
     } catch (error) {

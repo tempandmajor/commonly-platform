@@ -1,362 +1,314 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { Podcast, PodcastCategory, PodcastComment } from "@/types/podcast";
+import { v4 as uuidv4 } from "uuid";
+import { Podcast, PodcastComment } from "@/types/podcast";
 
-export const getPodcasts = async (
-  limit: number = 12,
-  lastId: string | null = null,
-  category: string | null = null,
-  searchTerm: string | null = null
-): Promise<{ podcasts: Podcast[]; lastId: string | null }> => {
-  try {
-    let query = supabase
-      .from('podcasts')
-      .select('*, users!podcasts_user_id_fkey(display_name, photo_url)')
-      .eq('published', true)
-      .order('created_at', { ascending: false });
-      
-    if (category) {
-      query = query.eq('category_id', category);
-    }
-    
-    if (searchTerm) {
-      query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
-    }
-    
-    if (lastId) {
-      const { data: lastPodcast } = await supabase
-        .from('podcasts')
-        .select('created_at')
-        .eq('id', lastId)
-        .single();
-      
-      if (lastPodcast) {
-        query = query.lt('created_at', lastPodcast.created_at);
-      }
-    }
-    
-    query = query.limit(limit);
-    
-    const { data, error } = await query;
-    
-    if (error) throw error;
-    
-    const formattedPodcasts: Podcast[] = data.map(podcast => ({
-      id: podcast.id,
-      title: podcast.title,
-      description: podcast.description || undefined,
-      imageUrl: podcast.image_url || undefined,
-      audioUrl: podcast.audio_url || undefined,
-      duration: podcast.duration || 0,
-      createdAt: podcast.created_at,
-      userId: podcast.user_id,
-      userName: podcast.users?.display_name || "Unknown",
-      userPhotoUrl: podcast.users?.photo_url || undefined,
-      categoryId: podcast.category_id || undefined,
-      likeCount: podcast.like_count || 0,
-      viewCount: podcast.view_count || 0,
-      shareCount: podcast.share_count || 0,
-      published: podcast.published || false,
-    }));
-    
-    const newLastId = data.length > 0 ? data[data.length - 1].id : null;
-    
-    return { podcasts: formattedPodcasts, lastId: newLastId };
-  } catch (error) {
-    console.error("Error fetching podcasts:", error);
-    throw error;
-  }
+// Get a single podcast by ID
+export const getPodcast = async (id: string): Promise<Podcast> => {
+  const { data, error } = await supabase
+    .from("podcasts")
+    .select("*, users(display_name, photo_url)")
+    .eq("id", id)
+    .single();
+
+  if (error) throw error;
+
+  // Increment listen count
+  await supabase.rpc("increment_podcast_listens", { podcast_id_param: id });
+
+  return {
+    id: data.id,
+    title: data.title,
+    description: data.description || undefined,
+    imageUrl: data.image_url,
+    audioUrl: data.audio_url,
+    videoUrl: data.video_url,
+    thumbnailUrl: data.thumbnailUrl,
+    duration: data.duration,
+    createdAt: data.created_at,
+    userId: data.user_id,
+    userName: data.users?.display_name,
+    userPhotoUrl: data.users?.photo_url,
+    categoryId: data.category_id,
+    likeCount: data.like_count,
+    viewCount: data.view_count,
+    shareCount: data.share_count,
+    published: data.published,
+    type: data.type || "audio",
+    visibility: data.visibility || "public",
+    listens: data.listens,
+    tags: data.tags,
+    creatorId: data.user_id,
+    creatorName: data.users?.display_name,
+  };
 };
 
-export const getPodcast = async (podcastId: string): Promise<Podcast> => {
-  try {
-    const { data, error } = await supabase
-      .from('podcasts')
-      .select('*, users!podcasts_user_id_fkey(display_name, photo_url)')
-      .eq('id', podcastId)
-      .single();
-      
-    if (error) throw error;
-    if (!data) throw new Error('Podcast not found');
-    
-    const podcast: Podcast = {
-      id: data.id,
-      title: data.title,
-      description: data.description || undefined,
-      imageUrl: data.image_url || undefined,
-      audioUrl: data.audio_url || undefined,
-      duration: data.duration || 0,
-      createdAt: data.created_at,
-      userId: data.user_id,
-      userName: data.users?.display_name || "Unknown",
-      userPhotoUrl: data.users?.photo_url || undefined,
-      categoryId: data.category_id || undefined,
-      likeCount: data.like_count || 0,
-      viewCount: data.view_count || 0,
-      shareCount: data.share_count || 0,
-      published: data.published || false,
-    };
-    
-    return podcast;
-  } catch (error) {
-    console.error("Error fetching podcast:", error);
-    throw error;
-  }
+// Get podcasts by creator
+export const getPodcastsByCreator = async (creatorId: string): Promise<Podcast[]> => {
+  const { data, error } = await supabase
+    .from("podcasts")
+    .select("*")
+    .eq("user_id", creatorId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  return data.map((podcast) => ({
+    id: podcast.id,
+    title: podcast.title,
+    description: podcast.description,
+    imageUrl: podcast.image_url,
+    audioUrl: podcast.audio_url,
+    videoUrl: podcast.video_url,
+    thumbnailUrl: podcast.thumbnailUrl,
+    duration: podcast.duration,
+    createdAt: podcast.created_at,
+    userId: podcast.user_id,
+    categoryId: podcast.category_id,
+    likeCount: podcast.like_count,
+    viewCount: podcast.view_count,
+    shareCount: podcast.share_count,
+    published: podcast.published,
+    type: podcast.type || "audio",
+    visibility: podcast.visibility || "public",
+    listens: podcast.listens,
+    tags: podcast.tags,
+  }));
 };
 
-export const getPodcastsByCreator = async (userId: string): Promise<Podcast[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('podcasts')
-      .select('*, users!podcasts_user_id_fkey(display_name, photo_url)')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-      
-    if (error) throw error;
-    
-    const podcasts: Podcast[] = data.map(podcast => ({
-      id: podcast.id,
-      title: podcast.title,
-      description: podcast.description || undefined,
-      imageUrl: podcast.image_url || undefined,
-      audioUrl: podcast.audio_url || undefined,
-      duration: podcast.duration || 0,
-      createdAt: podcast.created_at,
-      userId: podcast.user_id,
-      userName: podcast.users?.display_name || "Unknown",
-      userPhotoUrl: podcast.users?.photo_url || undefined,
-      categoryId: podcast.category_id || undefined,
-      likeCount: podcast.like_count || 0,
-      viewCount: podcast.view_count || 0,
-      shareCount: podcast.share_count || 0,
-      published: podcast.published || false,
-    }));
-    
-    return podcasts;
-  } catch (error) {
-    console.error("Error fetching creator podcasts:", error);
-    throw error;
-  }
-};
-
-export const getPodcastCategories = async (): Promise<PodcastCategory[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('podcast_categories')
-      .select('*')
-      .order('name', { ascending: true });
-      
-    if (error) throw error;
-    
-    return data.map(category => ({
-      id: category.id,
-      name: category.name,
-      description: category.description || undefined,
-      icon: category.icon || undefined,
-    }));
-  } catch (error) {
-    console.error("Error fetching podcast categories:", error);
-    throw error;
-  }
-};
-
-export const uploadPodcast = async (
-  userId: string,
+// Create a new podcast
+export const createPodcast = async (
   podcastData: Partial<Podcast>,
-  audioFile: File,
+  audioFile?: File,
   imageFile?: File
 ): Promise<Podcast> => {
-  try {
-    // Upload audio file
-    const audioFileName = `podcasts/${userId}/${Date.now()}-${audioFile.name.replace(/\s+/g, '-')}`;
-    const { error: audioUploadError, data: audioData } = await supabase.storage
-      .from('media')
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  if (!userId) throw new Error("User not authenticated");
+
+  let audioUrl = podcastData.audioUrl;
+  let imageUrl = podcastData.imageUrl;
+
+  // Upload audio file if provided
+  if (audioFile) {
+    const audioFileName = `${userId}/${uuidv4()}-${audioFile.name}`;
+    const { data: audioData, error: audioError } = await supabase.storage
+      .from("podcasts")
       .upload(audioFileName, audioFile);
-    
-    if (audioUploadError) throw audioUploadError;
-    
-    // Get audio URL
-    const { data: audioUrlData } = supabase.storage
-      .from('media')
+
+    if (audioError) throw audioError;
+
+    // Get public URL for audio
+    const { data: audioUrlData } = await supabase.storage
+      .from("podcasts")
       .getPublicUrl(audioFileName);
-    
-    const audioUrl = audioUrlData.publicUrl;
-    
-    // Upload image if provided
-    let imageUrl;
-    if (imageFile) {
-      const imageFileName = `podcasts/${userId}/${Date.now()}-${imageFile.name.replace(/\s+/g, '-')}`;
-      const { error: imageUploadError } = await supabase.storage
-        .from('media')
-        .upload(imageFileName, imageFile);
-      
-      if (imageUploadError) throw imageUploadError;
-      
-      const { data: imageUrlData } = supabase.storage
-        .from('media')
-        .getPublicUrl(imageFileName);
-      
-      imageUrl = imageUrlData.publicUrl;
-    }
-    
-    // Insert podcast record
-    const { data: podcast, error: insertError } = await supabase
-      .from('podcasts')
-      .insert({
-        title: podcastData.title || 'Untitled Podcast',
+
+    audioUrl = audioUrlData.publicUrl;
+  }
+
+  // Upload image file if provided
+  if (imageFile) {
+    const imageFileName = `images/${userId}/${uuidv4()}-${imageFile.name}`;
+    const { data: imageData, error: imageError } = await supabase.storage
+      .from("podcasts")
+      .upload(imageFileName, imageFile);
+
+    if (imageError) throw imageError;
+
+    // Get public URL for image
+    const { data: imageUrlData } = await supabase.storage
+      .from("podcasts")
+      .getPublicUrl(imageFileName);
+
+    imageUrl = imageUrlData.publicUrl;
+  }
+
+  // Create podcast record in database
+  const { data, error } = await supabase
+    .from("podcasts")
+    .insert([
+      {
+        title: podcastData.title,
         description: podcastData.description,
-        image_url: imageUrl,
         audio_url: audioUrl,
+        video_url: podcastData.videoUrl,
+        image_url: imageUrl,
+        duration: podcastData.duration || 0,
         user_id: userId,
         category_id: podcastData.categoryId,
-        duration: podcastData.duration || 0,
-        published: podcastData.published ?? false,
-      })
-      .select()
-      .single();
-    
-    if (insertError) throw insertError;
-    
-    return {
-      id: podcast.id,
-      title: podcast.title,
-      description: podcast.description || undefined,
-      imageUrl: podcast.image_url || undefined,
-      audioUrl: podcast.audio_url || undefined,
-      duration: podcast.duration || 0,
-      createdAt: podcast.created_at,
-      userId: podcast.user_id,
-      categoryId: podcast.category_id || undefined,
-      published: podcast.published || false,
-      likeCount: 0,
-      viewCount: 0,
-      shareCount: 0,
-    };
-  } catch (error) {
-    console.error("Error uploading podcast:", error);
-    throw error;
-  }
+        published: podcastData.published || false,
+        type: podcastData.type || "audio",
+        visibility: podcastData.visibility || "public",
+        tags: podcastData.tags || [],
+      },
+    ])
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  return {
+    id: data.id,
+    title: data.title,
+    description: data.description,
+    imageUrl: data.image_url,
+    audioUrl: data.audio_url,
+    videoUrl: data.video_url,
+    thumbnailUrl: data.thumbnailUrl,
+    duration: data.duration,
+    createdAt: data.created_at,
+    userId: data.user_id,
+    categoryId: data.category_id,
+    likeCount: data.like_count || 0,
+    viewCount: data.view_count || 0,
+    shareCount: data.share_count || 0,
+    published: data.published,
+    type: data.type || "audio",
+    visibility: data.visibility || "public",
+    listens: data.listens || 0,
+    tags: data.tags,
+  };
 };
 
+// Create podcast session (for live recording)
+export const createPodcastSession = async (title: string): Promise<{ sessionId: string }> => {
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  if (!userId) throw new Error("User not authenticated");
+  
+  // Create a unique session ID
+  const sessionId = uuidv4();
+  
+  // Save session to database
+  const { error } = await supabase
+    .from("podcast_sessions")
+    .insert([{
+      id: sessionId,
+      user_id: userId,
+      title,
+      status: "created",
+      created_at: new Date().toISOString()
+    }]);
+  
+  if (error) throw error;
+  
+  return { sessionId };
+};
+
+// Get podcast comments
 export const getPodcastComments = async (podcastId: string): Promise<PodcastComment[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('podcast_comments')
-      .select('*, users!podcast_comments_user_id_fkey(display_name, photo_url)')
-      .eq('podcast_id', podcastId)
-      .order('created_at', { ascending: false });
-    
-    if (error) throw error;
-    
-    return data.map(comment => ({
-      id: comment.id,
-      podcastId: comment.podcast_id,
-      userId: comment.user_id,
-      userName: comment.users?.display_name || "Anonymous",
-      userPhotoUrl: comment.users?.photo_url,
-      content: comment.content,
-      createdAt: comment.created_at,
-      updatedAt: comment.updated_at,
-    }));
-  } catch (error) {
-    console.error("Error fetching podcast comments:", error);
-    throw error;
-  }
+  const { data, error } = await supabase
+    .from("podcast_comments")
+    .select("*, users(display_name, photo_url)")
+    .eq("podcast_id", podcastId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  return data.map((comment) => ({
+    id: comment.id,
+    podcastId: comment.podcast_id,
+    userId: comment.user_id,
+    userName: comment.users?.display_name || "Anonymous",
+    userPhotoUrl: comment.users?.photo_url,
+    content: comment.content,
+    createdAt: comment.created_at,
+    updatedAt: comment.updated_at,
+  }));
 };
 
+// Add a comment to a podcast
 export const addPodcastComment = async (
   podcastId: string,
-  userId: string,
   content: string
 ): Promise<PodcastComment> => {
-  try {
-    const { data, error } = await supabase
-      .from('podcast_comments')
-      .insert({
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  if (!userId) throw new Error("User not authenticated");
+
+  const { data, error } = await supabase
+    .from("podcast_comments")
+    .insert([
+      {
         podcast_id: podcastId,
         user_id: userId,
         content,
-      })
-      .select('*, users!podcast_comments_user_id_fkey(display_name, photo_url)')
-      .single();
-    
-    if (error) throw error;
-    
-    return {
-      id: data.id,
-      podcastId: data.podcast_id,
-      userId: data.user_id,
-      userName: data.users?.display_name || "Anonymous",
-      userPhotoUrl: data.users?.photo_url,
-      content: data.content,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at,
-    };
-  } catch (error) {
-    console.error("Error adding podcast comment:", error);
-    throw error;
+      },
+    ])
+    .select("*, users(display_name, photo_url)")
+    .single();
+
+  if (error) throw error;
+
+  return {
+    id: data.id,
+    podcastId: data.podcast_id,
+    userId: data.user_id,
+    userName: data.users?.display_name || "Anonymous",
+    userPhotoUrl: data.users?.photo_url,
+    content: data.content,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
+};
+
+// Like or unlike a podcast
+export const togglePodcastLike = async (podcastId: string): Promise<{ liked: boolean }> => {
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  if (!userId) throw new Error("User not authenticated");
+
+  // Check if already liked
+  const { data: existingLike, error: checkError } = await supabase
+    .from("podcast_likes")
+    .select()
+    .eq("podcast_id", podcastId)
+    .eq("user_id", userId)
+    .single();
+
+  if (checkError && checkError.code !== "PGRST116") {
+    throw checkError;
+  }
+
+  if (existingLike) {
+    // Unlike
+    const { error: unlikeError } = await supabase
+      .from("podcast_likes")
+      .delete()
+      .eq("podcast_id", podcastId)
+      .eq("user_id", userId);
+
+    if (unlikeError) throw unlikeError;
+
+    return { liked: false };
+  } else {
+    // Like
+    const { error: likeError } = await supabase
+      .from("podcast_likes")
+      .insert([
+        {
+          podcast_id: podcastId,
+          user_id: userId,
+        },
+      ]);
+
+    if (likeError) throw likeError;
+
+    return { liked: true };
   }
 };
 
-export const incrementPodcastViews = async (podcastId: string): Promise<void> => {
-  try {
-    await supabase.rpc('increment_podcast_listens', { podcast_id_param: podcastId });
-  } catch (error) {
-    console.error("Error incrementing podcast views:", error);
-    throw error;
-  }
-};
+// Check if user has liked a podcast
+export const checkPodcastLike = async (podcastId: string): Promise<boolean> => {
+  const userId = (await supabase.auth.getUser()).data.user?.id;
+  if (!userId) return false;
 
-export const togglePodcastLike = async (podcastId: string, userId: string): Promise<{ liked: boolean }> => {
-  try {
-    // Check if the user already likes the podcast
-    const { data: existingLike, error: checkError } = await supabase
-      .from('podcast_likes')
-      .select()
-      .eq('podcast_id', podcastId)
-      .eq('user_id', userId)
-      .single();
-    
-    if (checkError && checkError.code !== 'PGRST116') {
-      // PGRST116 is the error code for "no rows returned"
-      throw checkError;
-    }
-    
-    if (existingLike) {
-      // Unlike if already liked
-      const { error: deleteError } = await supabase
-        .from('podcast_likes')
-        .delete()
-        .eq('podcast_id', podcastId)
-        .eq('user_id', userId);
-      
-      if (deleteError) throw deleteError;
-      
-      // Decrement like count
-      await supabase
-        .from('podcasts')
-        .update({ like_count: supabase.rpc('decrement', { row_id: podcastId }) })
-        .eq('id', podcastId);
-      
-      return { liked: false };
-    } else {
-      // Like if not already liked
-      const { error: insertError } = await supabase
-        .from('podcast_likes')
-        .insert({ podcast_id: podcastId, user_id: userId });
-      
-      if (insertError) throw insertError;
-      
-      // Increment like count
-      await supabase
-        .from('podcasts')
-        .update({ like_count: supabase.rpc('increment', { row_id: podcastId }) })
-        .eq('id', podcastId);
-      
-      return { liked: true };
-    }
-  } catch (error) {
-    console.error("Error toggling podcast like:", error);
-    throw error;
+  const { data, error } = await supabase
+    .from("podcast_likes")
+    .select()
+    .eq("podcast_id", podcastId)
+    .eq("user_id", userId)
+    .single();
+
+  if (error && error.code !== "PGRST116") {
+    console.error("Error checking podcast like:", error);
   }
+
+  return !!data;
 };

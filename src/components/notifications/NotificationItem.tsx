@@ -1,4 +1,3 @@
-
 import React from "react";
 import { formatDistanceToNow } from "date-fns";
 import { Link } from "react-router-dom";
@@ -11,7 +10,7 @@ import {
   UserPlus,
   Calendar,
   Music,
-  Dollar,
+  DollarSign,
   Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -41,7 +40,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
         return <Music size={16} className="text-indigo-500" />;
       case "referral_earnings":
       case "sponsorship":
-        return <Dollar size={16} className="text-amber-500" />;
+        return <DollarSign size={16} className="text-amber-500" />;
       default:
         return <BellRing size={16} className="text-gray-500" />;
     }
