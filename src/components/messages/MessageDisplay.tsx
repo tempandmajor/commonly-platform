@@ -1,8 +1,10 @@
 
-import React, { useRef, useEffect } from "react";
+import React, { useEffect } from "react";
 import { ChatMessage } from "@/types/chat"; 
 import { UserData } from "@/types/auth";
-import MessageItem from "@/components/messages/MessageItem";
+import MessageList from "./MessageList";
+import EmptyState from "./EmptyState";
+import LoadingSpinner from "./LoadingSpinner";
 
 interface MessageDisplayProps {
   messages: ChatMessage[];
@@ -17,13 +19,6 @@ const MessageDisplay: React.FC<MessageDisplayProps> = ({
   otherUser,
   onMessagesRead
 }) => {
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  
-  // Auto-scroll to the bottom when new messages arrive
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
   // Mark messages as read when displayed
   useEffect(() => {
     if (messages.length > 0 && !loading && onMessagesRead) {
@@ -34,24 +29,11 @@ const MessageDisplay: React.FC<MessageDisplayProps> = ({
   return (
     <div className="p-4 h-[calc(100vh-250px)] overflow-y-auto bg-gray-50">
       {loading ? (
-        <div className="flex justify-center items-center h-full">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-        </div>
+        <LoadingSpinner />
       ) : messages.length === 0 ? (
-        <div className="flex justify-center items-center h-full text-gray-500">
-          No messages yet. Start the conversation!
-        </div>
+        <EmptyState />
       ) : (
-        <>
-          {messages.map((message) => (
-            <MessageItem 
-              key={message.id} 
-              message={message} 
-              otherUser={otherUser || undefined} 
-            />
-          ))}
-          <div ref={messagesEndRef} />
-        </>
+        <MessageList messages={messages} otherUser={otherUser} />
       )}
     </div>
   );
