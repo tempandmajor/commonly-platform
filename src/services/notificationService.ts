@@ -18,6 +18,7 @@ import { db } from "@/lib/firebase";
 import { getToken, getMessaging, onMessage } from "firebase/messaging";
 import { NotificationSettings, NotificationType } from "@/types/auth";
 import { Notification } from "@/types/notification";
+import { getUserProfile } from "./userService";
 
 /**
  * Get notifications for a user

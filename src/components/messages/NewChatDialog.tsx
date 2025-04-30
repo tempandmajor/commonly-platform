@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React from "react";
 import { 
   Dialog, 
   DialogContent, 
@@ -14,7 +14,7 @@ import { UserData } from "@/types/auth";
 interface NewChatDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSearch: (query: string) => Promise<void>;
+  onSearch: () => Promise<void>;  // Changed this to match the implementation
   onStartChat: (userId: string) => Promise<void>;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
@@ -48,7 +48,7 @@ const NewChatDialog: React.FC<NewChatDialogProps> = ({
               onKeyDown={(e) => e.key === 'Enter' && onSearch()}
             />
             <Button 
-              onClick={onSearch} 
+              onClick={() => onSearch()}  // Fixed this to make it a function call
               disabled={searching || !searchQuery.trim()}
             >
               Search

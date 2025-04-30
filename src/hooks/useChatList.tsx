@@ -6,6 +6,7 @@ import { getUserChats, subscribeToChats } from "@/services/chat";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { ChatWithUser } from "@/types/chat";
+import { UserData } from "@/types/auth"; // Add this import to fix type error
 
 export const useChatList = () => {
   const { currentUser } = useAuth();
