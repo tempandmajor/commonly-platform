@@ -107,6 +107,7 @@ const NotificationsPopover = () => {
           notifications={notifications}
           loading={loading}
           onMarkAllAsRead={handleMarkAllAsRead}
+          userId={currentUser.uid}
         />
       </PopoverContent>
     </Popover>

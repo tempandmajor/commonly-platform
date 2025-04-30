@@ -8,11 +8,7 @@ export * from './messageService';
 export * from './typingService';
 export * from './unreadService';
 
-// Re-export the legacy functions for backward compatibility
-// This ensures that any code still importing from '@/services/chat' works
-export * from "../chat";
-
-// Add these functions back which are being used but were missing
+// Add these functions which are being used but were missing
 export const sendMessageWithImage = async (
   chatId: string,
   senderId: string,

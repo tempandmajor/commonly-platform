@@ -41,27 +41,6 @@ const NotificationsList: React.FC<NotificationsListProps> = ({
     }
   };
 
-  const handleMarkAllAsReadClick = async () => {
-    try {
-      const { error } = await supabase
-        .from('notifications')
-        .update({ read: true })
-        .eq('user_id', userId)
-        .eq('read', false);
-
-      if (error) throw error;
-
-      onMarkAllAsRead();
-    } catch (error) {
-      console.error("Error marking all notifications as read:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update notifications status",
-        variant: "destructive",
-      });
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex justify-center items-center py-8">
@@ -78,7 +57,7 @@ const NotificationsList: React.FC<NotificationsListProps> = ({
             <Button 
               variant="ghost" 
               size="sm" 
-              onClick={handleMarkAllAsReadClick}
+              onClick={onMarkAllAsRead}
               className="text-xs text-blue-500 hover:text-blue-700"
             >
               Mark all as read

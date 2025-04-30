@@ -1,46 +1,85 @@
 
-import { db } from "@/lib/firebase";
-import { 
-  collection, 
-  addDoc, 
-  query, 
-  where, 
-  orderBy, 
-  getDocs,
-  doc,
-  updateDoc,
-  Timestamp,
-  deleteDoc,
-  getDoc,
-  setDoc,
-  serverTimestamp,
-  limit,
-  onSnapshot
-} from "firebase/firestore";
-import { Notification, NotificationType, NotificationSettings } from "@/types/auth";
-import { v4 as uuidv4 } from 'uuid';
+import { supabase } from "@/integrations/supabase/client";
+import { Notification, SupabaseNotification, mapSupabaseNotification } from "@/types/notification";
 
 /**
- * Initialize notifications for a user
+ * Get all notifications for a user
  */
-export const initializeNotifications = async (userId: string): Promise<void> => {
-  // Check if badge count document exists, if not create it
-  const badgeRef = doc(db, "notificationBadges", userId);
-  const badgeDoc = await getDoc(badgeRef);
-  
-  if (!badgeDoc.exists()) {
-    await setDoc(badgeRef, {
-      unreadCount: 0,
-      lastChecked: serverTimestamp()
-    });
+export const getUserNotifications = async (userId: string, limit: number = 20): Promise<Notification[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    
+    if (error) throw error;
+    
+    // Convert from Supabase format to our app format
+    return (data as SupabaseNotification[]).map(mapSupabaseNotification);
+  } catch (error) {
+    console.error('Error getting user notifications:', error);
+    return [];
   }
-  
-  // Check if notification settings exist, if not create default ones
-  const settingsRef = doc(db, "notificationSettings", userId);
-  const settingsDoc = await getDoc(settingsRef);
-  
-  if (!settingsDoc.exists()) {
-    await setDoc(settingsRef, getDefaultNotificationSettings());
+};
+
+/**
+ * Get notifications (alias for getUserNotifications)
+ */
+export const getNotifications = getUserNotifications;
+
+/**
+ * Mark all notifications as read for a user
+ */
+export const markAllAsRead = async (userId: string): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('user_id', userId)
+      .eq('read', false);
+    
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error marking all notifications as read:', error);
+  }
+};
+
+/**
+ * Get count of unread notifications for a user
+ */
+export const getUnreadCount = async (userId: string): Promise<number> => {
+  try {
+    const { count, error } = await supabase
+      .from('notifications')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('read', false);
+    
+    if (error) throw error;
+    
+    return count || 0;
+  } catch (error) {
+    console.error('Error counting unread notifications:', error);
+    return 0;
+  }
+};
+
+/**
+ * Mark a specific notification as read
+ */
+export const markNotificationAsRead = async (notificationId: string, userId: string): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('id', notificationId)
+      .eq('user_id', userId);
+    
+    if (error) throw error;
+  } catch (error) {
+    console.error('Error marking notification as read:', error);
   }
 };
 
@@ -50,27 +89,28 @@ export const initializeNotifications = async (userId: string): Promise<void> => 
 export const subscribeToNotifications = (
   userId: string,
   callback: (notifications: Notification[]) => void
-): () => void => {
-  const notificationsRef = collection(db, "notifications");
-  const q = query(
-    notificationsRef,
-    where("userId", "==", userId),
-    orderBy("createdAt", "desc"),
-    limit(10)
-  );
-  
-  const unsubscribe = onSnapshot(q, (snapshot) => {
-    const notifications = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    } as Notification));
-    
-    callback(notifications);
-  }, (error) => {
-    console.error("Error listening to notifications:", error);
-  });
-  
-  return unsubscribe;
+): (() => void) => {
+  const channel = supabase
+    .channel('public:notifications')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${userId}`
+      },
+      async () => {
+        // When any change happens, fetch updated notifications
+        const notifications = await getUserNotifications(userId);
+        callback(notifications);
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
 };
 
 /**
@@ -79,70 +119,28 @@ export const subscribeToNotifications = (
 export const subscribeToUnreadCount = (
   userId: string,
   callback: (count: number) => void
-): () => void => {
-  const badgeRef = doc(db, "notificationBadges", userId);
-  
-  const unsubscribe = onSnapshot(badgeRef, (doc) => {
-    if (doc.exists()) {
-      const data = doc.data();
-      callback(data.unreadCount || 0);
-    } else {
-      callback(0);
-    }
-  }, (error) => {
-    console.error("Error listening to notification badge:", error);
-  });
-  
-  return unsubscribe;
-};
+): (() => void) => {
+  const channel = supabase
+    .channel('public:notifications:unread')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${userId}`
+      },
+      async () => {
+        // When any change happens, fetch updated unread count
+        const count = await getUnreadCount(userId);
+        callback(count);
+      }
+    )
+    .subscribe();
 
-/**
- * Get default notification settings
- */
-export const getDefaultNotificationSettings = (): NotificationSettings => {
-  return {
-    email: {
-      eventUpdates: true,
-      newFollowers: true,
-      messages: true,
-      earnings: true,
-      marketing: false
-    },
-    push: {
-      eventUpdates: true,
-      newFollowers: true,
-      messages: true,
-      earnings: true
-    },
-    inApp: {
-      eventUpdates: true,
-      newFollowers: true,
-      messages: true,
-      earnings: true
-    }
+  return () => {
+    supabase.removeChannel(channel);
   };
-};
-
-/**
- * Get notification settings for a user
- */
-export const getNotificationSettings = async (userId: string): Promise<NotificationSettings | null> => {
-  const settingsRef = doc(db, "notificationSettings", userId);
-  const settingsDoc = await getDoc(settingsRef);
-  
-  if (settingsDoc.exists()) {
-    return settingsDoc.data() as NotificationSettings;
-  }
-  
-  return null;
-};
-
-/**
- * Update notification settings for a user
- */
-export const updateNotificationSettings = async (userId: string, settings: NotificationSettings): Promise<void> => {
-  const settingsRef = doc(db, "notificationSettings", userId);
-  await setDoc(settingsRef, settings);
 };
 
 /**
@@ -150,168 +148,35 @@ export const updateNotificationSettings = async (userId: string, settings: Notif
  */
 export const createNotification = async (
   userId: string,
-  type: NotificationType,
+  type: Notification['type'],
   title: string,
-  message: string,
-  data: Record<string, any> = {},
-  image?: string
-): Promise<string> => {
-  // Create the notification
-  const notificationData = {
-    userId,
-    type,
-    title,
-    message,
-    read: false,
-    data,
-    createdAt: serverTimestamp(),
-    ...(image && { image })
-  };
-
-  // Save to Firestore
-  const docRef = await addDoc(collection(db, "notifications"), notificationData);
-  
-  // Update notification badge count
-  await updateBadgeCount(userId);
-
-  return docRef.id;
-};
-
-/**
- * Get all notifications for a user
- */
-export const getNotifications = async (userId: string, count: number = 10): Promise<Notification[]> => {
-  return getUserNotifications(userId, count);
-};
-
-/**
- * Get all notifications for a user (alias for getNotifications)
- */
-export const getUserNotifications = async (userId: string, count: number = 10): Promise<Notification[]> => {
-  const notificationsRef = collection(db, "notifications");
-  const q = query(
-    notificationsRef,
-    where("userId", "==", userId),
-    orderBy("createdAt", "desc"),
-    limit(count)
-  );
-  
-  const querySnapshot = await getDocs(q);
-  
-  return querySnapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  } as Notification));
-};
-
-/**
- * Mark a notification as read
- */
-export const markNotificationAsRead = async (notificationId: string): Promise<void> => {
-  const notificationRef = doc(db, "notifications", notificationId);
-  await updateDoc(notificationRef, { read: true });
-  
-  // Get the notification to find the user ID
-  const notificationDoc = await getDoc(notificationRef);
-  if (notificationDoc.exists()) {
-    const userId = notificationDoc.data().userId;
-    if (userId) {
-      await updateBadgeCount(userId);
-    }
-  }
-};
-
-/**
- * Mark all notifications as read for a user
- */
-export const markAllAsRead = async (userId: string): Promise<void> => {
-  const notificationsRef = collection(db, "notifications");
-  const q = query(
-    notificationsRef,
-    where("userId", "==", userId),
-    where("read", "==", false)
-  );
-  
-  const querySnapshot = await getDocs(q);
-  
-  const updatePromises = querySnapshot.docs.map(doc => 
-    updateDoc(doc.ref, { read: true })
-  );
-  
-  await Promise.all(updatePromises);
-  
-  // Reset badge count
-  await setDoc(doc(db, "notificationBadges", userId), {
-    unreadCount: 0,
-    lastChecked: serverTimestamp()
-  });
-};
-
-/**
- * Get unread notification count
- */
-export const getUnreadCount = async (userId: string): Promise<number> => {
-  const notificationsRef = collection(db, "notifications");
-  const q = query(
-    notificationsRef,
-    where("userId", "==", userId),
-    where("read", "==", false),
-    limit(100)
-  );
-  
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.size;
-};
-
-/**
- * Delete a notification
- */
-export const deleteNotification = async (notificationId: string): Promise<void> => {
-  const notificationRef = doc(db, "notifications", notificationId);
-  
-  // Get the notification to find the user ID before deleting
-  const notificationDoc = await getDoc(notificationRef);
-  if (notificationDoc.exists()) {
-    const userId = notificationDoc.data().userId;
+  body: string,
+  imageUrl?: string,
+  actionUrl?: string,
+  data?: Record<string, any>
+): Promise<string | null> => {
+  try {
+    const { data: notificationData, error } = await supabase
+      .from('notifications')
+      .insert({
+        user_id: userId,
+        type,
+        title,
+        body,
+        image_url: imageUrl || null,
+        action_url: actionUrl || null,
+        read: false,
+        created_at: new Date().toISOString(),
+        data: data || null
+      })
+      .select()
+      .single();
     
-    // Delete the notification
-    await deleteDoc(notificationRef);
+    if (error) throw error;
     
-    // Update badge count if we have a userId
-    if (userId) {
-      await updateBadgeCount(userId);
-    }
-  } else {
-    await deleteDoc(notificationRef);
+    return notificationData.id;
+  } catch (error) {
+    console.error('Error creating notification:', error);
+    return null;
   }
-};
-
-/**
- * Update the notification badge count
- */
-const updateBadgeCount = async (userId: string): Promise<void> => {
-  const count = await getUnreadCount(userId);
-  
-  await setDoc(doc(db, "notificationBadges", userId), {
-    unreadCount: count,
-    lastChecked: serverTimestamp()
-  });
-};
-
-/**
- * Get the notification badge data
- */
-export const getNotificationBadge = async (userId: string): Promise<{ unreadCount: number; lastChecked: Date | null }> => {
-  const badgeRef = doc(db, "notificationBadges", userId);
-  const badgeDoc = await getDoc(badgeRef);
-  
-  if (!badgeDoc.exists()) {
-    return { unreadCount: 0, lastChecked: null };
-  }
-  
-  const data = badgeDoc.data();
-  return {
-    unreadCount: data.unreadCount || 0,
-    lastChecked: data.lastChecked ? new Date(data.lastChecked.toDate()) : null
-  };
 };

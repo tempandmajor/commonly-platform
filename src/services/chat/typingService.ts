@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { UserTyping } from "@/types/chat";
+import { UserTyping } from "@/types/supabase";
 
 /**
  * Update user typing status in a chat

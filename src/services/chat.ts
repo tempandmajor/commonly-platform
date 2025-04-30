@@ -1,21 +1,8 @@
 
 // Re-export all functions from the chat module
-export * from './chat/index';
+export * from './chat/chatService';
+export * from './chat/messageService';
+export * from './chat/typingService';
+export * from './chat/unreadService';
 
-// Add these functions here for backward compatibility
-// in case they were directly imported from this file
-import { 
-  createChat, getUserChats, sendMessage, 
-  markMessagesAsRead, getMessages, getUnreadCount,
-  getTotalUnreadCount, updateMessageReadStatus,
-  updateTypingStatus, getTypingStatus,
-  sendMessageWithImage, sendMessageWithVoice
-} from './chat/index';
-
-export {
-  createChat, getUserChats, sendMessage, 
-  markMessagesAsRead, getMessages, getUnreadCount,
-  getTotalUnreadCount, updateMessageReadStatus,
-  updateTypingStatus, getTypingStatus,
-  sendMessageWithImage, sendMessageWithVoice
-};
+// No need to import and re-export individually as we're already exporting everything
