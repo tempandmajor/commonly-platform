@@ -38,7 +38,7 @@ const Navbar = () => {
               >
                 <path d="M12 1.5C6.2 1.5 1.5 6.2 1.5 12S6.2 22.5 12 22.5 22.5 17.8 22.5 12 17.8 1.5 12 1.5zM12 17c-2.8 0-5-2.2-5-5s2.2-5 5-5 5 2.2 5 5-2.2 5-5 5z" />
               </svg>
-              <span>Commonly</span>
+              <span>EventRoom</span>
             </Link>
           </div>
           
