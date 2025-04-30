@@ -31,14 +31,11 @@ const Navbar = () => {
         <div className="flex justify-between h-20">
           <div className="flex items-center">
             <Link to="/" className="font-bold text-xl flex items-center space-x-2">
-              <svg 
-                className="w-8 h-8 text-black" 
-                viewBox="0 0 24 24" 
-                fill="currentColor"
-              >
-                <path d="M12 1.5C6.2 1.5 1.5 6.2 1.5 12S6.2 22.5 12 22.5 22.5 17.8 22.5 12 17.8 1.5 12 1.5zM12 17c-2.8 0-5-2.2-5-5s2.2-5 5-5 5 2.2 5 5-2.2 5-5 5z" />
-              </svg>
-              <span>EventRoom</span>
+              <img 
+                src="/lovable-uploads/7dbb7250-aa06-4fd6-826c-3c6c2e956283.png" 
+                alt="EventRoom Logo" 
+                className="h-8"
+              />
             </Link>
           </div>
           
