@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { UserTyping } from "@/types/supabase";
+import { UserTyping } from "@/types/chat";
 
 /**
  * Update user typing status in a chat
@@ -11,16 +11,18 @@ export const updateTypingStatus = async (
   isTyping: boolean
 ): Promise<void> => {
   try {
-    // Try using the RPC function first
-    const { error: rpcError } = await supabase.rpc('update_typing_status', {
-      p_chat_id: chatId,
-      p_user_id: userId,
-      p_is_typing: isTyping
-    });
-    
-    if (rpcError) {
+    // Use the RPC function if available
+    try {
+      const { error } = await supabase.rpc('update_typing_status', {
+        p_chat_id: chatId,
+        p_user_id: userId,
+        p_is_typing: isTyping
+      });
+      
+      if (error) throw error;
+    } catch (error) {
       // Fallback to direct table operations if RPC fails
-      const { error } = await supabase
+      await supabase
         .from('user_typing')
         .upsert({
           chat_id: chatId,
@@ -28,10 +30,6 @@ export const updateTypingStatus = async (
           is_typing: isTyping,
           updated_at: new Date().toISOString()
         });
-        
-      if (error) {
-        console.error('Error updating typing status:', error);
-      }
     }
   } catch (error) {
     console.error('Error updating typing status:', error);
@@ -43,15 +41,14 @@ export const updateTypingStatus = async (
  */
 export const getTypingStatus = async (chatId: string): Promise<UserTyping[]> => {
   try {
-    // Try using the RPC function first for a single user
-    const { data: typingData, error: queryError } = await supabase
+    const { data, error } = await supabase
       .from('user_typing')
       .select('*')
       .eq('chat_id', chatId);
     
-    if (queryError) throw queryError;
+    if (error) throw error;
     
-    return typingData as UserTyping[];
+    return data as UserTyping[];
   } catch (error) {
     console.error('Error getting typing status:', error);
     return [];

@@ -40,7 +40,8 @@ export const useNewChat = () => {
     if (!currentUser) return;
     
     try {
-      const chatId = await createChat(currentUser.uid, userId);
+      // Call createChat with an array of participant IDs
+      const chatId = await createChat([currentUser.uid, userId]);
       setNewChatOpen(false);
       navigate(`/messages/${chatId}`);
     } catch (error) {

@@ -143,7 +143,7 @@ export const isUserTyping = async (chatId: string, userId: string): Promise<bool
       throw error;
     }
     
-    return Boolean(data?.is_typing);
+    return data?.is_typing || false;
   } catch (error) {
     console.error("Error checking typing status:", error);
     return false;

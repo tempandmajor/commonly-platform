@@ -91,10 +91,9 @@ export const useMessages = () => {
       if (chatError) throw chatError;
       
       if (chat && chat.last_message) {
-        // Use type assertion to safely access the properties
         const lastMessage = chat.last_message as any;
         
-        if (lastMessage.recipient_id === currentUser.uid && !lastMessage.read) {
+        if (lastMessage.recipientId === currentUser.uid && !lastMessage.read) {
           const { error: updateError } = await supabase
             .from('chats')
             .update({

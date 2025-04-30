@@ -16,7 +16,7 @@ export const useChat = () => {
   const { messages, loading, handleMarkMessagesAsRead } = useMessages();
   
   // Get info about the other user
-  const { user: otherUser, isOnline, lastSeen } = useOtherUser(chatId);
+  const { user: otherUser, isOnline, lastSeen } = useOtherUser(chatId ? chatId.split("/")[0] : null);
   
   // Typing status handling
   const { isOtherUserTyping, handleUserTyping } = useTypingStatus();

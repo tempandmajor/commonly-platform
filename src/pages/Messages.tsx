@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Navbar from "@/components/layout/Navbar";
 import { useChat } from "@/hooks/chat";
 import { Smile } from "lucide-react";
