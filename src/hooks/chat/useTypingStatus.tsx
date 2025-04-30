@@ -3,7 +3,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { UserTyping } from "@/types/chat";
+import { UserTyping } from "@/types/supabase";
+import { updateTypingStatus } from "@/services/chat/typingService";
 
 export const useTypingStatus = () => {
   const { chatId } = useParams<{ chatId: string }>();
@@ -43,28 +44,7 @@ export const useTypingStatus = () => {
     if (!currentUser?.uid || !chatId) return;
     
     try {
-      // Use upsert to update or insert typing status
-      const { error } = await supabase.rpc('update_typing_status', {
-        p_chat_id: chatId,
-        p_user_id: currentUser.uid,
-        p_is_typing: isTyping
-      });
-        
-      if (error) {
-        // Fallback to direct table operations if RPC isn't available
-        const { error: fallbackError } = await supabase
-          .from('user_typing')
-          .upsert({
-            chat_id: chatId,
-            user_id: currentUser.uid,
-            is_typing: isTyping,
-            updated_at: new Date().toISOString()
-          });
-          
-        if (fallbackError) {
-          console.error('Error updating typing status:', fallbackError);
-        }
-      }
+      await updateTypingStatus(chatId, currentUser.uid, isTyping);
     } catch (error) {
       console.error('Error handling typing status:', error);
     }
@@ -79,23 +59,7 @@ export const useTypingStatus = () => {
     if (isTyping) {
       typingTimeoutRef.current = window.setTimeout(async () => {
         try {
-          const { error } = await supabase.rpc('update_typing_status', {
-            p_chat_id: chatId,
-            p_user_id: currentUser.uid,
-            p_is_typing: false
-          });
-          
-          if (error) {
-            // Fallback to direct table operations
-            await supabase
-              .from('user_typing')
-              .upsert({
-                chat_id: chatId,
-                user_id: currentUser.uid,
-                is_typing: false,
-                updated_at: new Date().toISOString()
-              });
-          }
+          await updateTypingStatus(chatId, currentUser.uid, false);
         } catch (error) {
           console.error('Error resetting typing status:', error);
         }

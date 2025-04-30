@@ -71,7 +71,7 @@ const CatererCard: React.FC<CatererCardProps> = ({ caterer }) => {
       <CardFooter className="p-4 flex justify-between items-center">
         <div>
           <span className="font-semibold text-lg">
-            {formatCurrency(caterer.pricing.minimumOrderAmount, caterer.pricing.currency)}
+            {formatCurrency(caterer.pricing.minimumOrderAmount)}
           </span>
           <span className="text-sm text-muted-foreground"> min. order</span>
         </div>

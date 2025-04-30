@@ -76,7 +76,7 @@ export const subscribeToNotifications = (
 /**
  * Subscribe to unread notification count in real-time
  */
-export const subscribeToUnreadNotificationCount = (
+export const subscribeToUnreadCount = (
   userId: string,
   callback: (count: number) => void
 ): () => void => {
@@ -180,6 +180,13 @@ export const createNotification = async (
 /**
  * Get all notifications for a user
  */
+export const getNotifications = async (userId: string, count: number = 10): Promise<Notification[]> => {
+  return getUserNotifications(userId, count);
+};
+
+/**
+ * Get all notifications for a user (alias for getNotifications)
+ */
 export const getUserNotifications = async (userId: string, count: number = 10): Promise<Notification[]> => {
   const notificationsRef = collection(db, "notifications");
   const q = query(
@@ -217,7 +224,7 @@ export const markNotificationAsRead = async (notificationId: string): Promise<vo
 /**
  * Mark all notifications as read for a user
  */
-export const markAllNotificationsAsRead = async (userId: string): Promise<void> => {
+export const markAllAsRead = async (userId: string): Promise<void> => {
   const notificationsRef = collection(db, "notifications");
   const q = query(
     notificationsRef,
@@ -243,7 +250,7 @@ export const markAllNotificationsAsRead = async (userId: string): Promise<void> 
 /**
  * Get unread notification count
  */
-export const getUnreadNotificationCount = async (userId: string): Promise<number> => {
+export const getUnreadCount = async (userId: string): Promise<number> => {
   const notificationsRef = collection(db, "notifications");
   const q = query(
     notificationsRef,
@@ -283,7 +290,7 @@ export const deleteNotification = async (notificationId: string): Promise<void> 
  * Update the notification badge count
  */
 const updateBadgeCount = async (userId: string): Promise<void> => {
-  const count = await getUnreadNotificationCount(userId);
+  const count = await getUnreadCount(userId);
   
   await setDoc(doc(db, "notificationBadges", userId), {
     unreadCount: count,

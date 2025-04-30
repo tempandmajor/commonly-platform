@@ -11,12 +11,21 @@ import {
   MessageSquare,
   Share2,
   Heart,
-  AlertTriangle
+  AlertTriangle,
+  Loader2,
+  Edit,
+  User,
+  Calendar,
+  Activity,
+  Lock,
+  Crown,
+  MessageCircle
 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserData } from "@/types/auth";
-import Navbar from "@/components/layout/Navbar";
 import UserProfileHeader from "@/components/profile/UserProfileHeader";
 import UserEvents from "@/components/profile/UserEvents";
 import UserPodcasts from "@/components/profile/UserPodcasts";
@@ -24,7 +33,7 @@ import UserList from "@/components/profile/UserList";
 import MerchantStoreTab from "@/components/profile/MerchantStoreTab";
 import SubscriptionTab from "@/components/profile/SubscriptionTab";
 import LoadingIndicator from "@/components/podcasts/LoadingIndicator"; 
-import { getUserProfile, toggleFollowUser } from "@/services/userService";
+import { getUserProfile, toggleFollowUser, isUserPro } from "@/services/userService";
 import { createChat } from "@/services/chat";
 import { getUserFollowers, getUserFollowing } from "@/services/socialService";
 import { useNavigate } from "react-router-dom";

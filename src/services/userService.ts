@@ -145,19 +145,128 @@ export const searchUsers = async (query: string) => {
   }
 };
 
+/**
+ * Check if a user has a pro subscription
+ */
 export const isUserPro = async (userId: string): Promise<boolean> => {
   try {
-    const { data, error } = await supabase
+    // First check the cached flag on the user object
+    const { data: userData, error: userError } = await supabase
       .from('users')
       .select('is_pro')
       .eq('id', userId)
       .single();
     
-    if (error) throw error;
+    if (userError) throw userError;
     
-    return !!data?.is_pro;
+    if (userData && userData.is_pro === true) {
+      return true;
+    }
+    
+    // If not pro in user object, check subscriptions table for active pro subscription
+    const { data: subscriptionData, error: subscriptionError } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .eq('plan', 'pro')
+      .single();
+    
+    if (subscriptionError && subscriptionError.code !== 'PGRST116') {
+      throw subscriptionError;
+    }
+    
+    return !!subscriptionData;
   } catch (error) {
-    console.error("Error checking user pro status:", error);
+    console.error("Error checking pro status:", error);
     return false;
+  }
+};
+
+/**
+ * Toggle follow status for a user
+ */
+export const toggleFollowUser = async (currentUserId: string, targetUserId: string): Promise<boolean> => {
+  try {
+    // Get current following array for the current user
+    const { data: currentUserData, error: currentUserError } = await supabase
+      .from('users')
+      .select('following, followers')
+      .eq('id', currentUserId)
+      .single();
+    
+    if (currentUserError) throw currentUserError;
+    
+    // Get current followers array for the target user
+    const { data: targetUserData, error: targetUserError } = await supabase
+      .from('users')
+      .select('followers')
+      .eq('id', targetUserId)
+      .single();
+    
+    if (targetUserError) throw targetUserError;
+    
+    const currentUserFollowing = currentUserData?.following || [];
+    const targetUserFollowers = targetUserData?.followers || [];
+    
+    // Check if already following
+    const isFollowing = currentUserFollowing.includes(targetUserId);
+    
+    if (isFollowing) {
+      // Unfollow: Remove targetUserId from currentUser's following array
+      const updatedFollowing = currentUserFollowing.filter(id => id !== targetUserId);
+      
+      // Remove currentUserId from targetUser's followers array
+      const updatedFollowers = targetUserFollowers.filter(id => id !== currentUserId);
+      
+      // Update current user
+      await supabase
+        .from('users')
+        .update({ 
+          following: updatedFollowing,
+          following_count: updatedFollowing.length
+        })
+        .eq('id', currentUserId);
+      
+      // Update target user
+      await supabase
+        .from('users')
+        .update({
+          followers: updatedFollowers,
+          follower_count: updatedFollowers.length
+        })
+        .eq('id', targetUserId);
+      
+      return false; // No longer following
+    } else {
+      // Follow: Add targetUserId to currentUser's following array
+      const updatedFollowing = [...currentUserFollowing, targetUserId];
+      
+      // Add currentUserId to targetUser's followers array
+      const updatedFollowers = [...targetUserFollowers, currentUserId];
+      
+      // Update current user
+      await supabase
+        .from('users')
+        .update({ 
+          following: updatedFollowing,
+          following_count: updatedFollowing.length
+        })
+        .eq('id', currentUserId);
+      
+      // Update target user
+      await supabase
+        .from('users')
+        .update({
+          followers: updatedFollowers,
+          follower_count: updatedFollowers.length
+        })
+        .eq('id', targetUserId);
+      
+      return true; // Now following
+    }
+  } catch (error) {
+    console.error("Error toggling follow status:", error);
+    throw error;
   }
 };

@@ -2,12 +2,18 @@
 import React, { useState, useEffect } from "react";
 import { Bell } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Notification } from "@/types/auth";
+import { Notification } from "@/types/notification";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import NotificationsList from "./NotificationsList";
-import { getNotifications, markAllAsRead, getUnreadCount, subscribeToNotifications, subscribeToUnreadCount } from "@/services/notificationService";
+import { 
+  getUserNotifications, 
+  markAllAsRead, 
+  getUnreadCount, 
+  subscribeToNotifications, 
+  subscribeToUnreadCount 
+} from "@/services/notificationService";
 
 const NotificationsPopover = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -23,7 +29,7 @@ const NotificationsPopover = () => {
 
     const fetchNotifications = async () => {
       try {
-        const notificationsData = await getNotifications(currentUser.uid);
+        const notificationsData = await getUserNotifications(currentUser.uid);
         setNotifications(notificationsData);
         
         const count = await getUnreadCount(currentUser.uid);

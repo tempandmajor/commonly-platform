@@ -23,15 +23,19 @@ export const useOtherUser = (userId: string | null) => {
         setUser(userData);
         
         // Get user presence from users table
-        const { data: presenceData, error: presenceError } = await supabase
-          .from('users')
-          .select('is_online, last_seen')
-          .eq('id', userId)
-          .single();
-          
-        if (!presenceError && presenceData) {
-          setIsOnline(Boolean(presenceData.is_online));
-          setLastSeen(presenceData.last_seen || null);
+        try {
+          const { data: presenceData } = await supabase
+            .from('users')
+            .select('is_online, last_seen')
+            .eq('id', userId)
+            .single();
+            
+          if (presenceData) {
+            setIsOnline(Boolean(presenceData.is_online));
+            setLastSeen(presenceData.last_seen || null);
+          }
+        } catch (presenceError) {
+          console.error("Error fetching presence data:", presenceError);
         }
       } catch (err) {
         setError(err as Error);

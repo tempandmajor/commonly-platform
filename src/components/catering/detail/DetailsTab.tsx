@@ -43,7 +43,7 @@ export const DetailsTab = ({
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span>Price per guest:</span>
-                  <span className="font-medium">{formatCurrency(service.pricePerGuest, currency)}</span>
+                  <span className="font-medium">{formatCurrency(service.pricePerGuest)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Guest capacity:</span>
@@ -52,49 +52,12 @@ export const DetailsTab = ({
                 {service.setupFee && (
                   <div className="flex justify-between">
                     <span>Setup fee:</span>
-                    <span>{formatCurrency(service.setupFee, currency)}</span>
+                    <span>{formatCurrency(service.setupFee)}</span>
                   </div>
                 )}
               </div>
             </div>
           ))}
-        </div>
-      </div>
-      
-      {/* Specialties */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Specialties</h2>
-        <div className="flex flex-wrap gap-2">
-          {specialties.map((specialty, index) => (
-            <span 
-              key={index}
-              className="bg-primary/10 text-primary rounded-full px-3 py-1"
-            >
-              {specialty}
-            </span>
-          ))}
-        </div>
-      </div>
-      
-      {/* Availability */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold flex items-center gap-2">
-          <Clock className="h-5 w-5" />
-          Availability
-        </h2>
-        <div className="space-y-1 text-sm">
-          {availability.length > 0 ? 
-            availability.map((slot, index) => {
-              const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-              return (
-                <p key={index} className="flex justify-between py-1 border-b">
-                  <span className="font-medium">{days[slot.dayOfWeek]}</span>
-                  <span>{slot.startTime} - {slot.endTime}</span>
-                </p>
-              );
-            }) : 
-            <p className="text-muted-foreground">Contact caterer for availability</p>
-          }
         </div>
       </div>
     </div>

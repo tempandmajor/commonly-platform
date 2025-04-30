@@ -59,7 +59,7 @@ const VenueCard: React.FC<VenueCardProps> = ({ venue }) => {
       <CardFooter className="p-4 flex justify-between items-center">
         <div>
           <span className="font-semibold text-lg">
-            {formatCurrency(venue.pricing.hourlyRate, venue.pricing.currency)}
+            {formatCurrency(venue.pricing.hourlyRate)}
           </span>
           <span className="text-sm text-muted-foreground">/hour</span>
         </div>

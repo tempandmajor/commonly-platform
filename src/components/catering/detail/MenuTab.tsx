@@ -30,7 +30,7 @@ export const MenuTab = ({ menuCategories, currency }: MenuTabProps) => {
                   <div className="p-3 flex-grow">
                     <div className="flex justify-between">
                       <h4 className="font-medium">{item.name}</h4>
-                      <span className="font-semibold">{formatCurrency(item.price, currency)}</span>
+                      <span className="font-semibold">{formatCurrency(item.price)}</span>
                     </div>
                     <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{item.description}</p>
                     <div className="flex flex-wrap gap-1 mt-2">

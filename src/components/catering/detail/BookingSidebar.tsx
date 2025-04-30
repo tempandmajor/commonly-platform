@@ -18,7 +18,7 @@ export const BookingSidebar = ({ pricing, minGuests, maxGuests }: BookingSidebar
       <div className="flex justify-between items-baseline mb-6">
         <div>
           <span className="text-2xl font-bold">
-            {formatCurrency(pricing.minimumOrderAmount, pricing.currency)}
+            {formatCurrency(pricing.minimumOrderAmount)}
           </span>
           <span className="text-muted-foreground"> min. order</span>
         </div>
@@ -53,12 +53,12 @@ export const BookingSidebar = ({ pricing, minGuests, maxGuests }: BookingSidebar
         <div className="text-sm space-y-1 border-t pt-4 mt-4">
           <p className="flex justify-between">
             <span>Minimum order</span>
-            <span>{formatCurrency(pricing.minimumOrderAmount, pricing.currency)}</span>
+            <span>{formatCurrency(pricing.minimumOrderAmount)}</span>
           </p>
           {pricing.deliveryFee && (
             <p className="flex justify-between">
               <span>Delivery fee</span>
-              <span>{formatCurrency(pricing.deliveryFee, pricing.currency)}</span>
+              <span>{formatCurrency(pricing.deliveryFee)}</span>
             </p>
           )}
           <p className="flex justify-between text-xs text-muted-foreground">

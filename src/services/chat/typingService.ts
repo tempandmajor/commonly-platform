@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { UserTyping } from "@/types/chat";
+import { UserTyping } from "@/types/supabase";
 
 /**
  * Update user typing status in a chat
@@ -11,23 +11,18 @@ export const updateTypingStatus = async (
   isTyping: boolean
 ): Promise<void> => {
   try {
-    // Try to use RPC function first
-    const { error } = await supabase.rpc('update_typing_status', {
-      p_chat_id: chatId,
-      p_user_id: userId,
-      p_is_typing: isTyping
-    });
-    
+    // Direct table operations since RPC function might not be available yet
+    const { error } = await supabase
+      .from('user_typing')
+      .upsert({
+        chat_id: chatId,
+        user_id: userId,
+        is_typing: isTyping,
+        updated_at: new Date().toISOString()
+      });
+      
     if (error) {
-      // Fallback to direct table operations
-      await supabase
-        .from('user_typing')
-        .upsert({
-          chat_id: chatId,
-          user_id: userId,
-          is_typing: isTyping,
-          updated_at: new Date().toISOString()
-        });
+      console.error('Error updating typing status:', error);
     }
   } catch (error) {
     console.error('Error updating typing status:', error);
