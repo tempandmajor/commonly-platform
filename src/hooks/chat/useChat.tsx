@@ -109,3 +109,6 @@ export default function useChat(chatId: string, otherUserId: string) {
 
   return { messages, loading, error, otherUser: user, isOnline, lastSeen };
 }
+
+// Export the hook to be used in other components
+export { useChat };

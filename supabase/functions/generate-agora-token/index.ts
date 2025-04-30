@@ -1,73 +1,65 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { RtcTokenBuilder, RtcRole } from "https://esm.sh/agora-token@2.0.3";
+import { RtcRole, RtcTokenBuilder } from "https://esm.sh/agora-token@2.0.3";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-// Load environment variables
+// Get secrets from environment variables
 const appId = Deno.env.get("AGORA_APP_ID") || "";
 const appCertificate = Deno.env.get("AGORA_APP_CERTIFICATE") || "";
 
-// Handle CORS and token generation
+// Set CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
-
+  
   try {
-    if (!appId || !appCertificate) {
-      throw new Error("Missing Agora credentials in environment variables");
-    }
-
-    const { channelName, uid, role } = await req.json();
+    const { channelName, uid, role, expirationTimeInSeconds } = await req.json();
     
     if (!channelName) {
-      throw new Error("Channel name is required");
+      return new Response(
+        JSON.stringify({ error: "Channel name is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
-
-    // User ID can be string or number
-    const userId = typeof uid === "string" ? uid : String(uid);
     
-    // Set role type (default to publisher)
-    const roleType = role === "audience" 
-      ? RtcRole.SUBSCRIBER 
-      : RtcRole.PUBLISHER;
-
-    // Set expiration time (1 hour)
-    const expirationTimeInSeconds = 3600;
+    // Set default values if not provided
+    const userRole = role === "publisher" ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER;
+    const userId = uid || 0;
+    const expirationTime = expirationTimeInSeconds || 3600; // Default to 1 hour
+    
+    // Current timestamp in seconds
     const currentTimestamp = Math.floor(Date.now() / 1000);
-    const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
-
+    
+    // Token expiration time
+    const privilegeExpiredTs = currentTimestamp + expirationTime;
+    
     // Generate token
     const token = RtcTokenBuilder.buildTokenWithUid(
       appId,
       appCertificate,
       channelName,
       userId,
-      roleType,
+      userRole,
       privilegeExpiredTs
     );
-
-    // Return token in response
+    
+    // Return token
     return new Response(
-      JSON.stringify({ token }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      JSON.stringify({ token, channelName, uid: userId, expiresAt: privilegeExpiredTs }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("Error generating token:", error.message);
     
     return new Response(
       JSON.stringify({ error: error.message }),
-      {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

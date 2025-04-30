@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -6,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { NotificationSettings } from "@/types/notification";
+import { NotificationSettings as NotificationSettingsType } from "@/types/notification";
 
 const NotificationSettings = () => {
   const { currentUser } = useAuth();
@@ -14,7 +15,7 @@ const NotificationSettings = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   
-  const [formData, setFormData] = useState<NotificationSettings>({
+  const [formData, setFormData] = useState<NotificationSettingsType>({
     userId: currentUser?.uid || '',
     emailNotifications: true,
     pushNotifications: true,
@@ -99,7 +100,7 @@ const NotificationSettings = () => {
     fetchSettings();
   }, [currentUser]);
 
-  const handleChange = (key: keyof NotificationSettings, value: boolean) => {
+  const handleChange = (key: keyof NotificationSettingsType, value: boolean) => {
     setFormData((prev) => ({
       ...prev,
       [key]: value,

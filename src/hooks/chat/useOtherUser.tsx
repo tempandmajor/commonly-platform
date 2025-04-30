@@ -22,16 +22,16 @@ export const useOtherUser = (userId: string | null) => {
         const userData = await getUserProfile(userId);
         setUser(userData);
         
-        // Check online status
-        const { data: presenceData } = await supabase
-          .from('user_presence')
-          .select('online, last_seen')
-          .eq('user_id', userId)
+        // Get user presence from users table
+        const { data: presenceData, error: presenceError } = await supabase
+          .from('users')
+          .select('is_online, last_seen')
+          .eq('id', userId)
           .single();
           
         if (presenceData) {
-          setIsOnline(presenceData.online || false);
-          setLastSeen(presenceData.last_seen);
+          setIsOnline(presenceData.is_online || false);
+          setLastSeen(presenceData.last_seen || null);
         }
       } catch (err) {
         setError(err as Error);
@@ -42,27 +42,23 @@ export const useOtherUser = (userId: string | null) => {
 
     fetchUser();
     
-    // Subscribe to presence changes
-    const presenceChannel = supabase
-      .channel(`presence:${userId}`)
-      .on('presence', { event: 'sync' }, () => {
-        // Update presence state when changes occur
-        supabase
-          .from('user_presence')
-          .select('online, last_seen')
-          .eq('user_id', userId)
-          .single()
-          .then(({ data }) => {
-            if (data) {
-              setIsOnline(data.online || false);
-              setLastSeen(data.last_seen);
-            }
-          });
+    // Subscribe to presence changes using Supabase Realtime
+    const presenceSubscription = supabase
+      .channel(`presence_${userId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'users',
+        filter: `id=eq.${userId}`
+      }, (payload) => {
+        const userData = payload.new as any;
+        setIsOnline(userData.is_online || false);
+        setLastSeen(userData.last_seen || null);
       })
       .subscribe();
       
     return () => {
-      supabase.removeChannel(presenceChannel);
+      presenceSubscription.unsubscribe();
     };
   }, [userId]);
 

@@ -1,27 +1,20 @@
+
 export interface Podcast {
   id: string;
   title: string;
-  description: string;
-  thumbnailUrl: string;
+  description?: string;
+  imageUrl?: string;
   audioUrl?: string;
-  videoUrl?: string;
   duration: number;
-  creatorId: string;
-  creatorName: string;
-  type: "audio" | "video";
-  category: string;
-  categoryId: string;
   createdAt: string;
-  updatedAt: string;
-  published: boolean;
-  viewCount: number;
-  likeCount: number;
-  shareCount: number;
-  featured: boolean;
-  tags?: string[];
-  visibility: "public" | "private" | "unlisted";
   userId: string;
-  listens: number;
+  userName?: string;
+  userPhotoUrl?: string;
+  categoryId?: string;
+  likeCount: number;
+  viewCount: number;
+  shareCount: number;
+  published: boolean;
 }
 
 export interface PodcastCategory {
@@ -39,19 +32,5 @@ export interface PodcastComment {
   userPhotoUrl?: string;
   content: string;
   createdAt: string;
-  updatedAt?: string;
-}
-
-export interface PodcastSession {
-  id: string;
-  hostId: string;
-  title: string;
-  description?: string;
-  scheduledFor: string;
-  duration: number;
-  participants: string[];
-  status: "scheduled" | "live" | "ended" | "cancelled";
-  agoraChannelName: string;
-  recordingUrl?: string;
-  createdAt: string;
+  updatedAt: string;
 }

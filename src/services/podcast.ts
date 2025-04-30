@@ -1,133 +1,158 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { uploadFile } from "./storageService";
-import { Podcast, PodcastCategory } from "@/types/podcast";
+import { Podcast, PodcastCategory, PodcastComment } from "@/types/podcast";
 
-export interface PodcastInput {
-  title: string;
-  description?: string;
-  creatorId: string;
-  creatorName: string;
-  type: "audio" | "video";
-  category: string;
-  duration: number;
-  isExternal: boolean;
-  visibility: "public" | "private" | "unlisted";
-  tags?: string[];
-  videoUrl?: string;
-  audioUrl?: string;
-}
-
-/**
- * Create a new podcast in Supabase
- */
-export const createPodcast = async (
-  podcastData: PodcastInput,
-  audioFile?: File,
-  videoFile?: File,
-  thumbnailFile?: File
-): Promise<string> => {
+export const getPodcasts = async (
+  limit: number = 12,
+  lastId: string | null = null,
+  category: string | null = null,
+  searchTerm: string | null = null
+): Promise<{ podcasts: Podcast[]; lastId: string | null }> => {
   try {
-    let imageUrl = "";
-    let audioUrl = "";
-    let videoUrl = "";
-
-    // Upload thumbnail if provided
-    if (thumbnailFile) {
-      imageUrl = await uploadFile(thumbnailFile, "podcasts", "thumbnails");
+    let query = supabase
+      .from('podcasts')
+      .select('*, users!podcasts_user_id_fkey(display_name, photo_url)')
+      .eq('published', true)
+      .order('created_at', { ascending: false });
+      
+    if (category) {
+      query = query.eq('category_id', category);
     }
-
-    // Upload audio file if provided
-    if (audioFile) {
-      audioUrl = await uploadFile(audioFile, "podcasts", "audio");
-    } else if (podcastData.audioUrl) {
-      audioUrl = podcastData.audioUrl;
+    
+    if (searchTerm) {
+      query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
     }
-
-    // Upload video file if provided
-    if (videoFile) {
-      videoUrl = await uploadFile(videoFile, "podcasts", "video");
-    } else if (podcastData.videoUrl) {
-      videoUrl = podcastData.videoUrl;
+    
+    if (lastId) {
+      const { data: lastPodcast } = await supabase
+        .from('podcasts')
+        .select('created_at')
+        .eq('id', lastId)
+        .single();
+      
+      if (lastPodcast) {
+        query = query.lt('created_at', lastPodcast.created_at);
+      }
     }
-
-    // Insert into Supabase
-    const { data, error } = await supabase.from("podcasts").insert({
-      title: podcastData.title,
-      description: podcastData.description,
-      image_url: imageUrl,
-      audio_url: audioUrl || null,
-      video_url: videoUrl || null,
-      duration: podcastData.duration,
-      user_id: podcastData.creatorId,
-      category_id: podcastData.category,
-      published: podcastData.visibility === "public",
-      tags: podcastData.tags || [],
-    }).select('id').single();
-
+    
+    query = query.limit(limit);
+    
+    const { data, error } = await query;
+    
     if (error) throw error;
     
-    return data.id;
+    const formattedPodcasts: Podcast[] = data.map(podcast => ({
+      id: podcast.id,
+      title: podcast.title,
+      description: podcast.description || undefined,
+      imageUrl: podcast.image_url || undefined,
+      audioUrl: podcast.audio_url || undefined,
+      duration: podcast.duration || 0,
+      createdAt: podcast.created_at,
+      userId: podcast.user_id,
+      userName: podcast.users?.display_name || "Unknown",
+      userPhotoUrl: podcast.users?.photo_url || undefined,
+      categoryId: podcast.category_id || undefined,
+      likeCount: podcast.like_count || 0,
+      viewCount: podcast.view_count || 0,
+      shareCount: podcast.share_count || 0,
+      published: podcast.published || false,
+    }));
+    
+    const newLastId = data.length > 0 ? data[data.length - 1].id : null;
+    
+    return { podcasts: formattedPodcasts, lastId: newLastId };
   } catch (error) {
-    console.error("Error creating podcast:", error);
+    console.error("Error fetching podcasts:", error);
     throw error;
   }
 };
 
-/**
- * Create a podcast recording session
- */
-export const createPodcastSession = async (sessionData: {
-  hostId: string;
-  title: string;
-  description?: string;
-  scheduledFor: Date;
-  duration: number;
-  participants: string[];
-  status: string;
-  agoraChannelName: string;
-}): Promise<string> => {
+export const getPodcast = async (podcastId: string): Promise<Podcast> => {
   try {
     const { data, error } = await supabase
-      .from("podcast_sessions")
-      .insert({
-        host_id: sessionData.hostId,
-        title: sessionData.title,
-        description: sessionData.description,
-        scheduled_for: sessionData.scheduledFor.toISOString(),
-        duration: sessionData.duration,
-        participants: sessionData.participants,
-        status: sessionData.status,
-        agora_channel_name: sessionData.agoraChannelName,
-      })
-      .select('id')
+      .from('podcasts')
+      .select('*, users!podcasts_user_id_fkey(display_name, photo_url)')
+      .eq('id', podcastId)
       .single();
-
+      
     if (error) throw error;
+    if (!data) throw new Error('Podcast not found');
     
-    return data.id;
+    const podcast: Podcast = {
+      id: data.id,
+      title: data.title,
+      description: data.description || undefined,
+      imageUrl: data.image_url || undefined,
+      audioUrl: data.audio_url || undefined,
+      duration: data.duration || 0,
+      createdAt: data.created_at,
+      userId: data.user_id,
+      userName: data.users?.display_name || "Unknown",
+      userPhotoUrl: data.users?.photo_url || undefined,
+      categoryId: data.category_id || undefined,
+      likeCount: data.like_count || 0,
+      viewCount: data.view_count || 0,
+      shareCount: data.share_count || 0,
+      published: data.published || false,
+    };
+    
+    return podcast;
   } catch (error) {
-    console.error("Error creating podcast session:", error);
+    console.error("Error fetching podcast:", error);
     throw error;
   }
 };
 
-/**
- * Get podcast categories
- */
+export const getPodcastsByCreator = async (userId: string): Promise<Podcast[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('podcasts')
+      .select('*, users!podcasts_user_id_fkey(display_name, photo_url)')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+      
+    if (error) throw error;
+    
+    const podcasts: Podcast[] = data.map(podcast => ({
+      id: podcast.id,
+      title: podcast.title,
+      description: podcast.description || undefined,
+      imageUrl: podcast.image_url || undefined,
+      audioUrl: podcast.audio_url || undefined,
+      duration: podcast.duration || 0,
+      createdAt: podcast.created_at,
+      userId: podcast.user_id,
+      userName: podcast.users?.display_name || "Unknown",
+      userPhotoUrl: podcast.users?.photo_url || undefined,
+      categoryId: podcast.category_id || undefined,
+      likeCount: podcast.like_count || 0,
+      viewCount: podcast.view_count || 0,
+      shareCount: podcast.share_count || 0,
+      published: podcast.published || false,
+    }));
+    
+    return podcasts;
+  } catch (error) {
+    console.error("Error fetching creator podcasts:", error);
+    throw error;
+  }
+};
+
 export const getPodcastCategories = async (): Promise<PodcastCategory[]> => {
   try {
     const { data, error } = await supabase
-      .from("podcast_categories")
-      .select("*");
-
+      .from('podcast_categories')
+      .select('*')
+      .order('name', { ascending: true });
+      
     if (error) throw error;
-
+    
     return data.map(category => ({
       id: category.id,
       name: category.name,
-      description: category.description,
-      icon: category.icon
+      description: category.description || undefined,
+      icon: category.icon || undefined,
     }));
   } catch (error) {
     console.error("Error fetching podcast categories:", error);
@@ -135,90 +160,203 @@ export const getPodcastCategories = async (): Promise<PodcastCategory[]> => {
   }
 };
 
-/**
- * Get podcasts with pagination and filtering
- */
-export const getPodcasts = async (
-  limit = 12,
-  lastId: string | null = null,
-  categoryId = "",
-  searchTerm = ""
-): Promise<{ podcasts: Podcast[]; lastId: string | null }> => {
+export const uploadPodcast = async (
+  userId: string,
+  podcastData: Partial<Podcast>,
+  audioFile: File,
+  imageFile?: File
+): Promise<Podcast> => {
   try {
-    let query = supabase
-      .from("podcasts")
-      .select(`
-        id,
-        title,
-        description,
-        image_url,
-        audio_url,
-        duration,
-        user_id,
-        users!inner(display_name),
-        category_id,
-        created_at,
-        updated_at,
-        published,
-        view_count,
-        like_count,
-        share_count,
-        featured,
-        tags
-      `)
-      .eq("published", true);
+    // Upload audio file
+    const audioFileName = `podcasts/${userId}/${Date.now()}-${audioFile.name.replace(/\s+/g, '-')}`;
+    const { error: audioUploadError, data: audioData } = await supabase.storage
+      .from('media')
+      .upload(audioFileName, audioFile);
+    
+    if (audioUploadError) throw audioUploadError;
+    
+    // Get audio URL
+    const { data: audioUrlData } = supabase.storage
+      .from('media')
+      .getPublicUrl(audioFileName);
+    
+    const audioUrl = audioUrlData.publicUrl;
+    
+    // Upload image if provided
+    let imageUrl;
+    if (imageFile) {
+      const imageFileName = `podcasts/${userId}/${Date.now()}-${imageFile.name.replace(/\s+/g, '-')}`;
+      const { error: imageUploadError } = await supabase.storage
+        .from('media')
+        .upload(imageFileName, imageFile);
+      
+      if (imageUploadError) throw imageUploadError;
+      
+      const { data: imageUrlData } = supabase.storage
+        .from('media')
+        .getPublicUrl(imageFileName);
+      
+      imageUrl = imageUrlData.publicUrl;
+    }
+    
+    // Insert podcast record
+    const { data: podcast, error: insertError } = await supabase
+      .from('podcasts')
+      .insert({
+        title: podcastData.title || 'Untitled Podcast',
+        description: podcastData.description,
+        image_url: imageUrl,
+        audio_url: audioUrl,
+        user_id: userId,
+        category_id: podcastData.categoryId,
+        duration: podcastData.duration || 0,
+        published: podcastData.published ?? false,
+      })
+      .select()
+      .single();
+    
+    if (insertError) throw insertError;
+    
+    return {
+      id: podcast.id,
+      title: podcast.title,
+      description: podcast.description || undefined,
+      imageUrl: podcast.image_url || undefined,
+      audioUrl: podcast.audio_url || undefined,
+      duration: podcast.duration || 0,
+      createdAt: podcast.created_at,
+      userId: podcast.user_id,
+      categoryId: podcast.category_id || undefined,
+      published: podcast.published || false,
+      likeCount: 0,
+      viewCount: 0,
+      shareCount: 0,
+    };
+  } catch (error) {
+    console.error("Error uploading podcast:", error);
+    throw error;
+  }
+};
 
-    // Apply filters
-    if (categoryId) {
-      query = query.eq("category_id", categoryId);
-    }
-    
-    if (searchTerm) {
-      query = query.ilike("title", `%${searchTerm}%`);
-    }
-    
-    // Add pagination
-    if (lastId) {
-      query = query.gt("id", lastId);
-    }
-    
-    // Order and limit
-    query = query.order("created_at", { ascending: false }).limit(limit);
-    
-    const { data, error } = await query;
+export const getPodcastComments = async (podcastId: string): Promise<PodcastComment[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('podcast_comments')
+      .select('*, users!podcast_comments_user_id_fkey(display_name, photo_url)')
+      .eq('podcast_id', podcastId)
+      .order('created_at', { ascending: false });
     
     if (error) throw error;
     
-    const podcasts = data.map(item => ({
-      id: item.id,
-      title: item.title,
-      description: item.description || "",
-      imageUrl: item.image_url || "",
-      audioUrl: item.audio_url || "",
-      duration: item.duration || 0,
-      creatorId: item.user_id,
-      creatorName: item.users?.display_name || "Unknown Creator",
-      type: item.audio_url ? "audio" : "video",
-      category: item.category_id,
-      categoryId: item.category_id,
-      createdAt: item.created_at,
-      updatedAt: item.updated_at,
-      published: item.published,
-      viewCount: item.view_count || 0,
-      likeCount: item.like_count || 0,
-      shareCount: item.share_count || 0,
-      featured: item.featured || false,
-      tags: item.tags || [],
-      visibility: item.published ? "public" : "private",
-      userId: item.user_id
+    return data.map(comment => ({
+      id: comment.id,
+      podcastId: comment.podcast_id,
+      userId: comment.user_id,
+      userName: comment.users?.display_name || "Anonymous",
+      userPhotoUrl: comment.users?.photo_url,
+      content: comment.content,
+      createdAt: comment.created_at,
+      updatedAt: comment.updated_at,
     }));
+  } catch (error) {
+    console.error("Error fetching podcast comments:", error);
+    throw error;
+  }
+};
+
+export const addPodcastComment = async (
+  podcastId: string,
+  userId: string,
+  content: string
+): Promise<PodcastComment> => {
+  try {
+    const { data, error } = await supabase
+      .from('podcast_comments')
+      .insert({
+        podcast_id: podcastId,
+        user_id: userId,
+        content,
+      })
+      .select('*, users!podcast_comments_user_id_fkey(display_name, photo_url)')
+      .single();
+    
+    if (error) throw error;
     
     return {
-      podcasts,
-      lastId: data.length > 0 ? data[data.length - 1].id : null,
+      id: data.id,
+      podcastId: data.podcast_id,
+      userId: data.user_id,
+      userName: data.users?.display_name || "Anonymous",
+      userPhotoUrl: data.users?.photo_url,
+      content: data.content,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
     };
   } catch (error) {
-    console.error("Error getting podcasts:", error);
+    console.error("Error adding podcast comment:", error);
+    throw error;
+  }
+};
+
+export const incrementPodcastViews = async (podcastId: string): Promise<void> => {
+  try {
+    await supabase.rpc('increment_podcast_listens', { podcast_id_param: podcastId });
+  } catch (error) {
+    console.error("Error incrementing podcast views:", error);
+    throw error;
+  }
+};
+
+export const togglePodcastLike = async (podcastId: string, userId: string): Promise<{ liked: boolean }> => {
+  try {
+    // Check if the user already likes the podcast
+    const { data: existingLike, error: checkError } = await supabase
+      .from('podcast_likes')
+      .select()
+      .eq('podcast_id', podcastId)
+      .eq('user_id', userId)
+      .single();
+    
+    if (checkError && checkError.code !== 'PGRST116') {
+      // PGRST116 is the error code for "no rows returned"
+      throw checkError;
+    }
+    
+    if (existingLike) {
+      // Unlike if already liked
+      const { error: deleteError } = await supabase
+        .from('podcast_likes')
+        .delete()
+        .eq('podcast_id', podcastId)
+        .eq('user_id', userId);
+      
+      if (deleteError) throw deleteError;
+      
+      // Decrement like count
+      await supabase
+        .from('podcasts')
+        .update({ like_count: supabase.rpc('decrement', { row_id: podcastId }) })
+        .eq('id', podcastId);
+      
+      return { liked: false };
+    } else {
+      // Like if not already liked
+      const { error: insertError } = await supabase
+        .from('podcast_likes')
+        .insert({ podcast_id: podcastId, user_id: userId });
+      
+      if (insertError) throw insertError;
+      
+      // Increment like count
+      await supabase
+        .from('podcasts')
+        .update({ like_count: supabase.rpc('increment', { row_id: podcastId }) })
+        .eq('id', podcastId);
+      
+      return { liked: true };
+    }
+  } catch (error) {
+    console.error("Error toggling podcast like:", error);
     throw error;
   }
 };

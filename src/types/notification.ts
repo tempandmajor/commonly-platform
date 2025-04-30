@@ -1,5 +1,5 @@
 
-export type NotificationType = 'message' | 'like' | 'follow' | 'comment' | 'podcast' | 'event' | 'system' | 'event_update' | 'new_follower' | 'referral_earnings' | 'sponsorship';
+export type NotificationType = 'message' | 'like' | 'follow' | 'comment' | 'podcast' | 'event' | 'system';
 
 export interface Notification {
   id: string;
@@ -7,21 +7,11 @@ export interface Notification {
   type: NotificationType;
   title: string;
   body: string;
-  image?: string;
+  imageUrl?: string;
   actionUrl?: string;
   read: boolean;
   createdAt: string;
-  data?: {
-    eventId?: string;
-    eventTitle?: string;
-    podcastId?: string;
-    podcastTitle?: string;
-    senderId?: string;
-    senderName?: string;
-    senderPhoto?: string;
-    amount?: number;
-    message?: string;
-  };
+  data?: Record<string, any>;
 }
 
 export interface NotificationSettings {

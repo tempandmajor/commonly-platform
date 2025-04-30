@@ -66,3 +66,34 @@ export const updateSubscription = async (userId: string, plan: string) => {
     throw error;
   }
 };
+
+export const checkSubscriptionEligibility = async (userId: string): Promise<{ eligible: boolean; reason?: string }> => {
+  try {
+    // Check if user is eligible for subscription
+    const { data, error } = await supabase
+      .from('users')
+      .select('follower_count, is_pro')
+      .eq('id', userId)
+      .single();
+    
+    if (error) throw error;
+    
+    // Already a Pro user
+    if (data.is_pro) {
+      return { eligible: false, reason: "User is already a Pro member" };
+    }
+    
+    // Check follower count requirement (example: need 100+ followers)
+    if (data.follower_count < 100) {
+      return { 
+        eligible: false, 
+        reason: `Need at least 100 followers to subscribe (currently has ${data.follower_count})` 
+      };
+    }
+    
+    return { eligible: true };
+  } catch (error) {
+    console.error("Error checking subscription eligibility:", error);
+    throw error;
+  }
+};

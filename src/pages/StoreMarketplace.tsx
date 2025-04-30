@@ -1,148 +1,304 @@
 
 import React, { useState, useEffect } from "react";
 import Navbar from "@/components/layout/Navbar";
-import { searchProducts } from "@/services/merchantService";
-import { Product } from "@/types/auth";
+import Footer from "@/components/layout/Footer";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
-import { 
-  Card, 
-  CardContent, 
-  CardFooter, 
-  CardHeader 
-} from "@/components/ui/card";
-import { Package, Search } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Card, CardContent } from "@/components/ui/card";
+import { useToast } from "@/components/ui/use-toast";
+import { Search, ShoppingCart, Filter, SlidersHorizontal } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Product, ProductImage } from "@/types/product";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
+import { supabase } from "@/integrations/supabase/client";
 
 const CATEGORIES = [
-  "All Categories",
+  "All",
   "Clothing",
+  "Electronics",
   "Accessories",
-  "Home Decor",
-  "Art",
-  "Digital Products",
-  "Other"
+  "Home",
+  "Books",
 ];
 
 const StoreMarketplace: React.FC = () => {
-  const [products, setProducts] = useState<Product[]>([]);
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState<(Product & { images?: ProductImage[] })[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [category, setCategory] = useState("");
-  const navigate = useNavigate();
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [priceRange, setPriceRange] = useState([0, 1000]);
+  const [digitalOnly, setDigitalOnly] = useState(false);
+  const [inStockOnly, setInStockOnly] = useState(false);
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        setLoading(true);
-        const productList = await searchProducts(searchTerm, category !== "All Categories" ? category : "");
-        setProducts(productList);
-      } catch (error) {
-        console.error("Error fetching products:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchProducts();
-  }, [searchTerm, category]);
+  }, []);
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    // The search is already triggered by the useEffect when searchTerm or category changes
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+
+      // Fetch products from Supabase
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('inventory_count', inStockOnly ? '> 0' : '>= 0')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+
+      // For each product, fetch its images
+      const productsWithImages = await Promise.all(data.map(async (product) => {
+        const { data: imageData, error: imageError } = await supabase
+          .from('product_images')
+          .select('*')
+          .eq('product_id', product.id);
+        
+        if (imageError) {
+          console.error('Error fetching product images:', imageError);
+          return { ...product, images: [] };
+        }
+        
+        return { ...product, images: imageData || [] };
+      }));
+
+      setProducts(productsWithImages);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load products. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleProductClick = (productId: string) => {
-    navigate(`/store/product/${productId}`);
+  // Get main image for a product
+  const getMainImage = (product: Product & { images?: ProductImage[] }) => {
+    if (product.imageUrl) return product.imageUrl;
+    if (product.images && product.images.length > 0) {
+      const mainImage = product.images.find(img => img.isMainImage);
+      return mainImage ? mainImage.url : product.images[0].url;
+    }
+    return '/placeholder-product.png';
+  };
+
+  const filteredProducts = products
+    .filter((product) =>
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (product.description && product.description.toLowerCase().includes(searchTerm.toLowerCase()))
+    )
+    .filter((product) =>
+      selectedCategory === "All" || product.category === selectedCategory
+    )
+    .filter((product) =>
+      product.price >= priceRange[0] && product.price <= priceRange[1]
+    )
+    .filter((product) =>
+      !digitalOnly || product.isDigital
+    )
+    .filter((product) =>
+      !inStockOnly || product.inventoryCount > 0
+    );
+
+  const handleResetFilters = () => {
+    setSearchTerm("");
+    setSelectedCategory("All");
+    setPriceRange([0, 1000]);
+    setDigitalOnly(false);
+    setInStockOnly(false);
   };
 
   return (
     <>
       <Navbar />
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-6xl mx-auto">
-          <h1 className="text-3xl font-bold mb-6">Creator Marketplace</h1>
-          
-          <div className="bg-muted/20 rounded-lg p-6 mb-8">
-            <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4">
-              <div className="relative flex-grow">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="Search products..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="border rounded-md px-4 py-2 bg-background"
-              >
-                {CATEGORIES.map((cat) => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-              <Button type="submit">Search</Button>
-            </form>
+      <main className="container mx-auto px-4 py-8">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-3xl font-bold mb-1">Marketplace</h1>
+            <p className="text-gray-600">
+              Discover unique products from our community
+            </p>
           </div>
-
-          {loading ? (
-            <div className="flex justify-center items-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
-            </div>
-          ) : products.length === 0 ? (
-            <div className="text-center py-16">
-              <Package className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-xl font-medium">No Products Found</h3>
-              <p className="text-muted-foreground mt-2">
-                Try adjusting your search or browse all categories
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {products.map((product) => (
-                <Card 
-                  key={product.id} 
-                  className="overflow-hidden cursor-pointer transition-all hover:shadow-md"
-                  onClick={() => handleProductClick(product.id)}
-                >
-                  <div className="aspect-square overflow-hidden">
-                    {product.images && product.images.length > 0 ? (
-                      <img 
-                        src={product.images[0]} 
-                        alt={product.name} 
-                        className="w-full h-full object-cover transition-all hover:scale-105"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-muted flex items-center justify-center">
-                        <Package className="h-12 w-12 text-muted-foreground" />
-                      </div>
-                    )}
-                  </div>
-                  
-                  <CardHeader className="pb-2">
-                    <h4 className="font-medium line-clamp-1">{product.name}</h4>
-                  </CardHeader>
-                  
-                  <CardContent className="pb-2">
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {product.description}
-                    </p>
-                  </CardContent>
-                  
-                  <CardFooter className="flex justify-between pt-2">
-                    <span className="font-semibold">${product.price.toFixed(2)}</span>
-                    <span className="text-sm text-muted-foreground">{product.category}</span>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          )}
+          <Link to="/cart">
+            <Button variant="outline" size="icon">
+              <ShoppingCart className="h-5 w-5" />
+            </Button>
+          </Link>
         </div>
-      </div>
+
+        <div className="flex flex-wrap gap-4 mb-6">
+          <div className="flex-grow max-w-full">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
+              <Input
+                placeholder="Search products..."
+                className="pl-10 w-full"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline">
+                <Filter className="h-4 w-4 mr-2" /> Filter
+              </Button>
+            </SheetTrigger>
+            <SheetContent>
+              <SheetHeader>
+                <SheetTitle>Filter Products</SheetTitle>
+              </SheetHeader>
+              <div className="py-4 space-y-6">
+                <div className="space-y-2">
+                  <Label>Category</Label>
+                  <Select
+                    value={selectedCategory}
+                    onValueChange={setSelectedCategory}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CATEGORIES.map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Price Range: ${priceRange[0]} - ${priceRange[1]}</Label>
+                  <Slider
+                    min={0}
+                    max={1000}
+                    step={10}
+                    value={priceRange}
+                    onValueChange={setPriceRange}
+                  />
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="digital-only"
+                      checked={digitalOnly}
+                      onCheckedChange={(checked) => setDigitalOnly(!!checked)}
+                    />
+                    <Label htmlFor="digital-only">Digital Products Only</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="in-stock"
+                      checked={inStockOnly}
+                      onCheckedChange={(checked) => setInStockOnly(!!checked)}
+                    />
+                    <Label htmlFor="in-stock">In Stock Only</Label>
+                  </div>
+                </div>
+
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleResetFilters}
+                >
+                  Reset Filters
+                </Button>
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
+
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {[...Array(8)].map((_, index) => (
+              <Card key={index} className="overflow-hidden">
+                <Skeleton className="h-48 w-full" />
+                <CardContent className="p-4">
+                  <Skeleton className="h-6 w-3/4 mb-2" />
+                  <Skeleton className="h-5 w-1/4 mb-4" />
+                  <Skeleton className="h-10 w-full" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : filteredProducts.length === 0 ? (
+          <div className="text-center py-20">
+            <SlidersHorizontal className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+            <h3 className="text-xl font-semibold mb-2">No Products Found</h3>
+            <p className="text-gray-500 mb-6 max-w-md mx-auto">
+              We couldn't find any products matching your current filters.
+              Try adjusting your search criteria.
+            </p>
+            <Button onClick={handleResetFilters}>Reset All Filters</Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredProducts.map((product) => (
+              <Link key={product.id} to={`/products/${product.id}`}>
+                <Card className="overflow-hidden h-full flex flex-col transition-all hover:shadow-md">
+                  <div
+                    className="h-48 bg-center bg-cover"
+                    style={{ backgroundImage: `url(${getMainImage(product)})` }}
+                  />
+                  <CardContent className="p-4 flex-1 flex flex-col">
+                    <h3 className="font-medium text-lg mb-1 line-clamp-1">
+                      {product.name}
+                    </h3>
+                    <p className="text-primary font-semibold mb-2">
+                      ${product.price.toFixed(2)}
+                    </p>
+                    {product.category && (
+                      <Badge variant="outline" className="self-start mb-2">
+                        {product.category}
+                      </Badge>
+                    )}
+                    {product.description && (
+                      <p className="text-gray-500 text-sm line-clamp-2 mb-3">
+                        {product.description}
+                      </p>
+                    )}
+                    <div className="flex justify-between mt-auto pt-2">
+                      <span className="text-sm text-gray-500">
+                        {product.inventoryCount > 0
+                          ? `${product.inventoryCount} in stock`
+                          : "Out of stock"}
+                      </span>
+                      {product.isDigital && (
+                        <Badge variant="secondary">Digital</Badge>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )}
+      </main>
+      <Footer />
     </>
   );
 };
