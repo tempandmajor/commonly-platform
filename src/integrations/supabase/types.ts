@@ -973,6 +973,21 @@ export type Database = {
         Args: { podcast_id_param: string }
         Returns: undefined
       }
+      insert_message: {
+        Args: {
+          p_chat_id: string
+          p_sender_id: string
+          p_recipient_id: string
+          p_text?: string
+          p_image_url?: string
+          p_voice_url?: string
+        }
+        Returns: string
+      }
+      mark_messages_as_read: {
+        Args: { p_chat_id: string; p_recipient_id: string }
+        Returns: boolean
+      }
       search_events_by_location: {
         Args: {
           lat: number
@@ -991,6 +1006,10 @@ export type Database = {
           location_lng: number
           distance_km: number
         }[]
+      }
+      update_chat_last_message: {
+        Args: { p_chat_id: string; p_last_message: Json }
+        Returns: boolean
       }
     }
     Enums: {

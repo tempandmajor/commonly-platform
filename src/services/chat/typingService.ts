@@ -1,6 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { UserTyping } from "@/types/supabase";
+import { toast } from "@/hooks/use-toast";
 
 /**
  * Update user typing status in a chat
@@ -19,18 +20,23 @@ export const updateTypingStatus = async (
       };
     }
     
-    // Use direct table operations with the user_typing table
+    // Use direct table operations but rely on database defaults for timestamp
     const { error } = await supabase
       .from('user_typing')
       .upsert({
         chat_id: chatId,
         user_id: userId,
-        is_typing: isTyping,
-        updated_at: new Date().toISOString() // Explicitly set updated_at
+        is_typing: isTyping
+        // Let database handle the updated_at timestamp with its default
       });
       
     if (error) {
       console.error('Error updating typing status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update typing status",
+        variant: "destructive"
+      });
       return { 
         success: false, 
         error: error.message 
@@ -41,6 +47,11 @@ export const updateTypingStatus = async (
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Exception updating typing status:', errorMessage);
+    toast({
+      title: "Error",
+      description: "Failed to update typing status",
+      variant: "destructive"
+    });
     return { 
       success: false, 
       error: errorMessage 
@@ -68,6 +79,11 @@ export const getTypingStatus = async (chatId: string): Promise<{ data: UserTypin
     
     if (error) {
       console.error('Error getting typing status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to get typing status",
+        variant: "destructive"
+      });
       return { 
         data: [], 
         error: error.message 
@@ -78,6 +94,11 @@ export const getTypingStatus = async (chatId: string): Promise<{ data: UserTypin
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Exception getting typing status:', errorMessage);
+    toast({
+      title: "Error",
+      description: "Failed to get typing status",
+      variant: "destructive"
+    });
     return { 
       data: [], 
       error: errorMessage 
@@ -113,6 +134,11 @@ export const clearTypingStatus = async (
       
     if (error) {
       console.error('Error clearing typing status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to clear typing status",
+        variant: "destructive"
+      });
       return { 
         success: false, 
         error: error.message 
@@ -123,6 +149,11 @@ export const clearTypingStatus = async (
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Exception clearing typing status:', errorMessage);
+    toast({
+      title: "Error",
+      description: "Failed to clear typing status",
+      variant: "destructive"
+    });
     return { 
       success: false, 
       error: errorMessage 
@@ -148,6 +179,11 @@ export const clearChatTypingStatuses = async (
       
     if (error) {
       console.error('Error clearing chat typing statuses:', error);
+      toast({
+        title: "Error",
+        description: "Failed to clear typing statuses",
+        variant: "destructive"
+      });
       return { 
         success: false, 
         error: error.message 
@@ -158,6 +194,11 @@ export const clearChatTypingStatuses = async (
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Exception clearing chat typing statuses:', errorMessage);
+    toast({
+      title: "Error",
+      description: "Failed to clear typing statuses",
+      variant: "destructive"
+    });
     return { 
       success: false, 
       error: errorMessage 

@@ -40,10 +40,15 @@ export const useNewChat = () => {
     if (!currentUser) return;
     
     try {
-      // Call createChat with an array of participant IDs
-      const chatId = await createChat([currentUser.uid, userId]);
+      // Use the correct function signature - passing currentUserId and otherUserId
+      const { chat, error } = await createChat(currentUser.uid, userId);
+      
+      if (error || !chat) {
+        throw new Error(error || "Failed to create chat");
+      }
+      
       setNewChatOpen(false);
-      navigate(`/messages/${chatId}`);
+      navigate(`/messages/${chat.id}`);
     } catch (error) {
       console.error("Error creating chat:", error);
       toast({
