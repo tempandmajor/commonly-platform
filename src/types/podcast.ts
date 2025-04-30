@@ -5,6 +5,8 @@ export interface Podcast {
   description?: string;
   imageUrl?: string;
   audioUrl?: string;
+  videoUrl?: string;
+  thumbnailUrl?: string;
   duration: number;
   createdAt: string;
   userId: string;
@@ -15,6 +17,12 @@ export interface Podcast {
   viewCount: number;
   shareCount: number;
   published: boolean;
+  type: 'audio' | 'video';
+  visibility: 'public' | 'private' | 'unlisted';
+  listens?: number;
+  tags?: string[];
+  creatorId?: string;
+  creatorName?: string;
 }
 
 export interface PodcastCategory {

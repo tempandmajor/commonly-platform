@@ -1,71 +1,77 @@
 
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  query,
-  where,
-  orderBy,
-  limit,
-  addDoc,
-  updateDoc,
-  serverTimestamp,
-  deleteDoc,
-  startAfter,
-} from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
-import { db, storage } from "@/lib/firebase";
+import { supabase } from "@/integrations/supabase/client";
 import { Podcast } from "@/types/podcast";
 
 // Fetch podcasts with pagination and filtering
 export const getPodcasts = async (
   pageSize = 10,
-  lastDoc?: any,
+  lastId?: string,
   category?: string,
   searchTerm?: string
-): Promise<{ podcasts: Podcast[]; lastDoc: any }> => {
+): Promise<{ podcasts: Podcast[]; lastId: string | null }> => {
   try {
-    let podcastsQuery = query(
-      collection(db, "podcasts"),
-      where("visibility", "==", "public"),
-      orderBy("createdAt", "desc")
-    );
+    let query = supabase
+      .from('podcasts')
+      .select('*, users!podcasts_user_id_fkey(display_name, photo_url)')
+      .eq('published', true)
+      .order('created_at', { ascending: false });
 
     if (category) {
-      podcastsQuery = query(
-        podcastsQuery,
-        where("category", "==", category)
-      );
+      query = query.eq('category_id', category);
     }
-
-    if (lastDoc) {
-      podcastsQuery = query(podcastsQuery, startAfter(lastDoc));
+    
+    if (searchTerm) {
+      query = query.or(`title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
     }
+    
+    if (lastId) {
+      const { data: lastPodcast, error: lastPodcastError } = await supabase
+        .from('podcasts')
+        .select('created_at')
+        .eq('id', lastId)
+        .single();
 
-    podcastsQuery = query(podcastsQuery, limit(pageSize));
-    const snapshot = await getDocs(podcastsQuery);
-
-    if (snapshot.empty) {
-      return { podcasts: [], lastDoc: null };
+      if (lastPodcastError) throw lastPodcastError;
+      
+      if (lastPodcast) {
+        query = query.lt('created_at', lastPodcast.created_at);
+      }
     }
+    
+    query = query.limit(pageSize);
+    
+    const { data, error } = await query;
+    
+    if (error) throw error;
 
-    const podcasts = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as Podcast[];
-
-    // Filter by search term if provided
-    const filteredPodcasts = searchTerm
-      ? podcasts.filter((podcast) =>
-          podcast.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          podcast.description.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-      : podcasts;
+    // Map to our Podcast type
+    const podcasts: Podcast[] = data.map(podcast => ({
+      id: podcast.id,
+      title: podcast.title,
+      description: podcast.description || undefined,
+      imageUrl: podcast.image_url || undefined,
+      audioUrl: podcast.audio_url || undefined,
+      videoUrl: podcast.video_url || undefined,
+      thumbnailUrl: podcast.thumbnailUrl || undefined,
+      duration: podcast.duration || 0,
+      createdAt: podcast.created_at,
+      userId: podcast.user_id,
+      userName: podcast.users?.display_name || "Unknown",
+      userPhotoUrl: podcast.users?.photo_url || undefined,
+      categoryId: podcast.category_id || undefined,
+      likeCount: podcast.like_count || 0,
+      viewCount: podcast.view_count || 0,
+      shareCount: podcast.share_count || 0,
+      published: podcast.published || false,
+      type: podcast.type || 'audio',
+      visibility: podcast.visibility || 'public',
+      listens: podcast.listens || 0,
+      tags: podcast.tags || []
+    }));
 
     return {
-      podcasts: filteredPodcasts,
-      lastDoc: snapshot.docs[snapshot.docs.length - 1],
+      podcasts,
+      lastId: data.length > 0 ? data[data.length - 1].id : null
     };
   } catch (error) {
     console.error("Error fetching podcasts:", error);
@@ -76,16 +82,43 @@ export const getPodcasts = async (
 // Fetch a single podcast by ID
 export const getPodcast = async (id: string): Promise<Podcast | null> => {
   try {
-    const podcastDoc = await getDoc(doc(db, "podcasts", id));
+    const { data, error } = await supabase
+      .from('podcasts')
+      .select('*, users!podcasts_user_id_fkey(display_name, photo_url)')
+      .eq('id', id)
+      .single();
     
-    if (!podcastDoc.exists()) {
-      return null;
-    }
+    if (error) throw error;
+    if (!data) return null;
     
-    return {
-      id: podcastDoc.id,
-      ...podcastDoc.data(),
-    } as Podcast;
+    // Map to our Podcast type
+    const podcast: Podcast = {
+      id: data.id,
+      title: data.title,
+      description: data.description || undefined,
+      imageUrl: data.image_url || undefined,
+      audioUrl: data.audio_url || undefined,
+      videoUrl: data.video_url || undefined,
+      thumbnailUrl: data.thumbnailUrl || undefined,
+      duration: data.duration || 0,
+      createdAt: data.created_at,
+      userId: data.user_id,
+      userName: data.users?.display_name || "Unknown",
+      userPhotoUrl: data.users?.photo_url || undefined,
+      categoryId: data.category_id || undefined,
+      likeCount: data.like_count || 0,
+      viewCount: data.view_count || 0,
+      shareCount: data.share_count || 0,
+      published: data.published || false,
+      type: data.type || 'audio',
+      visibility: data.visibility || 'public',
+      listens: data.listens || 0,
+      tags: data.tags || [],
+      creatorId: data.user_id,
+      creatorName: data.users?.display_name || "Unknown"
+    };
+    
+    return podcast;
   } catch (error) {
     console.error("Error fetching podcast:", error);
     throw error;
@@ -97,18 +130,40 @@ export const getPodcastsByCreator = async (
   creatorId: string
 ): Promise<Podcast[]> => {
   try {
-    const podcastsRef = collection(db, "podcasts");
-    const q = query(
-      podcastsRef,
-      where("creatorId", "==", creatorId),
-      orderBy("createdAt", "desc")
-    );
+    const { data, error } = await supabase
+      .from('podcasts')
+      .select('*, users!podcasts_user_id_fkey(display_name, photo_url)')
+      .eq('user_id', creatorId)
+      .order('created_at', { ascending: false });
     
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as Podcast[];
+    if (error) throw error;
+    
+    // Map to our Podcast type
+    const podcasts: Podcast[] = data.map(podcast => ({
+      id: podcast.id,
+      title: podcast.title,
+      description: podcast.description || undefined,
+      imageUrl: podcast.image_url || undefined,
+      audioUrl: podcast.audio_url || undefined,
+      videoUrl: podcast.video_url || undefined,
+      thumbnailUrl: podcast.thumbnailUrl || undefined,
+      duration: podcast.duration || 0,
+      createdAt: podcast.created_at,
+      userId: podcast.user_id,
+      userName: podcast.users?.display_name || "Unknown",
+      userPhotoUrl: podcast.users?.photo_url || undefined,
+      categoryId: podcast.category_id || undefined,
+      likeCount: podcast.like_count || 0,
+      viewCount: podcast.view_count || 0,
+      shareCount: podcast.share_count || 0,
+      published: podcast.published || false,
+      type: podcast.type || 'audio',
+      visibility: podcast.visibility || 'public',
+      listens: podcast.listens || 0,
+      tags: podcast.tags || []
+    }));
+    
+    return podcasts;
   } catch (error) {
     console.error("Error fetching creator podcasts:", error);
     throw error;
@@ -126,50 +181,76 @@ export const createPodcast = async (
     let audioUrl;
     let videoUrl;
     let thumbnailUrl;
-
-    // Upload thumbnail if provided
+    
+    // Upload files to Supabase Storage
     if (thumbnailFile) {
-      const thumbnailRef = ref(
-        storage,
-        `podcasts/thumbnails/${Date.now()}_${thumbnailFile.name}`
-      );
-      await uploadBytes(thumbnailRef, thumbnailFile);
-      thumbnailUrl = await getDownloadURL(thumbnailRef);
+      const filePath = `thumbnails/${podcastData.userId}/${Date.now()}_${thumbnailFile.name.replace(/\s/g, '_')}`;
+      const { error: uploadError } = await supabase.storage
+        .from('podcasts')
+        .upload(filePath, thumbnailFile);
+        
+      if (uploadError) throw uploadError;
+      
+      const { data: urlData } = supabase.storage
+        .from('podcasts')
+        .getPublicUrl(filePath);
+        
+      thumbnailUrl = urlData.publicUrl;
     }
 
-    // Upload audio if provided
     if (audioFile) {
-      const audioRef = ref(
-        storage,
-        `podcasts/audio/${Date.now()}_${audioFile.name}`
-      );
-      await uploadBytes(audioRef, audioFile);
-      audioUrl = await getDownloadURL(audioRef);
+      const filePath = `audio/${podcastData.userId}/${Date.now()}_${audioFile.name.replace(/\s/g, '_')}`;
+      const { error: uploadError } = await supabase.storage
+        .from('podcasts')
+        .upload(filePath, audioFile);
+        
+      if (uploadError) throw uploadError;
+      
+      const { data: urlData } = supabase.storage
+        .from('podcasts')
+        .getPublicUrl(filePath);
+        
+      audioUrl = urlData.publicUrl;
     }
 
-    // Upload video if provided
     if (videoFile) {
-      const videoRef = ref(
-        storage,
-        `podcasts/video/${Date.now()}_${videoFile.name}`
-      );
-      await uploadBytes(videoRef, videoFile);
-      videoUrl = await getDownloadURL(videoRef);
+      const filePath = `video/${podcastData.userId}/${Date.now()}_${videoFile.name.replace(/\s/g, '_')}`;
+      const { error: uploadError } = await supabase.storage
+        .from('podcasts')
+        .upload(filePath, videoFile);
+        
+      if (uploadError) throw uploadError;
+      
+      const { data: urlData } = supabase.storage
+        .from('podcasts')
+        .getPublicUrl(filePath);
+        
+      videoUrl = urlData.publicUrl;
     }
 
-    // Create podcast document
-    const podcastRef = collection(db, "podcasts");
-    const docRef = await addDoc(podcastRef, {
-      ...podcastData,
-      audioUrl,
-      videoUrl,
-      thumbnailUrl,
-      listens: 0,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
+    // Insert podcast record
+    const { data: podcast, error } = await supabase
+      .from('podcasts')
+      .insert({
+        title: podcastData.title,
+        description: podcastData.description,
+        image_url: thumbnailUrl || podcastData.imageUrl,
+        audio_url: audioUrl || podcastData.audioUrl,
+        video_url: videoUrl || podcastData.videoUrl,
+        duration: podcastData.duration,
+        user_id: podcastData.userId,
+        category_id: podcastData.categoryId,
+        published: podcastData.published,
+        type: podcastData.type || 'audio',
+        visibility: podcastData.visibility || 'public',
+        tags: podcastData.tags || []
+      })
+      .select()
+      .single();
 
-    return docRef.id;
+    if (error) throw error;
+
+    return podcast.id;
   } catch (error) {
     console.error("Error creating podcast:", error);
     throw error;
@@ -183,19 +264,46 @@ export const updatePodcast = async (
   thumbnailFile?: File
 ): Promise<void> => {
   try {
-    const updateData = { ...podcastData, updatedAt: serverTimestamp() };
+    let thumbnailUrl = podcastData.thumbnailUrl;
     
     // Upload new thumbnail if provided
     if (thumbnailFile) {
-      const thumbnailRef = ref(
-        storage,
-        `podcasts/thumbnails/${Date.now()}_${thumbnailFile.name}`
-      );
-      await uploadBytes(thumbnailRef, thumbnailFile);
-      updateData.thumbnailUrl = await getDownloadURL(thumbnailRef);
+      const filePath = `thumbnails/${podcastData.userId}/${Date.now()}_${thumbnailFile.name.replace(/\s/g, '_')}`;
+      const { error: uploadError } = await supabase.storage
+        .from('podcasts')
+        .upload(filePath, thumbnailFile);
+        
+      if (uploadError) throw uploadError;
+      
+      const { data: urlData } = supabase.storage
+        .from('podcasts')
+        .getPublicUrl(filePath);
+        
+      thumbnailUrl = urlData.publicUrl;
     }
 
-    await updateDoc(doc(db, "podcasts", id), updateData);
+    // Map our Podcast type to database format
+    const updateData: Record<string, any> = {};
+    
+    if (podcastData.title !== undefined) updateData.title = podcastData.title;
+    if (podcastData.description !== undefined) updateData.description = podcastData.description;
+    if (thumbnailUrl !== undefined) updateData.image_url = thumbnailUrl;
+    if (podcastData.audioUrl !== undefined) updateData.audio_url = podcastData.audioUrl;
+    if (podcastData.videoUrl !== undefined) updateData.video_url = podcastData.videoUrl;
+    if (podcastData.duration !== undefined) updateData.duration = podcastData.duration;
+    if (podcastData.categoryId !== undefined) updateData.category_id = podcastData.categoryId;
+    if (podcastData.published !== undefined) updateData.published = podcastData.published;
+    if (podcastData.type !== undefined) updateData.type = podcastData.type;
+    if (podcastData.visibility !== undefined) updateData.visibility = podcastData.visibility;
+    if (podcastData.tags !== undefined) updateData.tags = podcastData.tags;
+    
+    // Update the podcast record
+    const { error } = await supabase
+      .from('podcasts')
+      .update(updateData)
+      .eq('id', id);
+
+    if (error) throw error;
   } catch (error) {
     console.error("Error updating podcast:", error);
     throw error;
@@ -205,44 +313,57 @@ export const updatePodcast = async (
 // Delete a podcast
 export const deletePodcast = async (id: string): Promise<void> => {
   try {
-    const podcastDoc = await getDoc(doc(db, "podcasts", id));
+    // Get podcast details first to delete storage files
+    const { data: podcast, error: fetchError } = await supabase
+      .from('podcasts')
+      .select('*')
+      .eq('id', id)
+      .single();
     
-    if (podcastDoc.exists()) {
-      const podcastData = podcastDoc.data() as Podcast;
-      
-      // Delete audio file if it exists
-      if (podcastData.audioUrl) {
+    if (fetchError) throw fetchError;
+    
+    // Delete file from storage if exists
+    if (podcast) {
+      // Extract paths from URLs
+      const getPathFromUrl = (url?: string) => {
+        if (!url) return null;
         try {
-          const audioRef = ref(storage, podcastData.audioUrl);
-          await deleteObject(audioRef);
-        } catch (error) {
-          console.error("Error deleting audio file:", error);
+          const storageUrl = supabase.storage.from('podcasts').getPublicUrl('').data.publicUrl;
+          return url.replace(storageUrl, '');
+        } catch (e) {
+          return null;
         }
+      };
+
+      const promises = [];
+      
+      const audioPath = getPathFromUrl(podcast.audio_url);
+      const videoPath = getPathFromUrl(podcast.video_url);
+      const imagePath = getPathFromUrl(podcast.image_url);
+      
+      if (audioPath) {
+        promises.push(supabase.storage.from('podcasts').remove([audioPath]));
       }
       
-      // Delete video file if it exists
-      if (podcastData.videoUrl) {
-        try {
-          const videoRef = ref(storage, podcastData.videoUrl);
-          await deleteObject(videoRef);
-        } catch (error) {
-          console.error("Error deleting video file:", error);
-        }
+      if (videoPath) {
+        promises.push(supabase.storage.from('podcasts').remove([videoPath]));
       }
       
-      // Delete thumbnail if it exists
-      if (podcastData.thumbnailUrl) {
-        try {
-          const thumbnailRef = ref(storage, podcastData.thumbnailUrl);
-          await deleteObject(thumbnailRef);
-        } catch (error) {
-          console.error("Error deleting thumbnail:", error);
-        }
+      if (imagePath) {
+        promises.push(supabase.storage.from('podcasts').remove([imagePath]));
       }
+      
+      // Wait for all storage operations to complete
+      await Promise.all(promises);
     }
     
-    // Delete podcast document
-    await deleteDoc(doc(db, "podcasts", id));
+    // Delete podcast record
+    const { error } = await supabase
+      .from('podcasts')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
   } catch (error) {
     console.error("Error deleting podcast:", error);
     throw error;

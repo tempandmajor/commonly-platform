@@ -1,5 +1,16 @@
 
-export type NotificationType = 'message' | 'like' | 'follow' | 'comment' | 'podcast' | 'event' | 'system';
+export type NotificationType = 
+  | 'message' 
+  | 'like' 
+  | 'follow' 
+  | 'comment' 
+  | 'podcast' 
+  | 'event' 
+  | 'system'
+  | 'event_update'
+  | 'new_follower'
+  | 'referral_earnings'
+  | 'sponsorship';
 
 export interface Notification {
   id: string;
