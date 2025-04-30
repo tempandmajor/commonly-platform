@@ -1,8 +1,6 @@
-
 import { useState, useEffect } from "react";
 import { UserData } from "@/types/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { getUserProfile } from "@/services/userService";
 import { toast } from "@/hooks/use-toast";
 
 export const useOtherUser = (userId: string | null) => {
@@ -13,14 +11,17 @@ export const useOtherUser = (userId: string | null) => {
   const [lastSeen, setLastSeen] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      if (!userId) {
-        setLoading(false);
-        return;
-      }
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
+    
+    // Keep a reference to the active subscription
+    let presenceChannel: any = null;
 
+    const fetchUser = async () => {
       try {
-        // Optimized query: Get both user profile and presence data in one query
+        // Optimized query: Get user profile and presence data in one query
         const { data, error } = await supabase
           .from('users')
           .select('id, email, display_name, photo_url, bio, is_online, last_seen')
@@ -51,6 +52,32 @@ export const useOtherUser = (userId: string | null) => {
           setUser(userData);
           setIsOnline(data.is_online || false);
           setLastSeen(data.last_seen || null);
+          
+          // Subscribe to presence changes using Supabase Realtime
+          presenceChannel = supabase
+            .channel(`presence_${userId}`)
+            .on('postgres_changes', {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'users',
+              filter: `id=eq.${userId}`
+            }, (payload) => {
+              try {
+                // Use type assertion to access is_online and last_seen
+                const userData = payload.new as any;
+                if (userData) {
+                  setIsOnline(userData.is_online || false);
+                  setLastSeen(userData.last_seen || null);
+                }
+              } catch (err) {
+                console.error("Error processing realtime update:", err);
+              }
+            })
+            .subscribe((status) => {
+              if (status !== 'SUBSCRIBED') {
+                console.error("Failed to subscribe to presence channel:", status);
+              }
+            });
         }
       } catch (err) {
         console.error("Error in useOtherUser hook:", err);
@@ -67,38 +94,13 @@ export const useOtherUser = (userId: string | null) => {
 
     fetchUser();
     
-    // Subscribe to presence changes using Supabase Realtime
-    if (!userId) return;
-    
-    const channel = supabase
-      .channel(`presence_${userId}`)
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'users',
-        filter: `id=eq.${userId}`
-      }, (payload) => {
-        try {
-          // Use type assertion to access is_online and last_seen
-          const userData = payload.new as any;
-          if (userData) {
-            setIsOnline(userData.is_online || false);
-            setLastSeen(userData.last_seen || null);
-          }
-        } catch (err) {
-          console.error("Error processing realtime update:", err);
-        }
-      })
-      .subscribe((status) => {
-        if (status !== 'SUBSCRIBED') {
-          console.error("Failed to subscribe to presence channel:", status);
-        }
-      });
-      
+    // Clean up subscription when component unmounts or userId changes
     return () => {
-      supabase.removeChannel(channel).catch(err => {
-        console.error("Error removing channel:", err);
-      });
+      if (presenceChannel) {
+        supabase.removeChannel(presenceChannel).catch(err => {
+          console.error("Error removing presence channel:", err);
+        });
+      }
     };
   }, [userId]);
 

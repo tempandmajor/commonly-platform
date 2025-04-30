@@ -15,13 +15,27 @@ export const useChat = () => {
   const [error, setError] = useState<string | null>(null);
   
   // Get messages and read status
-  const { messages, loading, handleMarkMessagesAsRead, error: messagesError } = useMessages();
+  const { 
+    messages, 
+    loading, 
+    handleMarkMessagesAsRead, 
+    error: messagesError 
+  } = useMessages();
   
   // Get info about the other user
-  const { user: otherUser, isOnline, lastSeen, error: userError } = useOtherUser(chatId ? chatId.split("/")[0] : null);
+  const { 
+    user: otherUser, 
+    isOnline, 
+    lastSeen, 
+    error: userError 
+  } = useOtherUser(chatId ? chatId.split("/")[0] : null);
   
   // Typing status handling
-  const { isOtherUserTyping, handleUserTyping, error: typingError } = useTypingStatus();
+  const { 
+    isOtherUserTyping, 
+    handleUserTyping, 
+    error: typingError 
+  } = useTypingStatus();
   
   // Message sending functionality
   const { 

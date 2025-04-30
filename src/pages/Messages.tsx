@@ -10,8 +10,11 @@ import ChatHeader from "@/components/messages/ChatHeader";
 import MessageDisplay from "@/components/messages/MessageDisplay";
 import MessageInput from "@/components/messages/MessageInput";
 import EmojiPicker from "@/components/messages/EmojiPicker";
+import { useAuth } from "@/contexts/AuthContext";
+import { clearTypingStatus } from "@/services/chat";
 
 const Messages = () => {
+  const { currentUser } = useAuth();
   const {
     messages,
     otherUser,
@@ -31,6 +34,17 @@ const Messages = () => {
   } = useChat();
 
   const [newMessage, setNewMessage] = useState<string>("");
+
+  // Clean up typing status on component unmount
+  useEffect(() => {
+    return () => {
+      if (currentUser) {
+        clearTypingStatus(currentUser.uid).catch(err => {
+          console.error("Error clearing typing status on component unmount:", err);
+        });
+      }
+    };
+  }, [currentUser]);
 
   const addEmojiToMessage = (emoji: string) => {
     setNewMessage(prev => prev + emoji);

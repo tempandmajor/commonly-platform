@@ -27,10 +27,12 @@ export const useTypingStatus = () => {
         
         // Automatically reset typing status after 5 seconds of inactivity
         setTimeout(() => {
-          updateTypingStatus(chatId, currentUser.uid, false)
-            .catch(err => {
-              console.error("Error resetting typing status:", err);
-            });
+          if (currentUser && chatId) {
+            updateTypingStatus(chatId, currentUser.uid, false)
+              .catch(err => {
+                console.error("Error resetting typing status:", err);
+              });
+          }
         }, 5000);
       }
     }, 500),
@@ -103,31 +105,37 @@ export const useTypingStatus = () => {
             }
           });
           
-        return () => {
-          supabase.removeChannel(channel).catch(err => {
-            console.error("Error removing channel:", err);
-          });
-        };
+        return channel;
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
         console.error("Error in setupSubscription:", errorMessage);
         setError(`Subscription error: ${errorMessage}`);
-        return () => {};
+        return null;
       }
     };
     
-    const unsubscribe = setupSubscription();
+    let channel: any = null;
+    
+    setupSubscription().then(ch => {
+      channel = ch;
+    });
     
     // Clean up typing status when leaving the chat
     return () => {
       if (currentUser) {
-        clearTypingStatus(currentUser.uid).catch(err => {
-          console.error("Error clearing typing status on unmount:", err);
-        });
+        // Ensure we clear the typing status when leaving the component
+        updateTypingStatus(chatId, currentUser.uid, false)
+          .then(() => clearTypingStatus(currentUser.uid))
+          .catch(err => {
+            console.error("Error cleaning up typing status on unmount:", err);
+          });
       }
       
-      if (unsubscribe) {
-        unsubscribe.then(fn => fn && fn());
+      // Remove the subscription
+      if (channel) {
+        supabase.removeChannel(channel).catch(err => {
+          console.error("Error removing typing channel:", err);
+        });
       }
     };
   }, [chatId, currentUser]);
