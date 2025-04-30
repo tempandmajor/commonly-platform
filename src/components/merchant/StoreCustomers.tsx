@@ -39,7 +39,7 @@ const StoreCustomers: React.FC<StoreCustomersProps> = ({ storeId }) => {
       try {
         setLoading(true);
         
-        // First get all orders for this merchant
+        // First get all orders for this merchant using a typesafe query
         const { data: ordersData, error: ordersError } = await supabase
           .from('orders')
           .select('user_id, total_amount')

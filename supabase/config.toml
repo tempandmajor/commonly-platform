@@ -18,3 +18,6 @@ verify_jwt = true
 
 [functions.chat-server]
 verify_jwt = true
+
+[functions.migration-status]
+verify_jwt = true

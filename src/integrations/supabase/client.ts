@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
@@ -49,6 +48,21 @@ export type Tables = {
       updated_at: string;
       published: boolean | null;
       image_url: string | null;
+      geo_location: unknown | null; // PostGIS geography type
+    }
+  };
+  orders: {
+    Row: {
+      id: string;
+      user_id: string;
+      merchant_id: string;
+      items: Record<string, any>;
+      total_amount: number;
+      status: string;
+      payment_intent_id: string | null;
+      shipping_address: Record<string, any> | null;
+      created_at: string;
+      updated_at: string;
     }
   };
   venues: {

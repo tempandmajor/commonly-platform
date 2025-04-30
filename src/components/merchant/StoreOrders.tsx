@@ -22,26 +22,30 @@ const StoreOrders: React.FC<StoreOrdersProps> = ({ storeId }) => {
     const fetchOrders = async () => {
       try {
         setLoading(true);
+        // Use typesafe query
         const { data, error } = await supabase
           .from('orders')
           .select('*')
-          .eq('merchantId', storeId)
-          .order('createdAt', { ascending: false });
+          .eq('merchant_id', storeId)
+          .order('created_at', { ascending: false });
 
         if (error) throw error;
 
-        setOrders(data.map(order => ({
-          id: order.id,
-          userId: order.user_id,
-          merchantId: order.merchant_id,
-          items: order.items,
-          totalAmount: order.total_amount,
-          status: order.status,
-          paymentIntentId: order.payment_intent_id,
-          shippingAddress: order.shipping_address,
-          createdAt: order.created_at,
-          updatedAt: order.updated_at
-        })));
+        // Map the data to our Order type
+        if (data) {
+          setOrders(data.map(order => ({
+            id: order.id,
+            userId: order.user_id,
+            merchantId: order.merchant_id,
+            items: order.items,
+            totalAmount: order.total_amount,
+            status: order.status,
+            paymentIntentId: order.payment_intent_id,
+            shippingAddress: order.shipping_address,
+            createdAt: order.created_at,
+            updatedAt: order.updated_at
+          })));
+        }
       } catch (error) {
         console.error("Error fetching orders:", error);
         toast({
