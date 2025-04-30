@@ -46,3 +46,25 @@ export interface Order {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface MerchantStore {
+  id: string;
+  ownerId: string;
+  name: string;
+  description?: string;
+  logoUrl?: string;
+  bannerUrl?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  socialLinks?: {
+    website?: string;
+    twitter?: string;
+    instagram?: string;
+    facebook?: string;
+  };
+  shippingPolicy?: string;
+  returnPolicy?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}

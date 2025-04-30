@@ -42,7 +42,8 @@ const NotificationsPopover: React.FC = () => {
           actionUrl: item.action_url,
           read: item.read,
           createdAt: item.created_at,
-          data: item.data
+          // Ensure data is properly initialized if it's null
+          data: item.data || {}
         }));
         
         setNotifications(notificationData);
@@ -78,7 +79,7 @@ const NotificationsPopover: React.FC = () => {
           actionUrl: payload.new.action_url,
           read: payload.new.read,
           createdAt: payload.new.created_at,
-          data: payload.new.data
+          data: payload.new.data || {}
         };
         
         setNotifications(prev => [newNotification, ...prev]);

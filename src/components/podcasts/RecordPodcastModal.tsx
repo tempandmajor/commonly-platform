@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { 
   createPodcast, 
   createPodcastSession 
-} from "@/services/podcast"; // Updated import path
+} from "@/services/podcast";
 import { PodcastFormData } from "./PodcastForm";
 import RecordingStudio from "./RecordingStudio";
 import PodcastForm from "./PodcastForm";
@@ -100,7 +100,7 @@ const RecordPodcastModal: React.FC<RecordPodcastModalProps> = ({
           creatorId: currentUser.uid,
           creatorName: userData.displayName || "Unknown Creator",
           type: formData.type,
-          category: formData.category,
+          categoryId: formData.category, // Changing to categoryId to match type
           duration: duration,
           isExternal: false,
           visibility: formData.visibility,

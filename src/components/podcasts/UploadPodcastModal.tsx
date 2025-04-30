@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { createPodcast } from "@/services/podcast"; // Updated import path
+import { createPodcast } from "@/services/podcast";
 import { PodcastFormData } from "./PodcastForm";
 import PodcastForm from "./PodcastForm";
 import { PodcastCategory } from "@/types/podcast";
@@ -68,7 +68,7 @@ const UploadPodcastModal: React.FC<UploadPodcastModalProps> = ({
           creatorId: currentUser.uid,
           creatorName: userData.displayName || "Unknown Creator",
           type: data.type,
-          category: data.category,
+          categoryId: data.category, // Changed from category to categoryId
           duration: data.duration,
           isExternal: true,
           visibility: data.visibility,
