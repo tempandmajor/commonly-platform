@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import EventList from "../components/events/EventList";
 import Navbar from "../components/layout/Navbar";
@@ -8,11 +7,39 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { MapPin, SlidersHorizontal } from "lucide-react";
 
+// Define the Event interface to match what EventList expects
+interface Event {
+  id: string;
+  title: string;
+  description?: string | null;
+  imageUrl?: string | null; // Note: we'll map image_url to imageUrl
+  date?: string;
+  price?: number;
+  organizer?: string;
+  organizerId?: string;
+  location?: string;
+  attendeeCount?: number;
+  capacity?: number;
+  category?: string;
+  isVirtual?: boolean;
+}
+
 const Events = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [radius, setRadius] = useState<number>(50);
   const { selectedLocationName } = useLocation();
-  const { events, isLoading } = useEventsByLocation(radius);
+  const { events: eventsWithDistance, isLoading } = useEventsByLocation(radius);
+  
+  // Transform EventWithDistance to Event
+  const events: Event[] = eventsWithDistance.map(event => ({
+    id: event.id,
+    title: event.title,
+    description: event.description,
+    imageUrl: event.image_url,
+    date: event.date,
+    location: event.location,
+    // Other fields can be defaulted or left undefined if not available
+  }));
 
   return (
     <>

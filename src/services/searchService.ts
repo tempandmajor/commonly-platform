@@ -39,7 +39,8 @@ export const globalSearch = async (query: string, limit: number = 10): Promise<S
     throw error;
   }
 
-  return data || [];
+  // Ensure the data matches the SearchResult type
+  return (data as SearchResult[]) || [];
 };
 
 // Search events by location
