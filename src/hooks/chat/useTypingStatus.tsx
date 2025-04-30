@@ -26,7 +26,7 @@ export const useTypingStatus = () => {
       
       // Find if other user is typing
       const otherUserTypingData = typingData.find(data => 
-        data.id !== currentUser.uid && data.isTyping === true
+        data.id !== currentUser.uid && data.userId !== currentUser.uid && data.isTyping === true
       );
       
       if (otherUserTypingData) {
