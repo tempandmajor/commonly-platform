@@ -1,4 +1,3 @@
-
 // User data structure
 export interface UserData {
   uid: string;
@@ -105,14 +104,15 @@ export type NotificationType = 'message' | 'like' | 'follow' | 'comment' | 'podc
 
 export interface Notification {
   id: string;
-  userId: string;
+  user_id: string;
   type: NotificationType;
   title: string;
-  body?: string;
-  imageUrl?: string;
-  actionUrl?: string;
+  body: string;
+  image_url: string;
+  action_url: string;
   read: boolean;
-  createdAt: string;
+  created_at: string;
+  data?: Record<string, any>;
 }
 
 export interface NotificationSettings {

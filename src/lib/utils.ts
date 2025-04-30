@@ -1,89 +1,57 @@
 
-import { type ClassValue, clsx } from "clsx"
-import { twMerge } from "tailwind-merge"
-import { supabase } from "@/integrations/supabase/client";
- 
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(amount: number, currencyCode: string = 'USD'): string {
-  try {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currencyCode,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  } catch (error) {
-    console.error('Error formatting currency:', error);
-    return `${currencyCode} ${amount}`;
-  }
+export function formatDate(date: Date): string {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(date);
 }
 
-/**
- * Format duration in seconds to a readable time format (mm:ss or hh:mm:ss)
- */
-export function formatDuration(seconds: number): string {
-  if (!seconds || isNaN(seconds)) return '00:00';
+export function formatTime(date: Date): string {
+  return new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: true,
+  }).format(date);
+}
+
+export function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+  }).format(amount);
+}
+
+export function truncateText(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text;
+  return `${text.substring(0, maxLength)}...`;
+}
+
+export function extractInitials(name?: string): string {
+  if (!name) return "?";
   
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const remainingSeconds = Math.floor(seconds % 60);
-  
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
-  } else {
-    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
   }
+  return parts[0].substring(0, 2).toUpperCase();
 }
 
-/**
- * Update user's online status and last seen time
- */
-export async function updateUserPresence(userId: string, isOnline: boolean): Promise<void> {
-  try {
-    if (!userId) return;
-    
-    await supabase
-      .from('users')
-      .update({
-        is_online: isOnline,
-        last_seen: isOnline ? null : new Date().toISOString()
-      })
-      .eq('id', userId);
-  } catch (error) {
-    console.error('Error updating user presence:', error);
-  }
-}
-
-/**
- * Delete a file from Supabase storage bucket
- */
-export async function deleteStorageFile(fileUrl: string, bucketName: string): Promise<boolean> {
-  try {
-    if (!fileUrl) return false;
-    
-    // Extract path from URL
-    const url = new URL(fileUrl);
-    const pathMatch = url.pathname.match(new RegExp(`${bucketName}\/(.*)`));
-    
-    if (!pathMatch || !pathMatch[1]) {
-      console.error('Could not parse storage path from URL:', fileUrl);
-      return false;
-    }
-    
-    const filePath = pathMatch[1];
-    const { error } = await supabase.storage.from(bucketName).remove([filePath]);
-    
-    if (error) {
-      console.error('Error deleting file from storage:', error);
-      return false;
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('Error in deleteStorageFile:', error);
-    return false;
-  }
+export function mapUserForStore(user: any) {
+  // Map user data for storage without including is_online field
+  return {
+    uid: user.uid,
+    email: user.email,
+    displayName: user.displayName,
+    photoURL: user.photoURL,
+    bio: user.bio
+    // Don't include is_online as it's not in the types
+  };
 }

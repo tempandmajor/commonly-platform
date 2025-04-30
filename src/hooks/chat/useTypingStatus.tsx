@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { UserTyping } from "@/types/chat";
 
 export const useTypingStatus = () => {
   const { chatId } = useParams<{ chatId: string }>();
@@ -23,7 +24,7 @@ export const useTypingStatus = () => {
         table: 'user_typing',
         filter: `chat_id=eq.${chatId}`
       }, (payload) => {
-        const typingData = payload.new as any;
+        const typingData = payload.new as UserTyping;
         
         // If the typing status is from another user
         if (typingData && typingData.user_id !== currentUser.uid) {
@@ -42,19 +43,27 @@ export const useTypingStatus = () => {
     if (!currentUser?.uid || !chatId) return;
     
     try {
-      // Update typing status in the database
-      const { error } = await supabase
-        .from('user_typing')
-        .upsert({
-          chat_id: chatId,
-          user_id: currentUser.uid,
-          is_typing: isTyping,
-          updated_at: new Date().toISOString()
-        })
-        .select();
+      // Use upsert to update or insert typing status
+      const { error } = await supabase.rpc('update_typing_status', {
+        p_chat_id: chatId,
+        p_user_id: currentUser.uid,
+        p_is_typing: isTyping
+      });
         
       if (error) {
-        console.error('Error updating typing status:', error);
+        // Fallback to direct table operations if RPC isn't available
+        const { error: fallbackError } = await supabase
+          .from('user_typing')
+          .upsert({
+            chat_id: chatId,
+            user_id: currentUser.uid,
+            is_typing: isTyping,
+            updated_at: new Date().toISOString()
+          });
+          
+        if (fallbackError) {
+          console.error('Error updating typing status:', fallbackError);
+        }
       }
     } catch (error) {
       console.error('Error handling typing status:', error);
@@ -70,15 +79,23 @@ export const useTypingStatus = () => {
     if (isTyping) {
       typingTimeoutRef.current = window.setTimeout(async () => {
         try {
-          await supabase
-            .from('user_typing')
-            .upsert({
-              chat_id: chatId,
-              user_id: currentUser.uid,
-              is_typing: false,
-              updated_at: new Date().toISOString()
-            })
-            .select();
+          const { error } = await supabase.rpc('update_typing_status', {
+            p_chat_id: chatId,
+            p_user_id: currentUser.uid,
+            p_is_typing: false
+          });
+          
+          if (error) {
+            // Fallback to direct table operations
+            await supabase
+              .from('user_typing')
+              .upsert({
+                chat_id: chatId,
+                user_id: currentUser.uid,
+                is_typing: false,
+                updated_at: new Date().toISOString()
+              });
+          }
         } catch (error) {
           console.error('Error resetting typing status:', error);
         }

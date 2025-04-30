@@ -1,117 +1,74 @@
 
 import React, { useState, useEffect } from "react";
+import { Bell } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Notification } from "@/types/auth";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
-import { Bell } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import NotificationsList from "./NotificationsList";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { Notification } from "@/types/notification";
+import { getNotifications, markAllAsRead, getUnreadCount, subscribeToNotifications, subscribeToUnreadCount } from "@/services/notificationService";
 
-const NotificationsPopover: React.FC = () => {
-  const { currentUser } = useAuth();
+const NotificationsPopover = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
-  const [open, setOpen] = useState<boolean>(false);
-  
+  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const { currentUser } = useAuth();
+
   useEffect(() => {
-    if (!currentUser?.uid) return;
-    
-    // Initial fetch
+    if (!currentUser) return;
+
+    setLoading(true);
+
     const fetchNotifications = async () => {
-      setLoading(true);
       try {
-        const { data, error } = await supabase
-          .from('notifications')
-          .select('*')
-          .eq('user_id', currentUser.uid)
-          .order('created_at', { ascending: false })
-          .limit(10);
+        const notificationsData = await getNotifications(currentUser.uid);
+        setNotifications(notificationsData);
         
-        if (error) throw error;
-        
-        // Map to our notification type
-        const notificationData: Notification[] = data.map(item => ({
-          id: item.id,
-          userId: item.user_id,
-          type: item.type,
-          title: item.title,
-          body: item.body,
-          imageUrl: item.image_url,
-          actionUrl: item.action_url,
-          read: item.read,
-          createdAt: item.created_at,
-          // Ensure data is properly initialized if it's null
-          data: item.data || {}
-        }));
-        
-        setNotifications(notificationData);
-        
-        // Count unread notifications
-        const unreadItems = notificationData.filter(notification => !notification.read);
-        setUnreadCount(unreadItems.length);
+        const count = await getUnreadCount(currentUser.uid);
+        setUnreadCount(count);
       } catch (error) {
-        console.error("Error fetching notifications:", error);
+        console.error('Error fetching notifications:', error);
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchNotifications();
-    
+
     // Subscribe to real-time notifications
-    const channel = supabase
-      .channel('public:notifications')
-      .on('postgres_changes', {
-        event: 'INSERT', 
-        schema: 'public',
-        table: 'notifications',
-        filter: `user_id=eq.${currentUser.uid}`,
-      }, (payload) => {
-        const newNotification: Notification = {
-          id: payload.new.id,
-          userId: payload.new.user_id,
-          type: payload.new.type,
-          title: payload.new.title,
-          body: payload.new.body,
-          imageUrl: payload.new.image_url,
-          actionUrl: payload.new.action_url,
-          read: payload.new.read,
-          createdAt: payload.new.created_at,
-          data: payload.new.data || {}
-        };
-        
-        setNotifications(prev => [newNotification, ...prev]);
-        setUnreadCount(prev => prev + 1);
-      })
-      .subscribe();
-    
+    const unsubscribeNotifications = subscribeToNotifications(currentUser.uid, (updatedNotifications) => {
+      setNotifications(updatedNotifications);
+    });
+
+    // Subscribe to unread count updates
+    const unsubscribeUnreadCount = subscribeToUnreadCount(currentUser.uid, (count) => {
+      setUnreadCount(count);
+    });
+
     return () => {
-      supabase.removeChannel(channel);
+      unsubscribeNotifications();
+      unsubscribeUnreadCount();
     };
   }, [currentUser]);
-  
-  const handleOpenChange = (isOpen: boolean) => {
-    setOpen(isOpen);
+
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
     
-    // Mark all as read when closing the popover
-    if (!isOpen && unreadCount > 0 && currentUser?.uid) {
-      // We don't await this as it's not critical for the UI flow
-      markAllAsRead();
+    // When opening the popover, mark notifications as read
+    if (open && unreadCount > 0 && currentUser) {
+      handleMarkAllAsRead();
     }
   };
-  
-  const markAllAsRead = async () => {
-    if (!currentUser?.uid) return;
+
+  const handleMarkAllAsRead = async () => {
+    if (!currentUser) return;
     
     try {
-      await supabase
-        .from('notifications')
-        .update({ read: true })
-        .eq('user_id', currentUser.uid)
-        .eq('read', false);
+      await markAllAsRead(currentUser.uid);
       
+      // Update the local state
       setNotifications(prevNotifications => 
         prevNotifications.map(notification => ({
           ...notification,
@@ -121,44 +78,30 @@ const NotificationsPopover: React.FC = () => {
       
       setUnreadCount(0);
     } catch (error) {
-      console.error("Error marking all notifications as read:", error);
+      console.error('Error marking notifications as read:', error);
     }
   };
-  
+
+  if (!currentUser) return null;
+
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
+    <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-              {unreadCount > 9 ? "9+" : unreadCount}
-            </span>
+            <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </Badge>
           )}
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-80 p-0">
-        <div className="py-2 px-3 border-b">
-          <h3 className="font-medium">Notifications</h3>
-        </div>
-        {currentUser?.uid && (
-          <NotificationsList 
-            notifications={notifications}
-            userId={currentUser.uid}
-            onMarkAllAsRead={markAllAsRead}
-            loading={loading}
-          />
-        )}
-        <div className="p-2 border-t text-center">
-          <Button 
-            variant="link" 
-            size="sm" 
-            asChild 
-            className="text-xs text-gray-500"
-          >
-            <a href="/settings/notifications">Manage Notifications</a>
-          </Button>
-        </div>
+        <NotificationsList 
+          notifications={notifications}
+          loading={loading}
+          onMarkAllAsRead={handleMarkAllAsRead}
+        />
       </PopoverContent>
     </Popover>
   );

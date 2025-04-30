@@ -32,7 +32,7 @@ export const useMessages = () => {
         
         if (error) throw error;
         
-        setMessages(data || []);
+        setMessages(data as ChatMessage[] || []);
       } catch (error) {
         console.error("Error loading messages:", error);
         toast({
@@ -90,21 +90,23 @@ export const useMessages = () => {
       
       if (chatError) throw chatError;
       
-      if (chat && chat.last_message && 
-          chat.last_message.recipient_id === currentUser.uid && 
-          !chat.last_message.read) {
+      if (chat && chat.last_message) {
+        // Use type assertion to safely access the properties
+        const lastMessage = chat.last_message as any;
         
-        const { error: updateError } = await supabase
-          .from('chats')
-          .update({
-            last_message: {
-              ...chat.last_message,
-              read: true
-            }
-          })
-          .eq('id', chatId);
-        
-        if (updateError) throw updateError;
+        if (lastMessage.recipient_id === currentUser.uid && !lastMessage.read) {
+          const { error: updateError } = await supabase
+            .from('chats')
+            .update({
+              last_message: {
+                ...lastMessage,
+                read: true
+              }
+            })
+            .eq('id', chatId);
+          
+          if (updateError) throw updateError;
+        }
       }
     } catch (error) {
       console.error("Error marking messages as read:", error);

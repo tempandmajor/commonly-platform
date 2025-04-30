@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -97,8 +96,8 @@ const RecordPodcastModal: React.FC<RecordPodcastModalProps> = ({
         {
           title: formData.title,
           description: formData.description,
-          creatorId: currentUser.uid,
-          creatorName: userData.displayName || "Unknown Creator",
+          userId: currentUser.uid,
+          userName: userData.displayName || "Unknown Creator",
           type: formData.type,
           categoryId: formData.category,
           duration: duration,
@@ -107,6 +106,11 @@ const RecordPodcastModal: React.FC<RecordPodcastModalProps> = ({
           tags: formData.tags,
           videoUrl: formData.type === "video" ? recordingUrl : undefined,
           audioUrl: formData.type === "audio" ? recordingUrl : undefined,
+          likeCount: 0,
+          viewCount: 0,
+          shareCount: 0,
+          creatorId: currentUser.uid,
+          creatorName: userData.displayName || "Unknown Creator"
         },
         undefined,
         undefined,

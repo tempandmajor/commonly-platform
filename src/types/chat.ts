@@ -12,10 +12,10 @@ export interface Chat {
   id: string;
   participants: string[];
   lastMessage?: {
-    text: string;
-    senderId: string;
-    timestamp: string;
-    read: boolean;
+    text?: string;
+    senderId?: string;
+    timestamp?: string;
+    read?: boolean;
   } | null;
   createdAt: string;
   updatedAt: string;
@@ -31,8 +31,38 @@ export interface ChatMessage {
   sender_id: string;
   recipient_id: string | null;
   text?: string;
-  image_url?: string;
-  voice_url?: string;
+  image_url?: string | null;
+  voice_url?: string | null;
   timestamp: string;
   read: boolean;
+}
+
+export interface UserTyping {
+  chat_id: string;
+  user_id: string;
+  is_typing: boolean;
+  updated_at: string;
+}
+
+// Update podcast interfaces to match what our createPodcast function expects
+export interface PodcastCreateInput {
+  title: string;
+  description?: string;
+  userId: string;
+  userName?: string;
+  userPhotoUrl?: string;
+  categoryId?: string;
+  type: 'audio' | 'video';
+  duration?: number;
+  published: boolean;
+  visibility: 'public' | 'private' | 'unlisted';
+  tags?: string[];
+  audioUrl?: string;
+  videoUrl?: string;
+  imageUrl?: string;
+  likeCount?: number;
+  viewCount?: number;
+  shareCount?: number;
+  creatorId?: string;
+  creatorName?: string;
 }

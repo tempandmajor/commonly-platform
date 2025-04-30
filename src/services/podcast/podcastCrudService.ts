@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { Podcast } from "@/types/podcast";
+import { Podcast, PodcastCreateInput } from "@/types/chat";
 
 // Fetch podcasts with pagination and filtering
 export const getPodcasts = async (
@@ -172,7 +172,7 @@ export const getPodcastsByCreator = async (
 
 // Upload a new podcast
 export const createPodcast = async (
-  podcastData: Omit<Podcast, "id" | "createdAt" | "updatedAt" | "listens">,
+  podcastData: PodcastCreateInput,
   audioFile?: File,
   videoFile?: File,
   thumbnailFile?: File
@@ -237,13 +237,18 @@ export const createPodcast = async (
         image_url: thumbnailUrl || podcastData.imageUrl,
         audio_url: audioUrl || podcastData.audioUrl,
         video_url: videoUrl || podcastData.videoUrl,
-        duration: podcastData.duration,
+        duration: podcastData.duration || 0,
         user_id: podcastData.userId,
         category_id: podcastData.categoryId,
         published: podcastData.published,
         type: podcastData.type || 'audio',
         visibility: podcastData.visibility || 'public',
-        tags: podcastData.tags || []
+        tags: podcastData.tags || [],
+        like_count: podcastData.likeCount || 0,
+        view_count: podcastData.viewCount || 0,
+        share_count: podcastData.shareCount || 0,
+        creator_id: podcastData.creatorId,
+        creator_name: podcastData.creatorName
       })
       .select()
       .single();

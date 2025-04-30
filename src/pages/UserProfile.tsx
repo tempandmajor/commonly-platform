@@ -1,32 +1,36 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
-import { UserData } from "@/types/auth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getUserProfile } from "@/services/userService";
-import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import {
-  User,
-  Calendar,
-  MessageCircle,
-  MapPin,
-  Edit,
-  Lock,
-  Activity,
-  Crown,
-  ShoppingBag
+import { 
+  CalendarDays, 
+  ShoppingBag, 
+  Users, 
+  Headphones,
+  Settings,
+  MessageSquare,
+  Share2,
+  Heart,
+  AlertTriangle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import UserPodcasts from "@/components/profile/UserPodcasts";
+import { useAuth } from "@/contexts/AuthContext";
+import { UserData } from "@/types/auth";
+import Navbar from "@/components/layout/Navbar";
+import UserProfileHeader from "@/components/profile/UserProfileHeader";
 import UserEvents from "@/components/profile/UserEvents";
+import UserPodcasts from "@/components/profile/UserPodcasts";
 import UserList from "@/components/profile/UserList";
-import { Loader2 } from "lucide-react";
-import { isUserPro } from "@/services/subscriptionService";
-import SubscriptionTab from "@/components/profile/SubscriptionTab";
 import MerchantStoreTab from "@/components/profile/MerchantStoreTab";
+import SubscriptionTab from "@/components/profile/SubscriptionTab";
+import LoadingIndicator from "@/components/podcasts/LoadingIndicator"; 
+import { getUserProfile, toggleFollowUser } from "@/services/userService";
+import { createChat } from "@/services/chat";
+import { getUserFollowers, getUserFollowing } from "@/services/socialService";
+import { useNavigate } from "react-router-dom";
+import { reportUser } from "@/services/reportService";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 // Define the props for UserList
 interface UserListProps {
@@ -45,7 +49,7 @@ interface SubscriptionTabProps {
   userId: string;
 }
 
-const UserProfile = () => {
+const UserProfile: React.FC = () => {
   const { userId } = useParams();
   const { currentUser, userData: currentUserData, followUser, unfollowUser, isFollowing } = useAuth();
   const { toast } = useToast();

@@ -1,349 +1,246 @@
 
-import { supabase } from '@/integrations/supabase/client';
-import { ChatMessage, Chat } from '@/types/auth';
+import { supabase } from "@/integrations/supabase/client";
+import { Chat, ChatMessage, ChatWithUser } from "@/types/chat";
+import { getUserProfile } from "./userService";
 
-// Fetch messages for a chat
-export const getMessages = async (chatId: string): Promise<ChatMessage[]> => {
+// Create a new chat between two users
+export const createChat = async (participantIds: string[]): Promise<string> => {
   try {
-    const { data, error } = await supabase
-      .from('messages')
+    // Check for existing chat with these participants
+    const { data: existingChats, error: queryError } = await supabase
+      .from('chats')
       .select('*')
-      .eq('chat_id', chatId)
-      .order('timestamp', { ascending: true });
+      .contains('participants', participantIds);
+
+    if (queryError) throw queryError;
+
+    // If chat exists, return the first match
+    if (existingChats && existingChats.length > 0) {
+      // Verify exact participant match (no additional participants)
+      const exactMatch = existingChats.find(
+        chat => chat.participants.length === participantIds.length &&
+               chat.participants.every(id => participantIds.includes(id))
+      );
       
-    if (error) throw error;
-    
-    return data.map(message => ({
-      id: message.id,
-      chatId: message.chat_id,
-      senderId: message.sender_id,
-      recipientId: message.recipient_id || '',
-      text: message.text || undefined,
-      imageUrl: message.image_url || undefined,
-      voiceUrl: message.voice_url || undefined,
-      timestamp: message.timestamp,
-      read: message.read || false,
-    }));
-  } catch (error) {
-    console.error('Error fetching messages:', error);
-    throw error;
-  }
-};
+      if (exactMatch) return exactMatch.id;
+    }
 
-// Subscribe to new messages
-export const subscribeToMessages = (
-  chatId: string,
-  callback: (messages: ChatMessage[]) => void
-): (() => void) => {
-  const channel = supabase
-    .channel(`messages:${chatId}`)
-    .on('postgres_changes', {
-      event: 'INSERT',
-      schema: 'public',
-      table: 'messages',
-      filter: `chat_id=eq.${chatId}`,
-    }, (payload) => {
-      // Fetch all messages again when a new message arrives
-      getMessages(chatId)
-        .then(callback)
-        .catch(console.error);
-    })
-    .subscribe();
-  
-  return () => {
-    supabase.removeChannel(channel);
-  };
-};
-
-// Mark messages as read
-export const markMessagesAsRead = async (chatId: string, userId: string): Promise<void> => {
-  try {
-    await supabase
-      .from('messages')
-      .update({ read: true })
-      .eq('chat_id', chatId)
-      .eq('recipient_id', userId)
-      .eq('read', false);
-  } catch (error) {
-    console.error('Error marking messages as read:', error);
-    throw error;
-  }
-};
-
-// Send a message
-export const sendMessage = async (
-  chatId: string, 
-  senderId: string,
-  recipientId: string,
-  text: string
-): Promise<ChatMessage | null> => {
-  try {
-    const { data, error } = await supabase
-      .from('messages')
-      .insert([{
-        chat_id: chatId,
-        sender_id: senderId,
-        recipient_id: recipientId,
-        text: text,
-        timestamp: new Date().toISOString(),
-        read: false,
-      }])
-      .select()
-      .single();
-    
-    if (error) throw error;
-    
-    // Update last_message in the chats table
-    await supabase
-      .from('chats')
-      .update({
-        last_message: {
-          text: text,
-          sender_id: senderId,
-          timestamp: data.timestamp,
-          read: false,
-        },
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', chatId);
-    
-    return {
-      id: data.id,
-      chatId: data.chat_id,
-      senderId: data.sender_id,
-      recipientId: data.recipient_id || '',
-      text: data.text || undefined,
-      imageUrl: data.image_url || undefined,
-      voiceUrl: data.voice_url || undefined,
-      timestamp: data.timestamp,
-      read: data.read || false,
-    };
-  } catch (error) {
-    console.error('Error sending message:', error);
-    return null;
-  }
-};
-
-/**
- * Send a message with an image attachment
- */
-export const sendMessageWithImage = async (
-  chatId: string,
-  senderId: string,
-  recipientId: string,
-  text: string,
-  imageUrl: string
-): Promise<ChatMessage | null> => {
-  try {
-    const { data, error } = await supabase
-      .from('messages')
-      .insert([{
-        chat_id: chatId,
-        sender_id: senderId,
-        recipient_id: recipientId,
-        text: text,
-        image_url: imageUrl,
-        timestamp: new Date().toISOString(),
-        read: false,
-      }])
-      .select()
-      .single();
-    
-    if (error) throw error;
-    
-    // Update last_message in the chats table
-    await supabase
-      .from('chats')
-      .update({
-        last_message: {
-          text: imageUrl ? '📷 Image' : text,
-          sender_id: senderId,
-          timestamp: data.timestamp,
-          read: false,
-          hasImage: !!imageUrl
-        },
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', chatId);
-    
-    return {
-      id: data.id,
-      chatId: data.chat_id,
-      senderId: data.sender_id,
-      recipientId: data.recipient_id || '',
-      text: data.text || undefined,
-      imageUrl: data.image_url || undefined,
-      voiceUrl: data.voice_url || undefined,
-      timestamp: data.timestamp,
-      read: data.read || false,
-    };
-  } catch (error) {
-    console.error('Error sending message with image:', error);
-    return null;
-  }
-};
-
-/**
- * Send a message with a voice recording
- */
-export const sendMessageWithVoice = async (
-  chatId: string,
-  senderId: string,
-  recipientId: string,
-  text: string,
-  voiceUrl: string
-): Promise<ChatMessage | null> => {
-  try {
-    const { data, error } = await supabase
-      .from('messages')
-      .insert([{
-        chat_id: chatId,
-        sender_id: senderId,
-        recipient_id: recipientId,
-        text: text,
-        voice_url: voiceUrl,
-        timestamp: new Date().toISOString(),
-        read: false,
-      }])
-      .select()
-      .single();
-    
-    if (error) throw error;
-    
-    // Update last_message in the chats table
-    await supabase
-      .from('chats')
-      .update({
-        last_message: {
-          text: voiceUrl ? '🎤 Voice message' : text,
-          sender_id: senderId,
-          timestamp: data.timestamp,
-          read: false,
-          hasVoice: !!voiceUrl
-        },
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', chatId);
-    
-    return {
-      id: data.id,
-      chatId: data.chat_id,
-      senderId: data.sender_id,
-      recipientId: data.recipient_id || '',
-      text: data.text || undefined,
-      imageUrl: data.image_url || undefined,
-      voiceUrl: data.voice_url || undefined,
-      timestamp: data.timestamp,
-      read: data.read || false,
-    };
-  } catch (error) {
-    console.error('Error sending message with voice:', error);
-    return null;
-  }
-};
-
-// Create a new chat
-export const createChat = async (participants: string[]): Promise<Chat> => {
-  try {
+    // Create a new chat
     const { data, error } = await supabase
       .from('chats')
       .insert({
-        participants,
+        participants: participantIds,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        last_message: null
       })
       .select()
       .single();
-    
+
     if (error) throw error;
     
-    return {
-      id: data.id,
-      participants: data.participants,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at,
-    };
+    return data.id;
   } catch (error) {
-    console.error('Error creating chat:', error);
+    console.error("Error creating chat:", error);
     throw error;
   }
 };
 
-// Check if a chat exists between users
-export const findChatByParticipants = async (userIds: string[]): Promise<string | null> => {
+// Get all chats for a user with the most recent message
+export const getUserChats = async (userId: string): Promise<ChatWithUser[]> => {
   try {
-    // We need to check both possible orderings of participants
-    const { data, error } = await supabase
+    // Fetch all chats where the user is a participant
+    const { data: chatData, error } = await supabase
       .from('chats')
-      .select('id')
-      .contains('participants', userIds)
-      .single();
-    
-    if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows returned
-    
-    return data?.id || null;
+      .select('*')
+      .contains('participants', [userId])
+      .order('updated_at', { ascending: false });
+
+    if (error) throw error;
+
+    if (!chatData || chatData.length === 0) {
+      return [];
+    }
+
+    // Collect all unique participant IDs (excluding the current user)
+    const otherUserIds = new Set<string>();
+    chatData.forEach(chat => {
+      chat.participants.forEach(id => {
+        if (id !== userId) {
+          otherUserIds.add(id);
+        }
+      });
+    });
+
+    // Fetch all user profiles in one batch
+    const userProfiles = new Map();
+    for (const id of otherUserIds) {
+      try {
+        const profile = await getUserProfile(id);
+        if (profile) {
+          userProfiles.set(id, profile);
+        }
+      } catch (e) {
+        console.error(`Error fetching user ${id}:`, e);
+      }
+    }
+
+    // Map chats to include user information
+    const chatsWithUsers: ChatWithUser[] = chatData.map(chat => {
+      // Find the other user in this chat
+      const otherUserId = chat.participants.find(id => id !== userId);
+      
+      // Get their profile (or null if not found)
+      const otherUser = otherUserId ? userProfiles.get(otherUserId) : null;
+      
+      // Convert Supabase chat to our app's format
+      return {
+        id: chat.id,
+        participants: chat.participants,
+        lastMessage: chat.last_message || null,
+        createdAt: chat.created_at,
+        updatedAt: chat.updated_at,
+        user: otherUser ? {
+          uid: otherUser.uid,
+          displayName: otherUser.displayName,
+          photoURL: otherUser.photoURL,
+          email: otherUser.email,
+          isOnline: Boolean(otherUser.isOnline),
+          lastSeen: otherUser.lastSeen || null
+        } : null
+      };
+    });
+
+    return chatsWithUsers;
   } catch (error) {
-    console.error('Error finding chat:', error);
-    return null;
+    console.error("Error fetching user chats:", error);
+    throw error;
   }
 };
 
-// Update typing status
+// Check if a user is typing in a chat
+export const isUserTyping = async (chatId: string, userId: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase.rpc('get_typing_status', {
+      p_chat_id: chatId,
+      p_user_id: userId
+    });
+    
+    if (error) {
+      // Fallback to direct query
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('user_typing')
+        .select('is_typing')
+        .eq('chat_id', chatId)
+        .eq('user_id', userId)
+        .single();
+        
+      if (fallbackError) {
+        if (fallbackError.code === 'PGRST116') {
+          // No record means not typing
+          return false;
+        }
+        throw fallbackError;
+      }
+      
+      return Boolean(fallbackData?.is_typing);
+    }
+    
+    return Boolean(data);
+  } catch (error) {
+    console.error("Error checking typing status:", error);
+    return false;
+  }
+};
+
+// Send a message in a chat
+export const sendMessage = async (
+  chatId: string,
+  senderId: string,
+  recipientId: string,
+  text?: string,
+  imageUrl?: string,
+  voiceUrl?: string
+): Promise<ChatMessage> => {
+  try {
+    if (!text && !imageUrl && !voiceUrl) {
+      throw new Error("Message must have text, image, or voice content");
+    }
+
+    // Create the message
+    const timestamp = new Date().toISOString();
+    
+    const messageData = {
+      chat_id: chatId,
+      sender_id: senderId,
+      recipient_id: recipientId,
+      text,
+      image_url: imageUrl,
+      voice_url: voiceUrl,
+      timestamp,
+      read: false
+    };
+    
+    const { data: message, error: messageError } = await supabase
+      .from('messages')
+      .insert(messageData)
+      .select()
+      .single();
+      
+    if (messageError) throw messageError;
+
+    // Update the chat's last message
+    const lastMessage = {
+      text: text || (imageUrl ? "📷 Image" : "🎤 Voice message"),
+      senderId,
+      recipientId,
+      timestamp,
+      read: false
+    };
+    
+    const { error: chatError } = await supabase
+      .from('chats')
+      .update({
+        last_message: lastMessage,
+        updated_at: timestamp
+      })
+      .eq('id', chatId);
+      
+    if (chatError) throw chatError;
+
+    return message as ChatMessage;
+  } catch (error) {
+    console.error("Error sending message:", error);
+    throw error;
+  }
+};
+
+// Update user typing status
 export const updateTypingStatus = async (
-  chatId: string, 
-  userId: string, 
+  chatId: string,
+  userId: string,
   isTyping: boolean
 ): Promise<void> => {
   try {
-    await supabase.from('user_typing').upsert({
-      chat_id: chatId,
-      user_id: userId,
-      is_typing: isTyping,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'chat_id,user_id' });
-  } catch (error) {
-    console.error('Error updating typing status:', error);
-  }
-};
-
-// Get all chats for a user
-export const getUserChats = async (userId: string): Promise<Chat[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('chats')
-      .select('*')
-      .contains('participants', [userId]);
+    const { error } = await supabase.rpc('update_typing_status', {
+      p_chat_id: chatId,
+      p_user_id: userId,
+      p_is_typing: isTyping
+    });
     
-    if (error) throw error;
-    
-    return data.map(chat => ({
-      id: chat.id,
-      participants: chat.participants,
-      lastMessage: chat.last_message,
-      createdAt: chat.created_at,
-      updatedAt: chat.updated_at,
-    }));
+    if (error) {
+      // Fallback to direct upsert
+      await supabase
+        .from('user_typing')
+        .upsert({
+          chat_id: chatId,
+          user_id: userId,
+          is_typing: isTyping,
+          updated_at: new Date().toISOString()
+        });
+    }
   } catch (error) {
-    console.error('Error fetching user chats:', error);
+    console.error("Error updating typing status:", error);
     throw error;
-  }
-};
-
-// Count unread messages in a chat
-export const countUnreadMessages = async (chatId: string, userId: string): Promise<number> => {
-  try {
-    const { count, error } = await supabase
-      .from('messages')
-      .select('*', { count: 'exact', head: true })
-      .eq('chat_id', chatId)
-      .eq('recipient_id', userId)
-      .eq('read', false);
-    
-    if (error) throw error;
-    
-    return count || 0;
-  } catch (error) {
-    console.error('Error counting unread messages:', error);
-    return 0;
   }
 };

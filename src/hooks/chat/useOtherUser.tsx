@@ -23,13 +23,13 @@ export const useOtherUser = (userId: string | null) => {
         setUser(userData);
         
         // Get user presence from users table
-        const { data: presenceData } = await supabase
+        const { data: presenceData, error: presenceError } = await supabase
           .from('users')
           .select('is_online, last_seen')
           .eq('id', userId)
           .single();
           
-        if (presenceData) {
+        if (!presenceError && presenceData) {
           setIsOnline(Boolean(presenceData.is_online));
           setLastSeen(presenceData.last_seen || null);
         }
@@ -51,9 +51,12 @@ export const useOtherUser = (userId: string | null) => {
         table: 'users',
         filter: `id=eq.${userId}`
       }, (payload) => {
+        // Use type assertion to access is_online and last_seen
         const userData = payload.new as any;
-        setIsOnline(Boolean(userData.is_online));
-        setLastSeen(userData.last_seen || null);
+        if (userData) {
+          setIsOnline(Boolean(userData.is_online));
+          setLastSeen(userData.last_seen || null);
+        }
       })
       .subscribe();
       
