@@ -1,34 +1,52 @@
 
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
+import { Layout, Users, LayoutDashboard, CalendarDays, Building2, FilePenLine, CreditCard, Activity, FileText } from 'lucide-react';
 
-// Import admin pages
+import AdminLogin from '../AdminLogin';
+import AdminProtectedRoute from '@/components/auth/AdminProtectedRoute';
 import Dashboard from './Dashboard';
 import Users from './Users';
-import Venues from './Venues';
 import Events from './Events';
+import Venues from './Venues';
 import Content from './Content';
 import Credits from './Credits';
 import Ventures from './Ventures';
+import Monitoring from './Monitoring';
+import Documentation from './Documentation';
 
-// Admin ProtectedRoute component
-import AdminProtectedRoute from '@/components/auth/AdminProtectedRoute';
+const navigation = [
+  { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+  { name: 'Users', href: '/admin/users', icon: Users },
+  { name: 'Events', href: '/admin/events', icon: CalendarDays },
+  { name: 'Venues', href: '/admin/venues', icon: Building2 },
+  { name: 'Content', href: '/admin/content', icon: FilePenLine },
+  { name: 'Credits', href: '/admin/credits', icon: CreditCard },
+  { name: 'Ventures', href: '/admin/ventures', icon: Layout },
+  { name: 'Monitoring', href: '/admin/monitoring', icon: Activity },
+  { name: 'Documentation', href: '/admin/documentation', icon: FileText }
+];
 
+/**
+ * Admin routes setup with protected routes
+ */
 const AdminRoutes = () => {
   return (
-    <AdminProtectedRoute>
-      <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/users/*" element={<Users />} />
-        <Route path="/venues/*" element={<Venues />} />
-        <Route path="/events/*" element={<Events />} />
-        <Route path="/content/*" element={<Content />} />
-        <Route path="/credits/*" element={<Credits />} />
-        <Route path="/ventures/*" element={<Ventures />} />
-        <Route path="*" element={<Navigate to="/admin" replace />} />
-      </Routes>
-    </AdminProtectedRoute>
+    <Routes>
+      <Route path="/login" element={<AdminLogin />} />
+      
+      <Route path="/" element={<AdminProtectedRoute><Dashboard /></AdminProtectedRoute>} />
+      <Route path="/users" element={<AdminProtectedRoute><Users /></AdminProtectedRoute>} />
+      <Route path="/events" element={<AdminProtectedRoute><Events /></AdminProtectedRoute>} />
+      <Route path="/venues" element={<AdminProtectedRoute><Venues /></AdminProtectedRoute>} />
+      <Route path="/content" element={<AdminProtectedRoute><Content /></AdminProtectedRoute>} />
+      <Route path="/credits" element={<AdminProtectedRoute><Credits /></AdminProtectedRoute>} />
+      <Route path="/ventures" element={<AdminProtectedRoute><Ventures /></AdminProtectedRoute>} />
+      <Route path="/monitoring" element={<AdminProtectedRoute><Monitoring /></AdminProtectedRoute>} />
+      <Route path="/documentation" element={<AdminProtectedRoute><Documentation /></AdminProtectedRoute>} />
+    </Routes>
   );
 };
 
+export { navigation };
 export default AdminRoutes;
