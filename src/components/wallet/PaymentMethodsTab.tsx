@@ -61,6 +61,16 @@ const PaymentMethodsTab: React.FC<PaymentMethodsTabProps> = ({
     }
   };
 
+  // Function to format payment method display
+  const formatPaymentMethod = (method: PaymentMethod) => {
+    return {
+      brand: method.brand || 'Card',
+      last4: method.last4,
+      expMonth: method.expMonth, 
+      expYear: method.expYear
+    };
+  };
+
   return (
     <div className="space-y-6">
       <Card>

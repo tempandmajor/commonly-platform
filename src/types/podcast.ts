@@ -1,9 +1,8 @@
-
 export interface Podcast {
   id: string;
   title: string;
   description: string;
-  imageUrl: string;
+  thumbnailUrl: string;
   audioUrl?: string;
   videoUrl?: string;
   duration: number;
@@ -22,6 +21,7 @@ export interface Podcast {
   tags?: string[];
   visibility: "public" | "private" | "unlisted";
   userId: string;
+  listens: number;
 }
 
 export interface PodcastCategory {

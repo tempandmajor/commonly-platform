@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
@@ -44,6 +43,27 @@ const StoreProducts: React.FC<StoreProductsProps> = ({ storeId }) => {
 
   const handleEditProduct = (productId: string) => {
     navigate(`/store/edit-product/${productId}`);
+  };
+
+  const renderProductImage = (product: Product) => {
+    if (product.imageUrl) {
+      return (
+        <img
+          src={product.imageUrl}
+          alt={product.name}
+          className="h-full w-full object-cover object-center"
+          onError={(e) => {
+            e.currentTarget.src = "/placeholder.svg";
+          }}
+        />
+      );
+    }
+
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-gray-100">
+        <Package className="h-8 w-8 text-gray-400" />
+      </div>
+    );
   };
 
   if (loading) {

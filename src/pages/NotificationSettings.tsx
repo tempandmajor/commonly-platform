@@ -1,350 +1,211 @@
-
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import Navbar from "@/components/layout/Navbar";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
-import { 
-  getNotificationSettings, 
-  updateNotificationSettings, 
-  getDefaultNotificationSettings 
-} from "@/services/notificationService";
-import { NotificationSettings as NotificationSettingsType } from "@/types/auth";
 import { Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { NotificationSettings } from "@/types/notification";
 
 const NotificationSettings = () => {
   const { currentUser } = useAuth();
   const { toast } = useToast();
-  const [settings, setSettings] = useState<NotificationSettingsType | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [saving, setSaving] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   
-  useEffect(() => {
-    const fetchSettings = async () => {
-      if (!currentUser?.uid) return;
-      
-      setLoading(true);
+  const [formData, setFormData] = useState<NotificationSettings>({
+    userId: currentUser?.uid || '',
+    emailNotifications: true,
+    pushNotifications: true,
+    inAppNotifications: true,
+    marketingEmails: true,
+    updatedAt: new Date().toISOString()
+  });
+
+  const fetchSettings = async () => {
+    if (currentUser) {
+      setIsLoading(true);
       try {
-        const userSettings = await getNotificationSettings(currentUser.uid);
-        setSettings(userSettings || getDefaultNotificationSettings());
+        const { data, error } = await supabase
+          .from('notification_settings')
+          .select('*')
+          .eq('user_id', currentUser.uid)
+          .single();
+          
+        if (error) throw error;
+        
+        if (data) {
+          setFormData({
+            userId: data.user_id,
+            emailNotifications: data.email_notifications,
+            pushNotifications: data.push_notifications,
+            inAppNotifications: data.in_app_notifications,
+            marketingEmails: data.marketing_emails,
+            updatedAt: data.updated_at
+          });
+        }
       } catch (error) {
         console.error("Error fetching notification settings:", error);
         toast({
           title: "Error",
-          description: "Failed to load notification settings",
-          variant: "destructive"
+          description: "Failed to load notification settings.",
+          variant: "destructive",
         });
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
-    };
-    
-    fetchSettings();
-  }, [currentUser, toast]);
-  
-  const handleSaveSettings = async () => {
-    if (!currentUser?.uid || !settings) return;
-    
-    setSaving(true);
-    try {
-      await updateNotificationSettings(currentUser.uid, settings);
-      toast({
-        title: "Success",
-        description: "Notification settings updated"
-      });
-    } catch (error) {
-      console.error("Error saving notification settings:", error);
-      toast({
-        title: "Error",
-        description: "Failed to update notification settings",
-        variant: "destructive"
-      });
-    } finally {
-      setSaving(false);
     }
   };
   
-  const handleToggle = (
-    category: keyof NotificationSettingsType,
-    setting: string,
-    value: boolean
-  ) => {
-    if (!settings) return;
-    
-    setSettings({
-      ...settings,
-      [category]: {
-        ...settings[category],
-        [setting]: value
-      }
-    });
-  };
-  
-  return (
-    <>
-      <Navbar />
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-6">Notification Settings</h1>
+  const handleUpdateSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+
+    try {
+      if (currentUser) {
+        const { data, error } = await supabase
+          .from('notification_settings')
+          .update({
+            email_notifications: formData.emailNotifications,
+            push_notifications: formData.pushNotifications,
+            in_app_notifications: formData.inAppNotifications,
+            marketing_emails: formData.marketingEmails,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', currentUser.uid)
+          .select();
+          
+        if (error) throw error;
         
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle>Manage Notifications</CardTitle>
-              <CardDescription>
-                Choose how and when you would like to be notified
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Tabs defaultValue="push" className="w-full">
-                <TabsList className="mb-4">
-                  <TabsTrigger value="push">Push</TabsTrigger>
-                  <TabsTrigger value="email">Email</TabsTrigger>
-                  <TabsTrigger value="inApp">In-App</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="push">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="push-event-updates" className="font-medium">
-                          Event Updates
-                        </Label>
-                        <p className="text-sm text-gray-500">
-                          Get notified about changes to events you follow
-                        </p>
-                      </div>
-                      <Switch
-                        id="push-event-updates"
-                        checked={settings?.push.eventUpdates}
-                        onCheckedChange={(value) => handleToggle('push', 'eventUpdates', value)}
-                      />
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="push-new-followers" className="font-medium">
-                          New Followers
-                        </Label>
-                        <p className="text-sm text-gray-500">
-                          Get notified when someone follows you
-                        </p>
-                      </div>
-                      <Switch
-                        id="push-new-followers"
-                        checked={settings?.push.newFollowers}
-                        onCheckedChange={(value) => handleToggle('push', 'newFollowers', value)}
-                      />
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="push-messages" className="font-medium">
-                          Messages
-                        </Label>
-                        <p className="text-sm text-gray-500">
-                          Get notified when you receive new messages
-                        </p>
-                      </div>
-                      <Switch
-                        id="push-messages"
-                        checked={settings?.push.messages}
-                        onCheckedChange={(value) => handleToggle('push', 'messages', value)}
-                      />
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="push-earnings" className="font-medium">
-                          Earnings
-                        </Label>
-                        <p className="text-sm text-gray-500">
-                          Get notified about referral earnings and payouts
-                        </p>
-                      </div>
-                      <Switch
-                        id="push-earnings"
-                        checked={settings?.push.earnings}
-                        onCheckedChange={(value) => handleToggle('push', 'earnings', value)}
-                      />
-                    </div>
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="email">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="email-event-updates" className="font-medium">
-                          Event Updates
-                        </Label>
-                        <p className="text-sm text-gray-500">
-                          Receive email notifications about events you follow
-                        </p>
-                      </div>
-                      <Switch
-                        id="email-event-updates"
-                        checked={settings?.email.eventUpdates}
-                        onCheckedChange={(value) => handleToggle('email', 'eventUpdates', value)}
-                      />
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="email-new-followers" className="font-medium">
-                          New Followers
-                        </Label>
-                        <p className="text-sm text-gray-500">
-                          Receive emails when someone follows you
-                        </p>
-                      </div>
-                      <Switch
-                        id="email-new-followers"
-                        checked={settings?.email.newFollowers}
-                        onCheckedChange={(value) => handleToggle('email', 'newFollowers', value)}
-                      />
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="email-messages" className="font-medium">
-                          Messages
-                        </Label>
-                        <p className="text-sm text-gray-500">
-                          Receive emails about new messages
-                        </p>
-                      </div>
-                      <Switch
-                        id="email-messages"
-                        checked={settings?.email.messages}
-                        onCheckedChange={(value) => handleToggle('email', 'messages', value)}
-                      />
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="email-earnings" className="font-medium">
-                          Earnings
-                        </Label>
-                        <p className="text-sm text-gray-500">
-                          Receive emails about referral earnings and payouts
-                        </p>
-                      </div>
-                      <Switch
-                        id="email-earnings"
-                        checked={settings?.email.earnings}
-                        onCheckedChange={(value) => handleToggle('email', 'earnings', value)}
-                      />
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="email-marketing" className="font-medium">
-                          Marketing
-                        </Label>
-                        <p className="text-sm text-gray-500">
-                          Receive emails about new features and promotions
-                        </p>
-                      </div>
-                      <Switch
-                        id="email-marketing"
-                        checked={settings?.email.marketing}
-                        onCheckedChange={(value) => handleToggle('email', 'marketing', value)}
-                      />
-                    </div>
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="inApp">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="inapp-event-updates" className="font-medium">
-                          Event Updates
-                        </Label>
-                        <p className="text-sm text-gray-500">
-                          Show in-app notifications for event updates
-                        </p>
-                      </div>
-                      <Switch
-                        id="inapp-event-updates"
-                        checked={settings?.inApp.eventUpdates}
-                        onCheckedChange={(value) => handleToggle('inApp', 'eventUpdates', value)}
-                      />
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="inapp-new-followers" className="font-medium">
-                          New Followers
-                        </Label>
-                        <p className="text-sm text-gray-500">
-                          Show in-app notifications when someone follows you
-                        </p>
-                      </div>
-                      <Switch
-                        id="inapp-new-followers"
-                        checked={settings?.inApp.newFollowers}
-                        onCheckedChange={(value) => handleToggle('inApp', 'newFollowers', value)}
-                      />
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="inapp-messages" className="font-medium">
-                          Messages
-                        </Label>
-                        <p className="text-sm text-gray-500">
-                          Show in-app notifications for new messages
-                        </p>
-                      </div>
-                      <Switch
-                        id="inapp-messages"
-                        checked={settings?.inApp.messages}
-                        onCheckedChange={(value) => handleToggle('inApp', 'messages', value)}
-                      />
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label htmlFor="inapp-earnings" className="font-medium">
-                          Earnings
-                        </Label>
-                        <p className="text-sm text-gray-500">
-                          Show in-app notifications for referral earnings and payouts
-                        </p>
-                      </div>
-                      <Switch
-                        id="inapp-earnings"
-                        checked={settings?.inApp.earnings}
-                        onCheckedChange={(value) => handleToggle('inApp', 'earnings', value)}
-                      />
-                    </div>
-                  </div>
-                </TabsContent>
-              </Tabs>
-              
-              <div className="mt-6 flex justify-end">
-                <Button 
-                  onClick={handleSaveSettings} 
-                  disabled={saving}
-                >
-                  {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Save Settings
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        toast({
+          title: "Settings updated",
+          description: "Your notification preferences have been saved.",
+        });
+        setIsSaving(false);
+      }
+    } catch (error) {
+      console.error("Error updating notification settings:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update notification settings.",
+        variant: "destructive",
+      });
+      setIsSaving(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSettings();
+  }, [currentUser]);
+
+  const handleChange = (key: keyof NotificationSettings, value: boolean) => {
+    setFormData((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
+
+  return (
+    <div>
+      <div className="space-y-0.5">
+        <h2 className="text-2xl font-semibold tracking-tight">
+          Notification Preferences
+        </h2>
+        <p className="text-muted-foreground">
+          Manage how you receive notifications.
+        </p>
       </div>
-    </>
+      
+      <form onSubmit={handleUpdateSettings} className="space-y-6 mt-6">
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <Label className="text-base" htmlFor="emailNotifications">
+                Email Notifications
+              </Label>
+              <p className="text-sm text-gray-500 mt-1">
+                Receive email notifications about important updates.
+              </p>
+            </div>
+            <Switch
+              id="emailNotifications"
+              checked={formData.emailNotifications}
+              onCheckedChange={(checked) =>
+                handleChange("emailNotifications", checked)
+              }
+            />
+          </div>
+          
+          <div className="flex justify-between items-center">
+            <div>
+              <Label className="text-base" htmlFor="pushNotifications">
+                Push Notifications
+              </Label>
+              <p className="text-sm text-gray-500 mt-1">
+                Receive push notifications on your devices.
+              </p>
+            </div>
+            <Switch
+              id="pushNotifications"
+              checked={formData.pushNotifications}
+              onCheckedChange={(checked) =>
+                handleChange("pushNotifications", checked)
+              }
+            />
+          </div>
+          
+          <div className="flex justify-between items-center">
+            <div>
+              <Label className="text-base" htmlFor="inAppNotifications">
+                In-App Notifications
+              </Label>
+              <p className="text-sm text-gray-500 mt-1">
+                See notifications within the app.
+              </p>
+            </div>
+            <Switch
+              id="inAppNotifications"
+              checked={formData.inAppNotifications}
+              onCheckedChange={(checked) =>
+                handleChange("inAppNotifications", checked)
+              }
+            />
+          </div>
+          
+          <div className="flex justify-between items-center">
+            <div>
+              <Label className="text-base" htmlFor="marketingEmails">
+                Marketing Emails
+              </Label>
+              <p className="text-sm text-gray-500 mt-1">
+                Receive promotional emails and offers.
+              </p>
+            </div>
+            <Switch
+              id="marketingEmails"
+              checked={formData.marketingEmails}
+              onCheckedChange={(checked) =>
+                handleChange("marketingEmails", checked)
+              }
+            />
+          </div>
+        </div>
+
+        <div className="pt-4">
+          <Button type="submit" disabled={isSaving || isLoading}>
+            {isSaving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              "Save Settings"
+            )}
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 };
 

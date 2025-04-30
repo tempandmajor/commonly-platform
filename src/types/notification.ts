@@ -1,36 +1,34 @@
 
-import { NotificationType } from "./auth";
+export type NotificationType = 'message' | 'like' | 'follow' | 'comment' | 'podcast' | 'event' | 'system' | 'event_update' | 'new_follower' | 'referral_earnings' | 'sponsorship';
 
 export interface Notification {
   id: string;
   userId: string;
   type: NotificationType;
   title: string;
-  message: string;
-  read: boolean;
-  data?: Record<string, any>;
-  createdAt: any; // Firebase timestamp or Date
+  body: string;
   image?: string;
+  actionUrl?: string;
+  read: boolean;
+  createdAt: string;
+  data?: {
+    eventId?: string;
+    eventTitle?: string;
+    podcastId?: string;
+    podcastTitle?: string;
+    senderId?: string;
+    senderName?: string;
+    senderPhoto?: string;
+    amount?: number;
+    message?: string;
+  };
 }
 
 export interface NotificationSettings {
-  email: {
-    eventUpdates: boolean;
-    newFollowers: boolean;
-    messages: boolean;
-    earnings: boolean;
-    marketing: boolean;
-  };
-  push: {
-    eventUpdates: boolean;
-    newFollowers: boolean;
-    messages: boolean;
-    earnings: boolean;
-  };
-  inApp: {
-    eventUpdates: boolean;
-    newFollowers: boolean;
-    messages: boolean;
-    earnings: boolean;
-  };
+  userId: string;
+  emailNotifications: boolean;
+  pushNotifications: boolean;
+  inAppNotifications: boolean;
+  marketingEmails: boolean;
+  updatedAt: string;
 }

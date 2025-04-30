@@ -1,96 +1,92 @@
-
 import React from "react";
-import { Link } from "react-router-dom";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Podcast } from "@/types/podcast";
-import { Headphones, Video, PlayCircle, Calendar } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import {
+  Clock,
+  Headphones,
+  MusicIcon,
+  PlayCircle,
+  Video,
+} from "lucide-react";
+import { formatDuration } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
-interface PodcastCardProps {
-  podcast: Podcast;
-}
+const PodcastCard = ({ podcast, onClick }: { podcast: Podcast; onClick?: () => void }) => {
+  // Placeholder for additional logic if needed
 
-const PodcastCard: React.FC<PodcastCardProps> = ({ podcast }) => {
-  const formatDate = (timestamp: any): string => {
-    try {
-      const date = timestamp?.toDate ? timestamp.toDate() : new Date(timestamp);
-      return formatDistanceToNow(date, { addSuffix: true });
-    } catch (error) {
-      return "Unknown date";
-    }
-  };
-
-  const formatDuration = (seconds: number): string => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
-  };
+  // Format the relative time
+  const relativeTime = formatDistanceToNow(new Date(podcast.createdAt), {
+    addSuffix: true,
+  });
 
   return (
-    <Card className="h-full hover:shadow-md transition-shadow">
-      <Link to={`/podcasts/${podcast.id}`} className="block h-full">
-        <CardHeader className="p-4 pb-2 relative">
-          <div className="aspect-video rounded-md overflow-hidden bg-gray-100 mb-3">
-            {podcast.thumbnailUrl ? (
-              <img
-                src={podcast.thumbnailUrl}
-                alt={podcast.title}
-                className="w-full h-full object-cover"
-              />
+    <div
+      className={`group relative flex flex-col overflow-hidden rounded-lg border ${
+        onClick ? "cursor-pointer" : ""
+      }`}
+      onClick={onClick}
+    >
+      {/* Podcast thumbnail */}
+      <div className="aspect-square w-full overflow-hidden bg-gray-100 relative">
+        {podcast.thumbnailUrl ? (
+          <img
+            src={podcast.thumbnailUrl}
+            alt={podcast.title}
+            className="h-full w-full object-cover object-center transition-transform duration-300 group-hover:scale-105"
+            onError={(e) => {
+              e.currentTarget.src = "/placeholder.svg";
+            }}
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-gray-100">
+            <MusicIcon className="h-12 w-12 text-gray-400" />
+          </div>
+        )}
+
+        {/* Podcast type badge */}
+        <div className="absolute top-2 left-2">
+          <Badge
+            variant="secondary"
+            className={`${
+              podcast.type === "audio" ? "bg-indigo-100" : "bg-rose-100"
+            }`}
+          >
+            {podcast.type === "audio" ? (
+              <Headphones className="h-3 w-3 mr-1" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                <PlayCircle className="h-12 w-12 text-gray-400" />
-              </div>
+              <Video className="h-3 w-3 mr-1" />
             )}
-            
-            <div className="absolute top-6 right-6">
-              <Badge variant={podcast.type === "audio" ? "outline" : "secondary"}>
-                {podcast.type === "audio" ? (
-                  <Headphones className="h-3 w-3 mr-1" />
-                ) : (
-                  <Video className="h-3 w-3 mr-1" />
-                )}
-                {podcast.type}
-              </Badge>
+            {podcast.type.charAt(0).toUpperCase() + podcast.type.slice(1)}
+          </Badge>
+        </div>
+      </div>
+
+      {/* Podcast info */}
+      <div className="flex flex-1 flex-col space-y-2 p-4">
+        <h3 className="text-sm font-medium text-gray-900 line-clamp-1">
+          {podcast.title}
+        </h3>
+        <p className="text-xs text-gray-500 line-clamp-2">
+          {podcast.description}
+        </p>
+
+        <div className="mt-auto pt-2">
+          <div className="flex items-center justify-between text-xs text-gray-500">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center">
+                <PlayCircle className="h-3.5 w-3.5 mr-1 text-gray-400" />
+                {podcast.listens || 0}
+              </div>
+              <div className="flex items-center">
+                <Clock className="h-3.5 w-3.5 mr-1 text-gray-400" />
+                {formatDuration(podcast.duration)}
+              </div>
             </div>
+            <div>{relativeTime}</div>
           </div>
-          
-          <CardTitle className="text-lg font-medium line-clamp-2">{podcast.title}</CardTitle>
-        </CardHeader>
-        
-        <CardContent className="p-4 pt-0">
-          <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-            {podcast.description}
-          </p>
-          
-          <div className="flex items-center mb-2">
-            <Avatar className="h-6 w-6 mr-2">
-              <AvatarFallback>
-                {podcast.creatorName?.charAt(0) || "U"}
-              </AvatarFallback>
-            </Avatar>
-            <span className="text-sm font-medium truncate">
-              {podcast.creatorName}
-            </span>
-          </div>
-        </CardContent>
-        
-        <CardFooter className="p-4 pt-0 flex justify-between text-xs text-muted-foreground">
-          <div className="flex items-center">
-            <Calendar className="h-3 w-3 mr-1" />
-            {formatDate(podcast.createdAt)}
-          </div>
-          
-          <div className="flex items-center">
-            <span>{formatDuration(podcast.duration)}</span>
-            <span className="mx-2">•</span>
-            <span>{podcast.listens} listens</span>
-          </div>
-        </CardFooter>
-      </Link>
-    </Card>
+        </div>
+      </div>
+    </div>
   );
 };
 

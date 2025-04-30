@@ -1,91 +1,157 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { getUsersByIds } from "@/services/userService";
-import { getUserChats, subscribeToChats } from "@/services/chat";
-import { useToast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { ChatWithUser } from "@/types/chat";
-import { UserData } from "@/types/auth";
 
 export const useChatList = () => {
-  const { currentUser } = useAuth();
   const [chats, setChats] = useState<ChatWithUser[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const { toast } = useToast();
-  const navigate = useNavigate();
+  const [error, setError] = useState<Error | null>(null);
+  const { currentUser } = useAuth();
 
   useEffect(() => {
-    if (!currentUser) {
-      navigate('/');
-      return;
-    }
+    if (!currentUser) return;
 
-    // Initial fetch is now handled by the subscribeToChats function
-    setLoading(true);
-    
-    // Subscribe to chats in real-time
-    const unsubscribe = subscribeToChats(
-      currentUser.uid,
-      async (updatedChats) => {
-        try {
-          // Get all unique user IDs from the chats (excluding the current user)
-          const userIds = new Set<string>();
-          updatedChats.forEach(chat => {
-            chat.participants.forEach(id => {
-              if (id !== currentUser.uid) {
-                userIds.add(id);
-              }
-            });
-          });
-          
-          const users = await getUsersByIds(Array.from(userIds));
-          const usersMap = new Map<string, UserData>();
-          users.forEach(user => {
-            usersMap.set(user.uid, user);
-          });
-          
-          // Map chats with their corresponding user and calculate unread counts
-          const chatsWithUsers = await Promise.all(
-            updatedChats.map(async (chat) => {
-              const otherUserId = chat.participants.find(id => id !== currentUser.uid) || "";
+    const fetchChats = async () => {
+      setLoading(true);
+      try {
+        // Fetch chats where the current user is a participant
+        const { data: chatsData, error } = await supabase
+          .from('chats')
+          .select('*')
+          .contains('participants', [currentUser.uid]);
+        
+        if (error) throw error;
+        
+        // Process each chat to get the other user's data and unread count
+        const processedChats = await Promise.all(
+          chatsData.map(async (chat) => {
+            // Find the other user's ID
+            const otherUserId = chat.participants.find(id => id !== currentUser.uid);
+            if (!otherUserId) return null;
+            
+            // Get the other user's data
+            const { data: userData, error: userError } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', otherUserId)
+              .single();
               
-              // For each chat, count unread messages where current user is recipient
-              let unreadCount = 0;
-              if (chat.lastMessage && 
-                  chat.lastMessage.recipientId === currentUser.uid && 
-                  !chat.lastMessage.read) {
-                // If the last message is unread, set unread count to 1
-                // In a full implementation, you would query the database for all unread messages
-                unreadCount = 1;
-              }
+            if (userError) throw userError;
+            
+            // Get unread message count
+            const { count, error: countError } = await supabase
+              .from('messages')
+              .select('*', { count: 'exact', head: true })
+              .eq('chat_id', chat.id)
+              .eq('recipient_id', currentUser.uid)
+              .eq('read', false);
               
-              return {
-                ...chat,
-                user: usersMap.get(otherUserId) as UserData,
-                unreadCount
-              };
-            })
-          );
-          
-          setChats(chatsWithUsers);
-          setLoading(false);
-        } catch (error) {
-          console.error("Error processing chats:", error);
-          toast({
-            title: "Error",
-            description: "Failed to load your messages",
-            variant: "destructive"
-          });
-          setLoading(false);
-        }
+            if (countError) throw countError;
+            
+            return {
+              ...chat,
+              user: userData,
+              unreadCount: count || 0,
+              lastMessage: chat.lastMessage ? {
+                ...chat.lastMessage,
+                recipientId: otherUserId
+              } : undefined
+            };
+          })
+        );
+
+        // Filter out any null values and set the chats
+        const validChats = processedChats.filter(Boolean) as ChatWithUser[];
+        setChats(validChats);
+      } catch (error) {
+        console.error("Error fetching chats:", error);
+      } finally {
+        setLoading(false);
       }
-    );
-    
-    return () => {
-      unsubscribe();
     };
-  }, [currentUser, navigate, toast]);
 
-  return { chats, loading };
+    fetchChats();
+    
+    // Set up real-time subscription for chat updates
+    const channel = supabase
+      .channel('public:chats')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'chats',
+        filter: `participants=cs.{${currentUser.uid}}`
+      }, (payload) => {
+        // Refresh chats when there's a change
+        fetchChats();
+      })
+      .subscribe();
+      
+    // Clean up subscription on unmount
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUser]);
+
+  const fetchChats = async () => {
+    setLoading(true);
+    try {
+      // Fetch chats where the current user is a participant
+      const { data: chatsData, error } = await supabase
+        .from('chats')
+        .select('*')
+        .contains('participants', [currentUser?.uid]);
+
+      if (error) throw error;
+
+      // Process each chat to get the other user's data and unread count
+      const processedChats = await Promise.all(
+        chatsData.map(async (chat) => {
+          // Find the other user's ID
+          const otherUserId = chat.participants.find(id => id !== currentUser?.uid);
+          if (!otherUserId) return null;
+
+          // Get the other user's data
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', otherUserId)
+            .single();
+
+          if (userError) throw userError;
+
+          // Get unread message count
+          const { count, error: countError } = await supabase
+            .from('messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('chat_id', chat.id)
+            .eq('recipient_id', currentUser?.uid)
+            .eq('read', false);
+
+          if (countError) throw countError;
+
+          return {
+            ...chat,
+            user: userData,
+            unreadCount: count || 0,
+            lastMessage: chat.lastMessage ? {
+              ...chat.lastMessage,
+              recipientId: otherUserId
+            } : undefined
+          };
+        })
+      );
+
+      // Filter out any null values and set the chats
+      const validChats = processedChats.filter(Boolean) as ChatWithUser[];
+      setChats(validChats);
+    } catch (error) {
+      console.error("Error fetching chats:", error);
+      setError(error as Error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { chats, loading, error, refresh: fetchChats };
 };

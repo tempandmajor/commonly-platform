@@ -1,153 +1,126 @@
-
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { UserWallet } from "@/types/auth";
-import {
-  AlertCircle,
-  HelpCircle,
-  DollarSign,
-  ShoppingCart,
-  Calendar,
-  Video
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Clock, Coins, Loader2 } from "lucide-react";
+import { format } from "date-fns";
 
-interface PlatformCreditsTabProps {
-  wallet: UserWallet;
-  refreshWallet: () => Promise<void>;
+interface Transaction {
+  id: string;
+  user_id: string;
+  amount: number;
+  type: string;
+  status: string;
+  description: string;
+  created_at: string;
 }
 
-const PlatformCreditsTab: React.FC<PlatformCreditsTabProps> = ({
-  wallet,
-  refreshWallet
-}) => {
-  const creditTransactions = wallet.transactions.filter(t => t.type === "credit");
-  
+const PlatformCreditsTab = () => {
+  const { currentUser } = useAuth();
+  const { toast } = useToast();
+  const [wallet, setWallet] = useState<{ platformCredits: number } | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // Load user wallet on component mount
+  useEffect(() => {
+    const loadWallet = async () => {
+      if (currentUser) {
+        setIsLoading(true);
+        try {
+          const { data: walletData } = await supabase
+            .from('wallets')
+            .select('*')
+            .eq('user_id', currentUser.uid)
+            .single();
+            
+          if (walletData) {
+            setWallet(walletData);
+          }
+          
+          // Get recent transactions
+          const { data: transactionsData } = await supabase
+            .from('transactions')
+            .select('*')
+            .eq('user_id', currentUser.uid)
+            .order('created_at', { ascending: false })
+            .limit(5);
+            
+          if (transactionsData) {
+            setTransactions(transactionsData);
+          }
+          
+        } catch (error) {
+          console.error("Error loading wallet data:", error);
+          toast({
+            title: "Error loading wallet data",
+            description: "Please try again later",
+            variant: "destructive",
+          });
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadWallet();
+  }, [currentUser, toast]);
+
   return (
-    <div className="space-y-6">
+    <div>
+      {/* Platform credits info */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>Platform Credits</span>
-            <span className="text-2xl font-bold">${wallet.platformCredits.toFixed(2)}</span>
-          </CardTitle>
+          <CardTitle>Platform Credits</CardTitle>
           <CardDescription>
-            Platform credits can be used to pay for Commonly platform services
+            View your available platform credits and recent transactions.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-start gap-2">
-              <AlertCircle className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
-              <div>
-                <h4 className="font-medium">About Platform Credits</h4>
-                <p className="text-sm text-muted-foreground">
-                  Platform credits are a digital currency that can be used to pay for various services within Commonly. 
-                  These credits cannot be withdrawn as cash but can be applied to reduce fees on platform services.
-                </p>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Where to Use</CardTitle>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <ul className="space-y-2">
-                    <li className="flex gap-2 items-center">
-                      <DollarSign className="h-4 w-4 text-green-500" />
-                      <span>Pro subscription ($29.99/month)</span>
-                    </li>
-                    <li className="flex gap-2 items-center">
-                      <ShoppingCart className="h-4 w-4 text-purple-500" />
-                      <span>Platform fees (5% on transactions)</span>
-                    </li>
-                    <li className="flex gap-2 items-center">
-                      <Calendar className="h-4 w-4 text-blue-500" />
-                      <span>Premium event features</span>
-                    </li>
-                    <li className="flex gap-2 items-center">
-                      <Video className="h-4 w-4 text-red-500" />
-                      <span>Promoted listings</span>
-                    </li>
-                  </ul>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base flex items-center justify-between">
-                    <span>How to Earn Credits</span>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-6 w-6">
-                            <HelpCircle className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="max-w-xs">
-                            Earn credits through various activities on the platform
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <ul className="space-y-2">
-                    <li className="flex gap-2 items-center">
-                      <div className="h-4 w-4 flex items-center justify-center text-blue-500">🔗</div>
-                      <span>Refer friends to Commonly</span>
-                    </li>
-                    <li className="flex gap-2 items-center">
-                      <div className="h-4 w-4 flex items-center justify-center text-green-500">✨</div>
-                      <span>Create popular events</span>
-                    </li>
-                    <li className="flex gap-2 items-center">
-                      <div className="h-4 w-4 flex items-center justify-center text-purple-500">🎉</div>
-                      <span>Special promotions and offers</span>
-                    </li>
-                  </ul>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Credit History</CardTitle>
-          <CardDescription>Recent platform credit transactions</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {creditTransactions.length > 0 ? (
-            <div className="space-y-4">
-              {creditTransactions.map((transaction) => (
-                <div key={transaction.id} className="flex items-center justify-between border-b pb-3">
-                  <div>
-                    <p className="font-medium">{transaction.description}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(transaction.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className={`text-right ${transaction.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {transaction.amount >= 0 ? '+' : '-'}${Math.abs(transaction.amount).toFixed(2)}
-                  </div>
-                </div>
-              ))}
+          {isLoading ? (
+            <div className="flex items-center justify-center">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Loading...
             </div>
           ) : (
-            <div className="text-center py-6 text-muted-foreground">
-              No credit transactions yet
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Coins className="h-5 w-5 text-yellow-500" />
+                <span className="text-2xl font-semibold">
+                  {wallet?.platformCredits || 0} Credits
+                </span>
+              </div>
+              <div>
+                <h3 className="text-lg font-medium">Recent Transactions</h3>
+                {transactions.length > 0 ? (
+                  <ul className="mt-2 space-y-2">
+                    {transactions.map((transaction) => (
+                      <li key={transaction.id} className="border rounded-md p-3">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <div className="font-medium">{transaction.description}</div>
+                            <div className="text-sm text-gray-500">
+                              {format(new Date(transaction.created_at), "MMM d, yyyy h:mm a")}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <Badge
+                              variant="secondary"
+                              className={transaction.type === "credit" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}
+                            >
+                              {transaction.type === "credit" ? "+" : "-"} {transaction.amount}
+                            </Badge>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-gray-500">No recent transactions.</p>
+                )}
+              </div>
             </div>
           )}
         </CardContent>

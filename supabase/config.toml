@@ -63,6 +63,18 @@ public = true
 file_size_limit = "10MB"
 allowed_mime_types = ["audio/mpeg", "audio/mp3", "audio/webm"]
 
+[[storage.buckets]]
+name = "products"
+public = true
+file_size_limit = "10MB"
+allowed_mime_types = ["image/png", "image/jpeg", "image/gif"]
+
+[[storage.buckets]]
+name = "event-recordings"
+public = true
+file_size_limit = "1000MB"
+allowed_mime_types = ["video/mp4", "audio/mp3", "audio/mpeg"]
+
 [analytics]
 enabled = false
 port = 54327
@@ -79,4 +91,10 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.get-agora-config]
+verify_jwt = true
+
+[functions.increment-podcast-listens]
+verify_jwt = true
+
+[functions.update-follow-count]
 verify_jwt = true

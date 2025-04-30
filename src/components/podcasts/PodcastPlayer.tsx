@@ -1,287 +1,334 @@
-
 import React, { useState, useRef, useEffect } from "react";
-import { Podcast } from "@/types/podcast";
-import { Card } from "@/components/ui/card";
+import { format } from "date-fns";
 import {
-  PlayCircle,
-  PauseCircle,
-  Volume2,
-  VolumeX,
+  Play,
+  Pause,
   SkipBack,
   SkipForward,
-  Maximize2,
-  Minimize2,
+  Volume2,
+  VolumeX,
+  Share2,
+  Clock,
+  Headphones,
+  Video,
+  MusicIcon,
+  CalendarIcon,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
+import { Podcast } from "@/types/podcast";
+import { formatDuration } from "@/lib/utils";
 import { incrementListenCount } from "@/services/podcastService";
 
-interface PodcastPlayerProps {
-  podcast: Podcast;
-}
-
-const PodcastPlayer: React.FC<PodcastPlayerProps> = ({ podcast }) => {
+const PodcastPlayer = ({ podcast }: { podcast: Podcast }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(1);
+  const [volume, setVolume] = useState(0.8);
   const [isMuted, setIsMuted] = useState(false);
-  const [isFullScreen, setIsFullScreen] = useState(false);
-  const [hasListenTracked, setHasListenTracked] = useState(false);
-
+  const [showVideo, setShowVideo] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const playerContainerRef = useRef<HTMLDivElement | null>(null);
-
-  const isVideo = podcast.type === "video" && podcast.videoUrl;
 
   useEffect(() => {
-    const mediaElement = isVideo ? videoRef.current : audioRef.current;
-    
-    if (!mediaElement) return;
+    // Initialize audio element
+    if (!audioRef.current) {
+      const audio = new Audio(podcast.type === "audio" ? podcast.audioUrl : podcast.videoUrl);
+      audio.volume = volume;
+      audio.addEventListener("loadedmetadata", () => {
+        setDuration(audio.duration);
+      });
+      audio.addEventListener("timeupdate", handleTimeUpdate);
+      audio.addEventListener("ended", () => setIsPlaying(false));
+      audioRef.current = audio;
+    }
 
-    const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
-    const handleTimeUpdate = () => setCurrentTime(mediaElement.currentTime);
-    const handleLoadedMetadata = () => setDuration(mediaElement.duration);
-    
-    // Track listen after playing for 10 seconds
-    const trackListen = () => {
-      if (!hasListenTracked && mediaElement.currentTime > 10) {
-        incrementListenCount(podcast.id).then(() => {
-          setHasListenTracked(true);
-        });
-      }
-    };
-
-    mediaElement.addEventListener("play", handlePlay);
-    mediaElement.addEventListener("pause", handlePause);
-    mediaElement.addEventListener("timeupdate", handleTimeUpdate);
-    mediaElement.addEventListener("loadedmetadata", handleLoadedMetadata);
-    mediaElement.addEventListener("timeupdate", trackListen);
+    // Increment listen count after 5 seconds of playback
+    let listenTimeout: NodeJS.Timeout;
+    if (isPlaying) {
+      listenTimeout = setTimeout(() => {
+        incrementListenCount(podcast.id).catch(console.error);
+      }, 5000);
+    }
 
     return () => {
-      mediaElement.removeEventListener("play", handlePlay);
-      mediaElement.removeEventListener("pause", handlePause);
-      mediaElement.removeEventListener("timeupdate", handleTimeUpdate);
-      mediaElement.removeEventListener("loadedmetadata", handleLoadedMetadata);
-      mediaElement.removeEventListener("timeupdate", trackListen);
+      if (listenTimeout) {
+        clearTimeout(listenTimeout);
+      }
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.removeEventListener("timeupdate", handleTimeUpdate);
+      }
     };
-  }, [isVideo, podcast.id, hasListenTracked]);
+  }, [isPlaying, podcast.id, podcast.audioUrl, podcast.videoUrl, podcast.type, volume]);
 
-  useEffect(() => {
-    const mediaElement = isVideo ? videoRef.current : audioRef.current;
-    if (!mediaElement) return;
-    
-    mediaElement.volume = isMuted ? 0 : volume;
-  }, [volume, isMuted, isVideo]);
-
-  const togglePlay = () => {
-    const mediaElement = isVideo ? videoRef.current : audioRef.current;
-    if (!mediaElement) return;
-    
-    if (isPlaying) {
-      mediaElement.pause();
-    } else {
-      mediaElement.play();
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      setCurrentTime(audioRef.current.currentTime);
     }
   };
 
-  const handleSliderChange = (value: number[]) => {
-    const mediaElement = isVideo ? videoRef.current : audioRef.current;
-    if (!mediaElement) return;
-    
-    const newTime = value[0] * duration / 100;
-    mediaElement.currentTime = newTime;
-    setCurrentTime(newTime);
+  const togglePlayPause = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const handleSeek = (value: number[]) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = value[0];
+      setCurrentTime(value[0]);
+    }
   };
 
   const handleVolumeChange = (value: number[]) => {
-    setVolume(value[0] / 100);
-    setIsMuted(value[0] === 0);
-  };
-
-  const toggleMute = () => {
-    setIsMuted(!isMuted);
-  };
-
-  const skipForward = () => {
-    const mediaElement = isVideo ? videoRef.current : audioRef.current;
-    if (!mediaElement) return;
-    
-    mediaElement.currentTime = Math.min(mediaElement.currentTime + 10, duration);
-  };
-
-  const skipBackward = () => {
-    const mediaElement = isVideo ? videoRef.current : audioRef.current;
-    if (!mediaElement) return;
-    
-    mediaElement.currentTime = Math.max(mediaElement.currentTime - 10, 0);
-  };
-
-  const toggleFullScreen = () => {
-    if (!playerContainerRef.current) return;
-
-    if (!document.fullscreenElement) {
-      playerContainerRef.current.requestFullscreen().catch(err => {
-        console.error(`Error attempting to enable full-screen mode: ${err.message}`);
-      });
+    const newVolume = value[0];
+    setVolume(newVolume);
+    if (audioRef.current) {
+      audioRef.current.volume = newVolume;
+    }
+    if (newVolume === 0) {
+      setIsMuted(true);
     } else {
-      document.exitFullscreen();
+      setIsMuted(false);
     }
   };
 
-  useEffect(() => {
-    const handleFullScreenChange = () => {
-      setIsFullScreen(!!document.fullscreenElement);
-    };
+  const toggleMute = () => {
+    if (audioRef.current) {
+      if (isMuted) {
+        audioRef.current.volume = volume;
+        setIsMuted(false);
+      } else {
+        audioRef.current.volume = 0;
+        setIsMuted(true);
+      }
+    }
+  };
 
-    document.addEventListener("fullscreenchange", handleFullScreenChange);
-    return () => {
-      document.removeEventListener("fullscreenchange", handleFullScreenChange);
-    };
-  }, []);
+  const skipBackward = () => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10);
+      setCurrentTime(audioRef.current.currentTime);
+    }
+  };
 
-  const formatTime = (time: number) => {
-    const minutes = Math.floor(time / 60);
-    const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  const skipForward = () => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = Math.min(
+        duration,
+        audioRef.current.currentTime + 10
+      );
+      setCurrentTime(audioRef.current.currentTime);
+    }
+  };
+
+  const handleShare = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: podcast.title,
+          text: podcast.description,
+          url: window.location.href,
+        });
+      } else {
+        // Fallback for browsers that don't support the Web Share API
+        navigator.clipboard.writeText(window.location.href);
+        alert("Link copied to clipboard!");
+      }
+    } catch (error) {
+      console.error("Error sharing:", error);
+    }
   };
 
   return (
-    <Card className="overflow-hidden">
-      <div 
-        ref={playerContainerRef}
-        className={`w-full ${isVideo ? "bg-black" : "bg-gray-50"} relative`}
-      >
-        {isVideo ? (
-          <video
-            ref={videoRef}
-            src={podcast.videoUrl}
-            className="w-full aspect-video"
-            poster={podcast.thumbnailUrl}
-            playsInline
-            controlsList="nodownload"
-          />
-        ) : (
-          <div className="aspect-[16/9] md:aspect-[21/9] w-full flex items-center justify-center bg-gradient-to-r from-gray-900 to-gray-700 relative">
-            <div 
-              className="absolute inset-0 bg-center bg-cover opacity-20 blur-sm"
-              style={{ backgroundImage: podcast.thumbnailUrl ? `url(${podcast.thumbnailUrl})` : undefined }}
-            />
-            
-            <div className="z-10 max-w-full px-4 flex flex-col items-center">
-              {podcast.thumbnailUrl && (
-                <img
-                  src={podcast.thumbnailUrl}
-                  alt={podcast.title}
-                  className="w-32 h-32 md:w-48 md:h-48 object-cover rounded-lg shadow-lg mb-4"
-                />
+    <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+      {/* Player header with podcast info */}
+      <div className="p-4 md:p-6 flex flex-col md:flex-row gap-4">
+        <div className="flex-shrink-0">
+          <div className="relative w-20 h-20 md:w-32 md:h-32 overflow-hidden rounded-md">
+            {podcast.thumbnailUrl ? (
+              <img
+                src={podcast.thumbnailUrl}
+                alt={podcast.title}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.src = "/placeholder.svg";
+                }}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                <MusicIcon className="h-12 w-12 text-gray-400" />
+              </div>
+            )}
+
+            {podcast.type === "video" && !showVideo && (
+              <Button
+                size="sm"
+                className="absolute inset-0 m-auto w-10 h-10 rounded-full bg-black/60 hover:bg-black/70"
+                onClick={() => setShowVideo(true)}
+              >
+                <Play className="h-5 w-5" />
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex-1">
+          <h2 className="text-xl font-bold line-clamp-2">{podcast.title}</h2>
+          <p className="text-sm text-gray-500 mt-1">{podcast.creatorName}</p>
+          
+          <div className="flex items-center mt-2 space-x-2">
+            <Badge variant="outline" className="text-xs">
+              {podcast.type === "audio" ? (
+                <Headphones className="h-3 w-3 mr-1" />
+              ) : (
+                <Video className="h-3 w-3 mr-1" />
               )}
-              <h2 className="text-white text-xl md:text-2xl font-bold text-center mb-2">
-                {podcast.title}
-              </h2>
-              <p className="text-gray-200 text-sm md:text-base text-center max-w-md">
-                {podcast.creatorName}
-              </p>
+              {podcast.type.charAt(0).toUpperCase() + podcast.type.slice(1)}
+            </Badge>
+            
+            <div className="text-xs text-gray-500 flex items-center">
+              <Clock className="h-3 w-3 mr-1" />
+              {formatDuration(podcast.duration)}
             </div>
             
-            <audio
-              ref={audioRef}
-              src={podcast.audioUrl}
-              className="hidden"
-            />
-          </div>
-        )}
-
-        <div className="p-4 bg-white">
-          <div className="flex items-center mb-2">
-            <Slider 
-              value={[duration > 0 ? (currentTime / duration) * 100 : 0]}
-              onValueChange={handleSliderChange}
-              max={100}
-              step={0.1}
-              className="mr-2"
-            />
-            <span className="text-xs text-gray-500 min-w-[80px] text-right">
-              {formatTime(currentTime)} / {formatTime(duration)}
-            </span>
+            <div className="text-xs text-gray-500 flex items-center">
+              <CalendarIcon className="h-3 w-3 mr-1" />
+              {format(new Date(podcast.createdAt), "MMM d, yyyy")}
+            </div>
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <button
-                type="button"
+          <p className="text-sm line-clamp-3 mt-2">{podcast.description}</p>
+        </div>
+      </div>
+
+      {/* Video player (if podcast is video type and showVideo is true) */}
+      {podcast.type === "video" && showVideo && podcast.videoUrl && (
+        <div className="w-full aspect-video bg-black">
+          <video
+            ref={audioRef as React.RefObject<HTMLVideoElement>}
+            src={podcast.videoUrl}
+            className="w-full h-full"
+            controls
+            autoPlay
+            onTimeUpdate={handleTimeUpdate}
+          />
+        </div>
+      )}
+
+      {/* Audio player controls (if podcast is audio type or video is not showing) */}
+      {(podcast.type === "audio" || !showVideo) && (
+        <div>
+          {/* Waveform visualization (placeholder) */}
+          <div className="h-16 bg-gray-50 px-4 flex items-center">
+            <div className="w-full h-8 bg-gray-100 rounded-md overflow-hidden">
+              <div
+                className="h-full bg-blue-500"
+                style={{ width: `${(currentTime / duration) * 100}%` }}
+              ></div>
+            </div>
+          </div>
+
+          {/* Audio controls */}
+          <div className="p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={skipBackward}
-                className="p-2 rounded-full hover:bg-gray-100"
-                aria-label="Skip backward 10 seconds"
+                title="Skip backward 10 seconds"
               >
                 <SkipBack className="h-5 w-5" />
-              </button>
-              
-              <button
-                type="button"
-                onClick={togglePlay}
-                className="p-2 rounded-full hover:bg-gray-100"
-                aria-label={isPlaying ? "Pause" : "Play"}
+              </Button>
+
+              <Button
+                variant="default"
+                size="icon"
+                className="rounded-full"
+                onClick={togglePlayPause}
               >
                 {isPlaying ? (
-                  <PauseCircle className="h-8 w-8 text-primary" />
+                  <Pause className="h-5 w-5" />
                 ) : (
-                  <PlayCircle className="h-8 w-8 text-primary" />
+                  <Play className="h-5 w-5" />
                 )}
-              </button>
-              
-              <button
-                type="button"
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={skipForward}
-                className="p-2 rounded-full hover:bg-gray-100"
-                aria-label="Skip forward 10 seconds"
+                title="Skip forward 10 seconds"
               >
                 <SkipForward className="h-5 w-5" />
-              </button>
+              </Button>
             </div>
-            
-            <div className="flex items-center space-x-2">
-              <button
-                type="button"
+
+            <div className="flex-1 px-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500">
+                  {formatDuration(currentTime)}
+                </span>
+                <Slider
+                  value={[currentTime]}
+                  min={0}
+                  max={duration || 100}
+                  step={1}
+                  onValueChange={handleSeek}
+                  className="flex-1"
+                />
+                <span className="text-xs text-gray-500">
+                  {formatDuration(duration)}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={toggleMute}
-                className="p-2 rounded-full hover:bg-gray-100"
-                aria-label={isMuted ? "Unmute" : "Mute"}
+                title={isMuted ? "Unmute" : "Mute"}
               >
                 {isMuted ? (
                   <VolumeX className="h-5 w-5" />
                 ) : (
                   <Volume2 className="h-5 w-5" />
                 )}
-              </button>
-              
-              <Slider 
-                value={[isMuted ? 0 : volume * 100]}
+              </Button>
+
+              <Slider
+                value={[isMuted ? 0 : volume]}
+                min={0}
+                max={1}
+                step={0.01}
                 onValueChange={handleVolumeChange}
-                max={100}
-                step={1}
                 className="w-24"
               />
-              
-              {isVideo && (
-                <button
-                  type="button"
-                  onClick={toggleFullScreen}
-                  className="p-2 rounded-full hover:bg-gray-100"
-                  aria-label={isFullScreen ? "Exit fullscreen" : "Enter fullscreen"}
-                >
-                  {isFullScreen ? (
-                    <Minimize2 className="h-5 w-5" />
-                  ) : (
-                    <Maximize2 className="h-5 w-5" />
-                  )}
-                </button>
-              )}
             </div>
           </div>
         </div>
+      )}
+
+      {/* Sharing options */}
+      <div className="p-4 border-t">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleShare}
+          className="flex items-center gap-2"
+        >
+          <Share2 className="h-4 w-4" />
+          Share Podcast
+        </Button>
       </div>
-    </Card>
+    </div>
   );
 };
 

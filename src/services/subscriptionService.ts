@@ -1,115 +1,94 @@
 
 import { supabase } from "@/integrations/supabase/client";
 
-/**
- * Check if a user has Pro status
- * @param userId User ID to check
- * @returns Boolean indicating Pro status
- */
-export const isUserPro = async (userId: string): Promise<boolean> => {
-  try {
-    // First, check the user record for direct isPro flag
-    const { data: userData, error: userError } = await supabase
-      .from("users")
-      .select("is_pro")
-      .eq("id", userId)
-      .single();
-    
-    if (userError) throw userError;
-    
-    if (userData?.is_pro) {
-      return true;
-    }
-    
-    // Next, check for active subscription
-    const { data: subscriptionData, error: subscriptionError } = await supabase
-      .from("subscriptions")
-      .select("plan, status")
-      .eq("user_id", userId)
-      .eq("status", "active")
-      .limit(1);
-    
-    if (subscriptionError) throw subscriptionError;
-    
-    if (subscriptionData && subscriptionData.length > 0) {
-      const subscription = subscriptionData[0];
-      return subscription.plan === "pro" && subscription.status === "active";
-    }
-    
-    return false;
-  } catch (error) {
-    console.error("Error checking user Pro status:", error);
-    return false; // Default to false on error
-  }
-};
+export interface Subscription {
+  id: string;
+  userId: string;
+  plan: string;
+  status: string;
+  stripeCustomerId: string;
+  stripeSubscriptionId: string;
+  currentPeriodStart: string;
+  currentPeriodEnd: string;
+  cancelAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
 
-/**
- * Get user subscription details
- */
-export const getUserSubscription = async (userId: string) => {
+export const createSubscription = async (subscription: Partial<Subscription>): Promise<Subscription | null> => {
   try {
     const { data, error } = await supabase
-      .from("subscriptions")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(1);
+      .from('subscriptions')
+      .insert({
+        user_id: subscription.userId,
+        plan: subscription.plan,
+        status: subscription.status,
+        stripe_customer_id: subscription.stripeCustomerId,
+        stripe_subscription_id: subscription.stripeSubscriptionId,
+        current_period_start: subscription.currentPeriodStart,
+        current_period_end: subscription.currentPeriodEnd,
+        cancel_at: subscription.cancelAt,
+      })
+      .select()
+      .single();
     
     if (error) throw error;
     
-    return data && data.length > 0 ? data[0] : null;
+    return mapSubscriptionFromDatabase(data);
   } catch (error) {
-    console.error("Error getting user subscription:", error);
-    throw error;
+    console.error("Error creating subscription:", error);
+    return null;
   }
 };
 
-/**
- * Cancel a subscription
- */
-export const cancelSubscription = async (userId: string, stripeSubscriptionId: string) => {
+export const getUserSubscription = async (userId: string): Promise<Subscription | null> => {
   try {
-    // We'll call an edge function for handling the Stripe API call
-    const { data, error } = await supabase.functions.invoke('cancel-subscription', {
-      body: { userId, stripeSubscriptionId }
-    });
+    const { data, error } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
     
     if (error) throw error;
     
-    return data;
+    return data ? mapSubscriptionFromDatabase(data) : null;
   } catch (error) {
-    console.error("Error cancelling subscription:", error);
-    throw error;
+    console.error("Error fetching user subscription:", error);
+    return null;
   }
 };
 
-/**
- * Create checkout session for subscription
- */
-export const createCheckoutSession = async (
-  userId: string,
-  email: string,
-  plan: string,
-  successUrl: string,
-  cancelUrl: string
-) => {
+export const cancelSubscription = async (subscriptionId: string): Promise<boolean> => {
   try {
-    // Call our edge function to create checkout session
-    const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-      body: { 
-        userId, 
-        email, 
-        plan, 
-        successUrl, 
-        cancelUrl 
-      }
-    });
+    const { error } = await supabase
+      .from('subscriptions')
+      .update({ 
+        status: 'canceled',
+        cancel_at: new Date().toISOString()
+      })
+      .eq('id', subscriptionId);
     
     if (error) throw error;
     
-    return data.sessionUrl;
+    return true;
   } catch (error) {
-    console.error("Error creating checkout session:", error);
-    throw error;
+    console.error("Error canceling subscription:", error);
+    return false;
   }
+};
+
+const mapSubscriptionFromDatabase = (data: any): Subscription => {
+  return {
+    id: data.id,
+    userId: data.user_id,
+    plan: data.plan,
+    status: data.status,
+    stripeCustomerId: data.stripe_customer_id,
+    stripeSubscriptionId: data.stripe_subscription_id,
+    currentPeriodStart: data.current_period_start,
+    currentPeriodEnd: data.current_period_end,
+    cancelAt: data.cancel_at,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at
+  };
 };
