@@ -3,8 +3,16 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { updateTypingStatus } from "@/services/chat";
-import { collection, query, onSnapshot } from "firebase/firestore";
+import { collection, query, onSnapshot, DocumentData } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+
+// Define interface for typing status document
+interface TypingStatus {
+  id: string;
+  userId: string;
+  isTyping: boolean;
+  timestamp?: any;
+}
 
 export const useTypingStatus = () => {
   const { chatId } = useParams<{ chatId: string }>();
@@ -22,7 +30,7 @@ export const useTypingStatus = () => {
       const typingData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      }));
+      })) as TypingStatus[];
       
       // Find if other user is typing
       const otherUserTypingData = typingData.find(data => 
