@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -230,13 +231,13 @@ const VenueDetail = () => {
               <div className="flex justify-between items-baseline mb-6">
                 <div>
                   <span className="text-2xl font-bold">
-                    {formatCurrency(venue.pricing.hourlyRate, venue.pricing.currency)}
+                    {formatCurrency(venue.pricing.hourlyRate)}
                   </span>
                   <span className="text-muted-foreground"> /hour</span>
                 </div>
                 {venue.pricing.dailyRate && (
                   <div className="text-muted-foreground text-sm">
-                    {formatCurrency(venue.pricing.dailyRate, venue.pricing.currency)} /day
+                    {formatCurrency(venue.pricing.dailyRate)} /day
                   </div>
                 )}
               </div>
@@ -251,13 +252,13 @@ const VenueDetail = () => {
                   {venue.pricing.cleaningFee && (
                     <p className="flex justify-between">
                       <span>Cleaning fee</span>
-                      <span>{formatCurrency(venue.pricing.cleaningFee, venue.pricing.currency)}</span>
+                      <span>{formatCurrency(venue.pricing.cleaningFee)}</span>
                     </p>
                   )}
                   {venue.pricing.securityDeposit && (
                     <p className="flex justify-between">
                       <span>Security deposit</span>
-                      <span>{formatCurrency(venue.pricing.securityDeposit, venue.pricing.currency)}</span>
+                      <span>{formatCurrency(venue.pricing.securityDeposit)}</span>
                     </p>
                   )}
                   <p className="flex justify-between text-xs text-muted-foreground">

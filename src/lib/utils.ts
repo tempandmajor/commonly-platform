@@ -1,4 +1,3 @@
-
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -6,11 +5,18 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export function formatCurrency(amount: number, currency: string = 'USD'): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency,
+  }).format(amount);
+}
+
 export function formatDate(date: Date): string {
   return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
     year: 'numeric',
+    month: 'long',
+    day: 'numeric',
   }).format(date);
 }
 
@@ -20,13 +26,6 @@ export function formatTime(date: Date): string {
     minute: 'numeric',
     hour12: true,
   }).format(date);
-}
-
-export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(amount);
 }
 
 export function formatDuration(seconds: number): string {
@@ -41,15 +40,18 @@ export function truncateText(text: string, maxLength: number): string {
   return `${text.substring(0, maxLength)}...`;
 }
 
-export function extractInitials(name?: string): string {
-  if (!name) return "?";
+export const extractInitials = (name?: string | null): string => {
+  if (!name) return "U";
   
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) {
-    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+  const names = name.trim().split(/\s+/);
+  if (names.length === 0) return "U";
+  
+  if (names.length === 1) {
+    return names[0][0].toUpperCase();
   }
-  return parts[0].substring(0, 2).toUpperCase();
-}
+  
+  return (names[0][0] + names[names.length - 1][0]).toUpperCase();
+};
 
 export function mapUserForStore(user: any) {
   // Map user data for storage without including is_online field

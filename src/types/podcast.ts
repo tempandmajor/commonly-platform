@@ -44,3 +44,37 @@ export interface PodcastComment {
   updatedAt?: string;
   likes?: number;
 }
+
+export interface PodcastCreateInput {
+  title: string;
+  description?: string;
+  userId: string;
+  userName?: string;
+  userPhotoUrl?: string;
+  categoryId?: string;
+  type: 'audio' | 'video';
+  duration?: number;
+  published: boolean;
+  visibility: 'public' | 'private' | 'unlisted';
+  tags?: string[];
+  audioUrl?: string;
+  videoUrl?: string;
+  imageUrl?: string;
+  likeCount?: number;
+  viewCount?: number;
+  shareCount?: number;
+  creatorId?: string;
+  creatorName?: string;
+}
+
+export interface PodcastSession {
+  id?: string;
+  userId: string;
+  title: string;
+  description?: string;
+  participants: string[];
+  duration?: number;
+  status: 'recording' | 'processing' | 'completed' | 'failed';
+  recordingUrl?: string;
+  createdAt?: string;
+}

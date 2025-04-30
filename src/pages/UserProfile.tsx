@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -40,23 +41,6 @@ import { useNavigate } from "react-router-dom";
 import { reportUser } from "@/services/reportService";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
-
-// Define the props for UserList
-interface UserListProps {
-  userId: string;
-  listType: 'followers' | 'following';
-}
-
-// Define the props for MerchantStoreTab
-interface MerchantStoreTabProps {
-  userId: string;
-  merchantStoreId: string;
-}
-
-// Define the props for SubscriptionTab
-interface SubscriptionTabProps {
-  userId: string;
-}
 
 const UserProfile: React.FC = () => {
   const { userId } = useParams();
@@ -157,7 +141,6 @@ const UserProfile: React.FC = () => {
   // Determine which tabs to show based on user type
   const showSubscriptionTab = isCurrentUser;
   const showMerchantTab = isCurrentUser && profileUser.isMerchant;
-  const showEditProfileButton = isCurrentUser;
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -203,7 +186,7 @@ const UserProfile: React.FC = () => {
                 </div>
               )}
               
-              {showEditProfileButton && (
+              {isCurrentUser && (
                 <div className="mt-4 w-full">
                   <Button
                     variant="outline"
@@ -312,7 +295,10 @@ const UserProfile: React.FC = () => {
         
         {showMerchantTab && (
           <TabsContent value="store">
-            <MerchantStoreTab userId={profileUser.uid} merchantStoreId={profileUser.merchantStoreId || ''} />
+            <MerchantStoreTab 
+              userId={profileUser.uid} 
+              merchantStoreId={profileUser.merchantStoreId || ''}
+            />
           </TabsContent>
         )}
       </Tabs>

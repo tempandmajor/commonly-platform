@@ -16,7 +16,7 @@ export const getPodcasts = async (
   try {
     let query = supabase
       .from('podcasts')
-      .select('*, users!podcasts_user_id_fkey(display_name, photo_url)')
+      .select('*')
       .eq('published', true)
       .order('created_at', { ascending: false });
 
@@ -55,22 +55,22 @@ export const getPodcasts = async (
       description: podcast.description || undefined,
       imageUrl: podcast.image_url || undefined,
       audioUrl: podcast.audio_url || undefined,
-      videoUrl: podcast.video_url || undefined,
-      thumbnailUrl: podcast.thumbnailUrl || undefined,
+      videoUrl: undefined,
+      thumbnailUrl: undefined,
       duration: podcast.duration || 0,
       createdAt: podcast.created_at,
       userId: podcast.user_id,
-      userName: podcast.users?.display_name || "Unknown",
-      userPhotoUrl: podcast.users?.photo_url || undefined,
+      userName: "Unknown", // We don't have user data here
+      userPhotoUrl: undefined,
       categoryId: podcast.category_id || undefined,
       likeCount: podcast.like_count || 0,
       viewCount: podcast.view_count || 0,
       shareCount: podcast.share_count || 0,
       published: podcast.published || false,
-      type: podcast.type || 'audio',
-      visibility: podcast.visibility || 'public',
-      listens: podcast.listens || 0,
-      tags: podcast.tags || []
+      type: 'audio', // Default type
+      visibility: 'public', // Default visibility
+      listens: 0,
+      tags: []
     }));
 
     return {
@@ -106,7 +106,30 @@ export const getPodcastsByCategory = async (categoryId: string): Promise<Podcast
     
     if (error) throw error;
     
-    return data as Podcast[];
+    // Map to our Podcast type
+    return data.map(podcast => ({
+      id: podcast.id,
+      title: podcast.title,
+      description: podcast.description || undefined,
+      imageUrl: podcast.image_url || undefined,
+      audioUrl: podcast.audio_url || undefined,
+      videoUrl: undefined,
+      thumbnailUrl: undefined,
+      duration: podcast.duration || 0,
+      createdAt: podcast.created_at,
+      userId: podcast.user_id,
+      userName: "Unknown",
+      userPhotoUrl: undefined,
+      categoryId: podcast.category_id || undefined,
+      likeCount: podcast.like_count || 0,
+      viewCount: podcast.view_count || 0,
+      shareCount: podcast.share_count || 0,
+      published: podcast.published || false,
+      type: 'audio',
+      visibility: 'public',
+      listens: 0,
+      tags: []
+    }));
   } catch (error) {
     console.error("Error fetching podcasts by category:", error);
     return [];
@@ -125,7 +148,30 @@ export const getFeaturedPodcasts = async (): Promise<Podcast[]> => {
     
     if (error) throw error;
     
-    return data as Podcast[];
+    // Map to our Podcast type
+    return data.map(podcast => ({
+      id: podcast.id,
+      title: podcast.title,
+      description: podcast.description || undefined,
+      imageUrl: podcast.image_url || undefined,
+      audioUrl: podcast.audio_url || undefined,
+      videoUrl: undefined,
+      thumbnailUrl: undefined,
+      duration: podcast.duration || 0,
+      createdAt: podcast.created_at,
+      userId: podcast.user_id,
+      userName: "Unknown",
+      userPhotoUrl: undefined,
+      categoryId: podcast.category_id || undefined,
+      likeCount: podcast.like_count || 0,
+      viewCount: podcast.view_count || 0,
+      shareCount: podcast.share_count || 0,
+      published: podcast.published || false,
+      type: 'audio',
+      visibility: 'public',
+      listens: 0,
+      tags: []
+    }));
   } catch (error) {
     console.error("Error fetching featured podcasts:", error);
     return [];
@@ -145,17 +191,24 @@ export const addPodcastComment = async (
       .insert({
         podcast_id: podcastId,
         user_id: userId,
-        user_name: userName,
-        user_photo_url: userPhotoUrl,
-        content,
-        created_at: new Date()
+        content
       })
       .select()
       .single();
     
     if (error) throw error;
     
-    return data as PodcastComment;
+    // Map to our PodcastComment type
+    return {
+      id: data.id,
+      podcastId: data.podcast_id,
+      userId: data.user_id,
+      userName: userName, // Use the provided userName
+      userPhotoUrl: userPhotoUrl, // Use the provided userPhotoUrl
+      content: data.content,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at
+    };
   } catch (error) {
     console.error("Error adding podcast comment:", error);
     return null;
@@ -166,13 +219,23 @@ export const getPodcastComments = async (podcastId: string): Promise<PodcastComm
   try {
     const { data, error } = await supabase
       .from('podcast_comments')
-      .select('*')
+      .select('*, users:user_id(display_name, photo_url)')
       .eq('podcast_id', podcastId)
       .order('created_at', { ascending: false });
     
     if (error) throw error;
     
-    return data as PodcastComment[];
+    // Map to our PodcastComment type
+    return data.map(comment => ({
+      id: comment.id,
+      podcastId: comment.podcast_id,
+      userId: comment.user_id,
+      userName: comment.users?.display_name || "Unknown User",
+      userPhotoUrl: comment.users?.photo_url,
+      content: comment.content,
+      createdAt: comment.created_at,
+      updatedAt: comment.updated_at
+    }));
   } catch (error) {
     console.error("Error fetching podcast comments:", error);
     return [];

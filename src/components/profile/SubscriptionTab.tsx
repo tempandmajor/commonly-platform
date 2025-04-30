@@ -1,63 +1,176 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from "@/contexts/AuthContext";
-import { getUserSubscription } from "@/services/subscriptionService";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
 
-const SubscriptionTab = () => {
-  const [subscription, setSubscription] = useState(null);
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Check, Info, Loader2 } from "lucide-react";
+import { isUserPro } from "@/services/subscriptionService";
+import { useToast } from "@/hooks/use-toast";
+import { formatDate } from "@/lib/utils";
+
+export interface SubscriptionTabProps {
+  userId: string;
+}
+
+const SubscriptionTab: React.FC<SubscriptionTabProps> = ({ userId }) => {
   const [loading, setLoading] = useState(true);
-  const { currentUser } = useAuth();
+  const [isPro, setIsPro] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
-    const fetchSubscription = async () => {
-      if (currentUser) {
+    const checkProStatus = async () => {
+      try {
         setLoading(true);
-        try {
-          const data = await getUserSubscription(currentUser.uid);
-          if (data) {
-            setSubscription(data);
-          }
-        } catch (error) {
-          console.error("Error fetching subscription:", error);
-        } finally {
-          setLoading(false);
-        }
+        const proStatus = await isUserPro(userId);
+        setIsPro(proStatus);
+      } catch (error) {
+        console.error("Error checking pro status:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Could not check subscription status. Please try again."
+        });
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchSubscription();
-  }, [currentUser]);
+    checkProStatus();
+  }, [userId, toast]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Subscription</CardTitle>
-        <CardDescription>Manage your subscription plan</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {loading ? (
-          <div className="flex items-center justify-center">
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Loading subscription...
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Subscription</h2>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className={`border-2 ${isPro ? "border-primary" : ""}`}>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex justify-between">
+              Free Plan
+              {!isPro && <Badge>Current Plan</Badge>}
+            </CardTitle>
+            <div className="text-2xl font-bold">$0 <span className="text-sm font-normal text-muted-foreground">/month</span></div>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              <li className="flex items-center">
+                <Check className="h-4 w-4 mr-2 text-primary" />
+                <span>Basic access</span>
+              </li>
+              <li className="flex items-center">
+                <Check className="h-4 w-4 mr-2 text-primary" />
+                <span>Listen to podcasts</span>
+              </li>
+              <li className="flex items-center">
+                <Check className="h-4 w-4 mr-2 text-primary" />
+                <span>Follow creators</span>
+              </li>
+            </ul>
+
+            {isPro ? (
+              <Button className="w-full mt-4" variant="outline">Downgrade</Button>
+            ) : (
+              <Button className="w-full mt-4" disabled>Current Plan</Button>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className={`border-2 ${isPro ? "border-primary" : ""}`}>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex justify-between">
+              Pro Plan
+              {isPro && <Badge>Current Plan</Badge>}
+            </CardTitle>
+            <div className="text-2xl font-bold">$9.99 <span className="text-sm font-normal text-muted-foreground">/month</span></div>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              <li className="flex items-center">
+                <Check className="h-4 w-4 mr-2 text-primary" />
+                <span>All Free features</span>
+              </li>
+              <li className="flex items-center">
+                <Check className="h-4 w-4 mr-2 text-primary" />
+                <span>Create unlimited podcasts</span>
+              </li>
+              <li className="flex items-center">
+                <Check className="h-4 w-4 mr-2 text-primary" />
+                <span>Advanced analytics</span>
+              </li>
+              <li className="flex items-center">
+                <Check className="h-4 w-4 mr-2 text-primary" />
+                <span>Priority support</span>
+              </li>
+            </ul>
+
+            {isPro ? (
+              <Button className="w-full mt-4" variant="outline">Manage Subscription</Button>
+            ) : (
+              <Button className="w-full mt-4">Upgrade to Pro</Button>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle>Business Plan</CardTitle>
+            <div className="text-2xl font-bold">$24.99 <span className="text-sm font-normal text-muted-foreground">/month</span></div>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              <li className="flex items-center">
+                <Check className="h-4 w-4 mr-2 text-primary" />
+                <span>All Pro features</span>
+              </li>
+              <li className="flex items-center">
+                <Check className="h-4 w-4 mr-2 text-primary" />
+                <span>Team collaboration</span>
+              </li>
+              <li className="flex items-center">
+                <Check className="h-4 w-4 mr-2 text-primary" />
+                <span>Monetization options</span>
+              </li>
+              <li className="flex items-center">
+                <Check className="h-4 w-4 mr-2 text-primary" />
+                <span>White-label support</span>
+              </li>
+            </ul>
+
+            <Button className="w-full mt-4" variant="outline">Contact Sales</Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="bg-muted p-4 rounded-lg">
+        <div className="flex items-start">
+          <Info className="h-5 w-5 mr-2 text-muted-foreground mt-0.5" />
+          <div>
+            <h3 className="font-medium">Subscription Information</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              {isPro ? (
+                <>
+                  Your Pro subscription is active. Next billing date: {formatDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000))}
+                </>
+              ) : (
+                <>
+                  Upgrade to Pro to unlock premium features and support content creators.
+                </>
+              )}
+            </p>
           </div>
-        ) : subscription ? (
-          <>
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Plan: {subscription.plan}</p>
-              <p className="text-sm text-gray-500">Status: {subscription.status}</p>
-              <p className="text-sm text-gray-500">
-                Current Period End: {new Date(subscription.currentPeriodEnd).toLocaleDateString()}
-              </p>
-            </div>
-            <Button variant="destructive">Cancel Subscription</Button>
-          </>
-        ) : (
-          <p className="text-sm text-gray-500">You do not have an active subscription.</p>
-        )}
-      </CardContent>
-    </Card>
+        </div>
+      </div>
+    </div>
   );
 };
 

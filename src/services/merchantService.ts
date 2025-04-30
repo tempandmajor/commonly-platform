@@ -11,7 +11,7 @@ import {
   orderBy, 
   limit, 
   deleteDoc,
-  serverTimestamp
+  Timestamp
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { db, storage } from "@/lib/firebase";
@@ -25,10 +25,10 @@ export const createMerchantStore = async (userId: string, storeData: Partial<Mer
       ownerId: userId,
       name: storeData.name || "My Store",
       description: storeData.description || "",
-      logo: storeData.logo || null,
-      banner: storeData.banner || null,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+      logoUrl: storeData.logoUrl || null,
+      bannerUrl: storeData.bannerUrl || null,
+      createdAt: Timestamp.now().toDate().toISOString(),
+      updatedAt: Timestamp.now().toDate().toISOString(),
       isActive: true
     };
     
@@ -93,7 +93,7 @@ export const updateMerchantStore = async (storeId: string, data: Partial<Merchan
     const storeRef = doc(db, "merchantStores", storeId);
     await updateDoc(storeRef, {
       ...data,
-      updatedAt: serverTimestamp()
+      updatedAt: Timestamp.now().toDate().toISOString()
     });
   } catch (error) {
     console.error("Error updating merchant store:", error);
@@ -110,8 +110,8 @@ export const uploadStoreLogo = async (storeId: string, file: File): Promise<stri
     
     const storeRef = doc(db, "merchantStores", storeId);
     await updateDoc(storeRef, { 
-      logo: downloadURL,
-      updatedAt: serverTimestamp()
+      logoUrl: downloadURL,
+      updatedAt: Timestamp.now().toDate().toISOString()
     });
     
     return downloadURL;
@@ -130,8 +130,8 @@ export const uploadStoreBanner = async (storeId: string, file: File): Promise<st
     
     const storeRef = doc(db, "merchantStores", storeId);
     await updateDoc(storeRef, { 
-      banner: downloadURL,
-      updatedAt: serverTimestamp()
+      bannerUrl: downloadURL,
+      updatedAt: Timestamp.now().toDate().toISOString()
     });
     
     return downloadURL;
@@ -150,14 +150,13 @@ export const createProduct = async (storeId: string, productData: Partial<Produc
       name: productData.name || "New Product",
       description: productData.description || "",
       price: productData.price || 0,
-      images: productData.images || [],
-      category: productData.category || "Other",
-      inventory: productData.inventory || 0,
+      imageUrl: productData.imageUrl || [],
+      productCategory: productData.productCategory || "Other",
+      inventoryCount: productData.inventoryCount || 0,
       isDigital: productData.isDigital || false,
-      isAvailable: productData.isAvailable || true,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      isActive: true
+      isActive: productData.isActive || true,
+      createdAt: Timestamp.now().toDate().toISOString(),
+      updatedAt: Timestamp.now().toDate().toISOString()
     };
     
     const productDoc = await addDoc(productRef, newProduct);
@@ -221,7 +220,7 @@ export const searchProducts = async (
     );
     
     if (category) {
-      q = query(q, where("category", "==", category));
+      q = query(q, where("productCategory", "==", category));
     }
     
     q = query(q, orderBy("createdAt", "desc"), limit(limitCount));
@@ -269,7 +268,7 @@ export const updateProduct = async (productId: string, data: Partial<Product>): 
     const productRef = doc(db, "products", productId);
     await updateDoc(productRef, {
       ...data,
-      updatedAt: serverTimestamp()
+      updatedAt: Timestamp.now().toDate().toISOString()
     });
   } catch (error) {
     console.error("Error updating product:", error);
@@ -283,7 +282,7 @@ export const deleteProduct = async (productId: string): Promise<void> => {
     const productRef = doc(db, "products", productId);
     await updateDoc(productRef, {
       isActive: false,
-      updatedAt: serverTimestamp()
+      updatedAt: Timestamp.now().toDate().toISOString()
     });
   } catch (error) {
     console.error("Error deleting product:", error);

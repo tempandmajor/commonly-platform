@@ -1,6 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { Podcast, PodcastCreateInput } from "@/types/podcast";
+import { Podcast } from "@/types/podcast";
+import { PodcastCreateInput } from "@/types/chat";
 
 // Fetch podcasts with pagination and filtering
 export const getPodcasts = async (

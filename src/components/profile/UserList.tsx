@@ -1,33 +1,63 @@
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { extractInitials } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import { UserData } from "@/types/auth";
+import { getUserFollowers, getUserFollowing } from "@/services/socialService";
+import { Loader2 } from "lucide-react";
 
 export interface UserListProps {
-  users: UserData[];
-  emptyMessage: string;
-  loading?: boolean;
-  userId?: string;
-  listType?: string;
+  userId: string;
+  listType: 'followers' | 'following';
 }
 
 const UserList: React.FC<UserListProps> = ({
-  users,
-  emptyMessage,
-  loading = false,
   userId,
   listType
 }) => {
+  const [users, setUsers] = useState<UserData[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        setLoading(true);
+        let fetchedUsers: UserData[];
+        
+        if (listType === 'followers') {
+          fetchedUsers = await getUserFollowers(userId);
+        } else {
+          fetchedUsers = await getUserFollowing(userId);
+        }
+        
+        setUsers(fetchedUsers);
+      } catch (err) {
+        console.error(`Error fetching ${listType}:`, err);
+        setError(`Failed to load ${listType}. Please try again.`);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, [userId, listType]);
+
   if (loading) {
-    return <div className="flex justify-center p-8">Loading...</div>;
+    return <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+  }
+
+  if (error) {
+    return <div className="text-center p-8 text-destructive">{error}</div>;
   }
 
   if (!users || users.length === 0) {
     return (
       <div className="text-center p-8 text-muted-foreground">
-        {emptyMessage}
+        {listType === 'followers' 
+          ? "This user doesn't have any followers yet."
+          : "This user isn't following anyone yet."}
       </div>
     );
   }
