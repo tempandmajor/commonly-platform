@@ -7,12 +7,14 @@ interface MessageDisplayProps {
   messages: ChatMessage[];
   loading: boolean;
   otherUser: UserData | null;
+  onMessagesRead?: () => void;
 }
 
 const MessageDisplay: React.FC<MessageDisplayProps> = ({ 
   messages, 
   loading, 
-  otherUser 
+  otherUser,
+  onMessagesRead
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
@@ -20,6 +22,13 @@ const MessageDisplay: React.FC<MessageDisplayProps> = ({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Mark messages as read when displayed
+  useEffect(() => {
+    if (messages.length > 0 && !loading && onMessagesRead) {
+      onMessagesRead();
+    }
+  }, [messages, loading, onMessagesRead]);
 
   return (
     <div className="p-4 h-[calc(100vh-250px)] overflow-y-auto bg-gray-50">

@@ -10,16 +10,17 @@ interface ChatItemProps {
 }
 
 const ChatItem: React.FC<ChatItemProps> = ({ chat }) => {
-  const lastMessageText = chat.lastMessage?.text || "No messages yet";
-  const lastMessageTime = chat.lastMessage?.timestamp 
+  // Format the timestamp if available
+  const lastMessageTime = chat.lastMessage?.timestamp
     ? format(
-        chat.lastMessage.timestamp.toDate 
-          ? chat.lastMessage.timestamp.toDate() 
-          : new Date(chat.lastMessage.timestamp), 
-        "MMM d, p"
+        chat.lastMessage.timestamp.toDate
+          ? chat.lastMessage.timestamp.toDate()
+          : new Date(chat.lastMessage.timestamp),
+        "p"
       )
     : "";
-    
+
+  // Generate user initials for avatar fallback
   const userInitials = chat.user?.displayName
     ? chat.user.displayName
         .split(" ")
@@ -27,40 +28,40 @@ const ChatItem: React.FC<ChatItemProps> = ({ chat }) => {
         .join("")
         .toUpperCase()
     : "?";
-    
+
+  // Truncate last message text if it's too long
+  const messagePreview = chat.lastMessage?.text 
+    ? chat.lastMessage.text.length > 30
+      ? `${chat.lastMessage.text.substring(0, 30)}...`
+      : chat.lastMessage.text
+    : "No messages yet";
+
+  // Check if there are unread messages
   const hasUnread = chat.unreadCount && chat.unreadCount > 0;
-  const hasImage = chat.lastMessage?.hasImage;
-  
+
   return (
-    <Link 
-      to={`/messages/${chat.id}`}
-      className="block"
-    >
-      <div className={`p-4 border rounded-lg hover:bg-gray-50 ${hasUnread ? 'bg-blue-50' : ''}`}>
-        <div className="flex items-center">
-          <Avatar className="h-10 w-10 mr-3">
-            <AvatarImage src={chat.user?.photoURL || undefined} />
-            <AvatarFallback>{userInitials}</AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <div className="flex justify-between items-center">
-              <h3 className={`font-medium truncate ${hasUnread ? 'text-blue-700' : ''}`}>
-                {chat.user?.displayName}
-              </h3>
-              {lastMessageTime && (
-                <span className="text-xs text-gray-500">{lastMessageTime}</span>
-              )}
-            </div>
-            <div className="flex items-center">
-              <p className={`text-sm text-gray-600 truncate ${hasUnread ? 'font-medium text-gray-700' : ''}`}>
-                {hasImage ? "📷 Image" : lastMessageText}
-              </p>
-              {hasUnread && (
-                <span className="ml-2 bg-blue-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  {chat.unreadCount}
-                </span>
-              )}
-            </div>
+    <Link to={`/messages/${chat.id}`} className="block">
+      <div className="flex items-center p-3 hover:bg-gray-50 rounded-lg transition-colors">
+        <Avatar className="h-12 w-12 mr-3">
+          <AvatarImage src={chat.user?.photoURL || undefined} />
+          <AvatarFallback>{userInitials}</AvatarFallback>
+        </Avatar>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between">
+            <h3 className="font-medium truncate">
+              {chat.user?.displayName || "Unknown User"}
+            </h3>
+            <span className="text-xs text-gray-500">{lastMessageTime}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <p className={`text-sm truncate ${hasUnread ? 'font-semibold text-black' : 'text-gray-500'}`}>
+              {messagePreview}
+            </p>
+            {hasUnread && (
+              <span className="ml-2 bg-primary text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                {chat.unreadCount}
+              </span>
+            )}
           </div>
         </div>
       </div>

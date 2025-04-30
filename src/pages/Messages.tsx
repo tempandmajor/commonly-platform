@@ -24,7 +24,8 @@ const Messages = () => {
     showEmojiPicker,
     setShowEmojiPicker,
     handleSendMessage,
-    handleEmojiSelect
+    handleEmojiSelect,
+    handleMarkMessagesAsRead
   } = useChat();
 
   const [newMessage, setNewMessage] = useState<string>("");
@@ -51,6 +52,7 @@ const Messages = () => {
             messages={messages}
             loading={loading}
             otherUser={otherUser}
+            onMessagesRead={handleMarkMessagesAsRead}
           />
 
           {/* Emoji button - separate from input to control state */}

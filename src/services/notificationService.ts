@@ -1,23 +1,23 @@
+
+import { db } from "@/lib/firebase";
 import { 
   collection, 
   addDoc, 
-  serverTimestamp, 
   query, 
   where, 
   orderBy, 
-  getDocs, 
-  limit, 
-  updateDoc,
+  onSnapshot, 
+  doc, 
   getDoc,
-  doc,
+  getDocs,
+  updateDoc,
   deleteDoc,
-  onSnapshot,
-  Firestore
+  serverTimestamp,
+  writeBatch
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { getToken, getMessaging, onMessage } from "firebase/messaging";
 import { NotificationSettings, NotificationType } from "@/types/auth";
-import { Notification } from "@/types/notification";
+import type { Notification } from "@/types/notification";
 import { getUserProfile } from "./userService";
 
 /**

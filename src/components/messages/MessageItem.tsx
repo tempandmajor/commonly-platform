@@ -4,6 +4,7 @@ import { ChatMessage, UserData } from "@/types/auth";
 import { format } from "date-fns";
 import { useAuth } from "@/contexts/AuthContext";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Check } from "lucide-react";
 
 interface MessageItemProps {
   message: ChatMessage;
@@ -54,9 +55,18 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, otherUser }) => {
         
         {message.text && <p className="text-sm">{message.text}</p>}
         
-        <p className={`text-xs mt-1 ${isOwnMessage ? "text-primary-foreground/70" : "text-gray-500"}`}>
-          {formattedTime}
-        </p>
+        <div className={`flex items-center justify-end text-xs mt-1 ${isOwnMessage ? "text-primary-foreground/70" : "text-gray-500"}`}>
+          <span className="mr-1">{formattedTime}</span>
+          {isOwnMessage && (
+            <span className="flex items-center ml-1">
+              {message.read ? (
+                <Check className="h-3 w-3 text-blue-400" />
+              ) : (
+                <Check className="h-3 w-3 text-gray-400" />
+              )}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );

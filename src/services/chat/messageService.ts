@@ -9,7 +9,9 @@ import {
   onSnapshot, 
   getDocs, 
   serverTimestamp, 
-  updateDoc 
+  updateDoc,
+  doc,
+  getDoc
 } from "firebase/firestore";
 import { ChatMessage } from "@/types/auth";
 import { createNotification } from "../notificationService";
@@ -221,6 +223,3 @@ export const sendMessageWithImage = async (
     return null;
   }
 };
-
-// Import missing function and add missing imports
-import { doc, getDoc } from "firebase/firestore";

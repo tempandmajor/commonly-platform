@@ -46,9 +46,6 @@ export const useChat = () => {
         const messagesData = await getMessages(chatId);
         setMessages(messagesData);
         
-        // Mark messages as read
-        await markMessagesAsRead(chatId, currentUser.uid);
-        
         // Get the other user's data
         if (messagesData.length > 0) {
           const otherUserId = messagesData[0].senderId === currentUser.uid
@@ -94,14 +91,23 @@ export const useChat = () => {
     // Subscribe to real-time updates
     const unsubscribe = subscribeToMessages(chatId, (updatedMessages) => {
       setMessages(updatedMessages);
-      // Mark new messages as read
-      markMessagesAsRead(chatId, currentUser.uid).catch(console.error);
     });
 
     return () => {
       unsubscribe();
     };
   }, [chatId, currentUser, navigate, toast]);
+
+  // Handle marking messages as read
+  const handleMarkMessagesAsRead = async () => {
+    if (!currentUser || !chatId) return;
+    
+    try {
+      await markMessagesAsRead(chatId, currentUser.uid);
+    } catch (error) {
+      console.error("Error marking messages as read:", error);
+    }
+  };
 
   // Handle sending messages
   const handleSendMessage = async (e: React.FormEvent, newMessage: string, selectedFile: File | null) => {
@@ -188,6 +194,7 @@ export const useChat = () => {
     showEmojiPicker,
     setShowEmojiPicker,
     handleSendMessage,
-    handleEmojiSelect
+    handleEmojiSelect,
+    handleMarkMessagesAsRead
   };
 };
