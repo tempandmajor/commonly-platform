@@ -75,10 +75,8 @@ export const sendMessage = async (
   chatId: string, 
   senderId: string,
   recipientId: string,
-  text?: string,
-  imageUrl?: string,
-  voiceUrl?: string
-): Promise<ChatMessage> => {
+  text: string
+): Promise<ChatMessage | null> => {
   try {
     const { data, error } = await supabase
       .from('messages')
@@ -87,8 +85,6 @@ export const sendMessage = async (
         sender_id: senderId,
         recipient_id: recipientId,
         text: text,
-        image_url: imageUrl,
-        voice_url: voiceUrl,
         timestamp: new Date().toISOString(),
         read: false,
       }])
@@ -102,7 +98,7 @@ export const sendMessage = async (
       .from('chats')
       .update({
         last_message: {
-          text: text || imageUrl ? 'Image' : voiceUrl ? 'Voice message' : '',
+          text: text,
           sender_id: senderId,
           timestamp: data.timestamp,
           read: false,
@@ -124,7 +120,125 @@ export const sendMessage = async (
     };
   } catch (error) {
     console.error('Error sending message:', error);
-    throw error;
+    return null;
+  }
+};
+
+/**
+ * Send a message with an image attachment
+ */
+export const sendMessageWithImage = async (
+  chatId: string,
+  senderId: string,
+  recipientId: string,
+  text: string,
+  imageUrl: string
+): Promise<ChatMessage | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('messages')
+      .insert([{
+        chat_id: chatId,
+        sender_id: senderId,
+        recipient_id: recipientId,
+        text: text,
+        image_url: imageUrl,
+        timestamp: new Date().toISOString(),
+        read: false,
+      }])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    // Update last_message in the chats table
+    await supabase
+      .from('chats')
+      .update({
+        last_message: {
+          text: imageUrl ? '📷 Image' : text,
+          sender_id: senderId,
+          timestamp: data.timestamp,
+          read: false,
+          hasImage: !!imageUrl
+        },
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', chatId);
+    
+    return {
+      id: data.id,
+      chatId: data.chat_id,
+      senderId: data.sender_id,
+      recipientId: data.recipient_id || '',
+      text: data.text || undefined,
+      imageUrl: data.image_url || undefined,
+      voiceUrl: data.voice_url || undefined,
+      timestamp: data.timestamp,
+      read: data.read || false,
+    };
+  } catch (error) {
+    console.error('Error sending message with image:', error);
+    return null;
+  }
+};
+
+/**
+ * Send a message with a voice recording
+ */
+export const sendMessageWithVoice = async (
+  chatId: string,
+  senderId: string,
+  recipientId: string,
+  text: string,
+  voiceUrl: string
+): Promise<ChatMessage | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('messages')
+      .insert([{
+        chat_id: chatId,
+        sender_id: senderId,
+        recipient_id: recipientId,
+        text: text,
+        voice_url: voiceUrl,
+        timestamp: new Date().toISOString(),
+        read: false,
+      }])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    // Update last_message in the chats table
+    await supabase
+      .from('chats')
+      .update({
+        last_message: {
+          text: voiceUrl ? '🎤 Voice message' : text,
+          sender_id: senderId,
+          timestamp: data.timestamp,
+          read: false,
+          hasVoice: !!voiceUrl
+        },
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', chatId);
+    
+    return {
+      id: data.id,
+      chatId: data.chat_id,
+      senderId: data.sender_id,
+      recipientId: data.recipient_id || '',
+      text: data.text || undefined,
+      imageUrl: data.image_url || undefined,
+      voiceUrl: data.voice_url || undefined,
+      timestamp: data.timestamp,
+      read: data.read || false,
+    };
+  } catch (error) {
+    console.error('Error sending message with voice:', error);
+    return null;
   }
 };
 
