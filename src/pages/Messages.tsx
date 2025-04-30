@@ -5,7 +5,7 @@ import { useChat } from "@/hooks/useChat";
 import { Smile } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-// Import the newly created components
+// Import the components
 import ChatHeader from "@/components/messages/ChatHeader";
 import MessageDisplay from "@/components/messages/MessageDisplay";
 import MessageInput from "@/components/messages/MessageInput";
@@ -69,9 +69,9 @@ const Messages = () => {
           
           {/* Message input with file upload */}
           <MessageInput 
-            onSendMessage={(e, text, file) => {
+            onSendMessage={(e, text, file, voiceBlob) => {
               setNewMessage("");
-              handleSendMessage(e, text, file);
+              handleSendMessage(e, text, file, voiceBlob);
             }}
             sending={sending}
             isUploading={isUploading}

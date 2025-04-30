@@ -5,7 +5,9 @@ import {
   query, 
   where, 
   getDocs,
-  writeBatch
+  writeBatch,
+  doc,
+  updateDoc
 } from "firebase/firestore";
 import { ChatMessage } from "@/types/auth";
 

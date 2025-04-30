@@ -1,3 +1,4 @@
+
 export interface UserData {
   uid: string;
   email: string | null;
@@ -101,6 +102,7 @@ export interface ChatMessage {
   timestamp: any; // Firebase timestamp or Date
   read: boolean;
   imageUrl?: string;
+  voiceUrl?: string;
 }
 
 export interface Chat {
@@ -116,6 +118,7 @@ export interface Chat {
     recipientId: string;
     read: boolean;
     hasImage?: boolean;
+    hasVoice?: boolean;
   };
 }
 
@@ -127,12 +130,12 @@ export interface MerchantStore {
   description?: string;
   logoUrl?: string;
   bannerUrl?: string;
-  logo?: string; // Added to match usage in services
-  banner?: string; // Added to match usage in services
-  ownerId?: string; // Added to match usage in services
-  isActive?: boolean; // Added to match usage in services
-  createdAt: string | Date | any; // Modified to account for Firebase FieldValue
-  updatedAt: string | Date | any; // Modified to account for Firebase FieldValue
+  logo?: string; 
+  banner?: string; 
+  ownerId?: string; 
+  isActive?: boolean; 
+  createdAt: string | Date | any; 
+  updatedAt: string | Date | any; 
   isVerified: boolean;
   productCount: number;
   orderCount: number;

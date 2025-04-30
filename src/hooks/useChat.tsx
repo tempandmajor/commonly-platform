@@ -7,6 +7,7 @@ import {
   getMessages, 
   sendMessage, 
   sendMessageWithImage,
+  sendMessageWithVoice,
   subscribeToMessages, 
   markMessagesAsRead 
 } from "@/services/chat";
@@ -110,10 +111,15 @@ export const useChat = () => {
   };
 
   // Handle sending messages
-  const handleSendMessage = async (e: React.FormEvent, newMessage: string, selectedFile: File | null) => {
+  const handleSendMessage = async (
+    e: React.FormEvent, 
+    newMessage: string, 
+    selectedFile: File | null,
+    voiceBlob: Blob | null
+  ) => {
     e.preventDefault();
     
-    if ((!newMessage.trim() && !selectedFile) || !currentUser || !otherUser || !chatId) return;
+    if ((!newMessage.trim() && !selectedFile && !voiceBlob) || !currentUser || !otherUser || !chatId) return;
     
     setSending(true);
     
@@ -143,6 +149,42 @@ export const useChat = () => {
             // Upload completed
             const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
             await sendMessageWithImage(
+              chatId,
+              currentUser.uid,
+              otherUser.uid,
+              newMessage.trim(),
+              downloadURL
+            );
+            
+            setIsUploading(false);
+            setUploadProgress(0);
+          }
+        );
+      } else if (voiceBlob) {
+        // Upload voice recording
+        setIsUploading(true);
+        const storageRef = ref(storage, `chat-voice/${Date.now()}_voice.mp3`);
+        const uploadTask = uploadBytesResumable(storageRef, voiceBlob);
+        
+        uploadTask.on(
+          'state_changed',
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            setUploadProgress(progress);
+          },
+          (error) => {
+            console.error("Error uploading voice:", error);
+            toast({
+              title: "Error",
+              description: "Failed to upload voice message",
+              variant: "destructive"
+            });
+            setIsUploading(false);
+          },
+          async () => {
+            // Upload completed
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            await sendMessageWithVoice(
               chatId,
               currentUser.uid,
               otherUser.uid,

@@ -6,268 +6,92 @@ import {
   query, 
   where, 
   orderBy, 
-  onSnapshot, 
-  doc, 
-  getDoc,
   getDocs,
+  doc,
   updateDoc,
+  Timestamp,
   deleteDoc,
+  getDoc,
+  setDoc,
   serverTimestamp,
-  writeBatch
+  limit
 } from "firebase/firestore";
-import { getToken, getMessaging, onMessage } from "firebase/messaging";
-import { NotificationSettings, NotificationType } from "@/types/auth";
-import type { Notification } from "@/types/notification";
-import { getUserProfile } from "./userService";
+import { Notification, NotificationType } from "@/types/auth";
+import { v4 as uuidv4 } from 'uuid';
 
 /**
- * Get notifications for a user
- */
-export const getUserNotifications = async (
-  userId: string,
-  limitCount: number = 20
-): Promise<Notification[]> => {
-  try {
-    const notificationsRef = collection(db, "notifications");
-    const q = query(
-      notificationsRef,
-      where("userId", "==", userId),
-      orderBy("createdAt", "desc"),
-      limit(limitCount)
-    );
-    
-    const querySnapshot = await getDocs(q);
-    const notifications: Notification[] = [];
-    
-    querySnapshot.forEach((doc) => {
-      notifications.push({
-        id: doc.id,
-        ...doc.data()
-      } as Notification);
-    });
-    
-    return notifications;
-  } catch (error) {
-    console.error("Error fetching notifications:", error);
-    return [];
-  }
-};
-
-/**
- * Subscribe to real-time notifications
- */
-export const subscribeToNotifications = (
-  userId: string,
-  callback: (notifications: Notification[]) => void
-) => {
-  const notificationsRef = collection(db, "notifications");
-  const q = query(
-    notificationsRef,
-    where("userId", "==", userId),
-    orderBy("createdAt", "desc"),
-    limit(20)
-  );
-  
-  return onSnapshot(q, (querySnapshot) => {
-    const notifications: Notification[] = [];
-    querySnapshot.forEach((doc) => {
-      notifications.push({
-        id: doc.id,
-        ...doc.data()
-      } as Notification);
-    });
-    
-    callback(notifications);
-  });
-};
-
-/**
- * Mark a notification as read
- */
-export const markNotificationAsRead = async (notificationId: string): Promise<boolean> => {
-  try {
-    await updateDoc(doc(db, "notifications", notificationId), {
-      read: true
-    });
-    
-    return true;
-  } catch (error) {
-    console.error("Error marking notification as read:", error);
-    return false;
-  }
-};
-
-/**
- * Mark all notifications as read for a user
- */
-export const markAllNotificationsAsRead = async (userId: string): Promise<boolean> => {
-  try {
-    const notificationsRef = collection(db, "notifications");
-    const q = query(
-      notificationsRef,
-      where("userId", "==", userId),
-      where("read", "==", false),
-      limit(100) // Batch operations limited to 500 documents, using 100 to be safe
-    );
-    
-    const querySnapshot = await getDocs(q);
-    
-    if (querySnapshot.empty) {
-      return true;
-    }
-    
-    const batch = writeBatch(db as FirebaseFirestore);
-    
-    querySnapshot.forEach((document) => {
-      batch.update(doc(db, "notifications", document.id), { read: true });
-    });
-    
-    await batch.commit();
-    return true;
-  } catch (error) {
-    console.error("Error marking all notifications as read:", error);
-    return false;
-  }
-};
-
-/**
- * Update user notification settings
- */
-export const updateNotificationSettings = async (
-  userId: string, 
-  settings: NotificationSettings
-): Promise<boolean> => {
-  try {
-    await updateDoc(doc(db, "users", userId), {
-      notificationSettings: settings
-    });
-    
-    return true;
-  } catch (error) {
-    console.error("Error updating notification settings:", error);
-    return false;
-  }
-};
-
-/**
- * Get user notification settings
- */
-export const getNotificationSettings = async (
-  userId: string
-): Promise<NotificationSettings | null> => {
-  try {
-    const userDoc = await getDoc(doc(db, "users", userId));
-    
-    if (userDoc.exists()) {
-      return userDoc.data().notificationSettings || getDefaultNotificationSettings();
-    }
-    
-    return null;
-  } catch (error) {
-    console.error("Error getting notification settings:", error);
-    return null;
-  }
-};
-
-/**
- * Get default notification settings
- */
-export const getDefaultNotificationSettings = (): NotificationSettings => {
-  return {
-    email: {
-      eventUpdates: true,
-      newFollowers: true,
-      messages: true,
-      earnings: true,
-      marketing: false
-    },
-    push: {
-      eventUpdates: true,
-      newFollowers: true,
-      messages: true,
-      earnings: true
-    },
-    inApp: {
-      eventUpdates: true,
-      newFollowers: true,
-      messages: true,
-      earnings: true
-    }
-  };
-};
-
-/**
- * Create a notification for a user
+ * Create a new notification
  */
 export const createNotification = async (
   userId: string,
   type: NotificationType,
   title: string,
   message: string,
-  data?: Record<string, any>,
+  data: Record<string, any> = {},
   image?: string
-): Promise<string | null> => {
-  try {
-    const notificationsRef = collection(db, "notifications");
-    const docRef = await addDoc(notificationsRef, {
-      userId,
-      type,
-      title,
-      message,
-      read: false,
-      data,
-      image,
-      createdAt: serverTimestamp()
-    });
-    
-    return docRef.id;
-  } catch (error) {
-    console.error("Error creating notification:", error);
-    return null;
+): Promise<string> => {
+  // Create the notification
+  const notificationData = {
+    userId,
+    type,
+    title,
+    message,
+    read: false,
+    data,
+    createdAt: serverTimestamp(),
+    ...(image && { image })
+  };
+
+  // Save to Firestore
+  const docRef = await addDoc(collection(db, "notifications"), notificationData);
+  
+  // Update notification badge count
+  await updateBadgeCount(userId);
+
+  return docRef.id;
+};
+
+/**
+ * Get all notifications for a user
+ */
+export const getUserNotifications = async (userId: string, count: number = 10): Promise<Notification[]> => {
+  const notificationsRef = collection(db, "notifications");
+  const q = query(
+    notificationsRef,
+    where("userId", "==", userId),
+    orderBy("createdAt", "desc"),
+    limit(count)
+  );
+  
+  const querySnapshot = await getDocs(q);
+  
+  return querySnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  } as Notification));
+};
+
+/**
+ * Mark a notification as read
+ */
+export const markNotificationAsRead = async (notificationId: string): Promise<void> => {
+  const notificationRef = doc(db, "notifications", notificationId);
+  await updateDoc(notificationRef, { read: true });
+  
+  // Get the notification to find the user ID
+  const notificationDoc = await getDoc(notificationRef);
+  if (notificationDoc.exists()) {
+    const userId = notificationDoc.data().userId;
+    if (userId) {
+      await updateBadgeCount(userId);
+    }
   }
 };
 
 /**
- * Delete a notification
+ * Mark all notifications as read for a user
  */
-export const deleteNotification = async (notificationId: string): Promise<boolean> => {
-  try {
-    await deleteDoc(doc(db, "notifications", notificationId));
-    
-    return true;
-  } catch (error) {
-    console.error("Error deleting notification:", error);
-    return false;
-  }
-};
-
-/**
- * Get unread notification count for a user
- */
-export const getUnreadNotificationCount = async (userId: string): Promise<number> => {
-  try {
-    const notificationsRef = collection(db, "notifications");
-    const q = query(
-      notificationsRef,
-      where("userId", "==", userId),
-      where("read", "==", false)
-    );
-    
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.size;
-  } catch (error) {
-    console.error("Error getting unread notification count:", error);
-    return 0;
-  }
-};
-
-/**
- * Subscribe to unread notification count
- */
-export const subscribeToUnreadNotificationCount = (
-  userId: string,
-  callback: (count: number) => void
-) => {
+export const markAllNotificationsAsRead = async (userId: string): Promise<void> => {
   const notificationsRef = collection(db, "notifications");
   const q = query(
     notificationsRef,
@@ -275,113 +99,86 @@ export const subscribeToUnreadNotificationCount = (
     where("read", "==", false)
   );
   
-  return onSnapshot(q, (querySnapshot) => {
-    callback(querySnapshot.size);
+  const querySnapshot = await getDocs(q);
+  
+  const updatePromises = querySnapshot.docs.map(doc => 
+    updateDoc(doc.ref, { read: true })
+  );
+  
+  await Promise.all(updatePromises);
+  
+  // Reset badge count
+  await setDoc(doc(db, "notificationBadges", userId), {
+    unreadCount: 0,
+    lastChecked: serverTimestamp()
   });
 };
 
-// Firebase Cloud Messaging (FCM) for push notifications
+/**
+ * Get unread notification count
+ */
+export const getUnreadNotificationCount = async (userId: string): Promise<number> => {
+  const notificationsRef = collection(db, "notifications");
+  const q = query(
+    notificationsRef,
+    where("userId", "==", userId),
+    where("read", "==", false),
+    limit(100)
+  );
+  
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.size;
+};
 
 /**
- * Request permission for push notifications
+ * Delete a notification
  */
-export const requestNotificationPermission = async (): Promise<boolean> => {
-  try {
-    const messaging = getMessaging();
+export const deleteNotification = async (notificationId: string): Promise<void> => {
+  const notificationRef = doc(db, "notifications", notificationId);
+  
+  // Get the notification to find the user ID before deleting
+  const notificationDoc = await getDoc(notificationRef);
+  if (notificationDoc.exists()) {
+    const userId = notificationDoc.data().userId;
     
-    const permission = await Notification.requestPermission();
+    // Delete the notification
+    await deleteDoc(notificationRef);
     
-    if (permission !== 'granted') {
-      console.log('Notification permission denied');
-      return false;
+    // Update badge count if we have a userId
+    if (userId) {
+      await updateBadgeCount(userId);
     }
-    
-    const token = await getToken(messaging, {
-      vapidKey: 'YOUR_PUBLIC_VAPID_KEY' // Replace with your VAPID key
-    });
-    
-    if (token) {
-      console.log('Got FCM token:', token);
-      return true;
-    } else {
-      console.log('No registration token available');
-      return false;
-    }
-  } catch (error) {
-    console.error('Error getting notification permission:', error);
-    return false;
+  } else {
+    await deleteDoc(notificationRef);
   }
 };
 
 /**
- * Save user's FCM token to Firestore
+ * Update the notification badge count
  */
-export const saveUserFcmToken = async (userId: string, token: string): Promise<boolean> => {
-  try {
-    const userRef = doc(db, "users", userId);
-    const userTokensRef = collection(userRef, "fcmTokens");
-    
-    // Check if token already exists
-    const q = query(userTokensRef, where("token", "==", token));
-    const querySnapshot = await getDocs(q);
-    
-    if (querySnapshot.empty) {
-      // Add new token
-      await addDoc(userTokensRef, {
-        token,
-        createdAt: serverTimestamp(),
-        device: navigator.userAgent
-      });
-    }
-    
-    return true;
-  } catch (error) {
-    console.error("Error saving FCM token:", error);
-    return false;
-  }
+const updateBadgeCount = async (userId: string): Promise<void> => {
+  const count = await getUnreadNotificationCount(userId);
+  
+  await setDoc(doc(db, "notificationBadges", userId), {
+    unreadCount: count,
+    lastChecked: serverTimestamp()
+  });
 };
 
 /**
- * Subscribe to incoming push notifications
+ * Get the notification badge data
  */
-export const subscribeToIncomingPushNotifications = (
-  callback: (payload: any) => void
-) => {
-  try {
-    const messaging = getMessaging();
-    return onMessage(messaging, (payload) => {
-      console.log('Message received:', payload);
-      callback(payload);
-    });
-  } catch (error) {
-    console.error('Error setting up push notification listener:', error);
-    return () => {}; // Return empty unsubscribe function
+export const getNotificationBadge = async (userId: string): Promise<{ unreadCount: number; lastChecked: Date | null }> => {
+  const badgeRef = doc(db, "notificationBadges", userId);
+  const badgeDoc = await getDoc(badgeRef);
+  
+  if (!badgeDoc.exists()) {
+    return { unreadCount: 0, lastChecked: null };
   }
-};
-
-/**
- * Initialize the notification system
- */
-export const initializeNotifications = async (userId: string): Promise<void> => {
-  try {
-    // Request permission and get token
-    const permissionGranted = await requestNotificationPermission();
-    
-    if (permissionGranted) {
-      // Save token to user's document
-      const token = await getToken(getMessaging());
-      if (token) {
-        await saveUserFcmToken(userId, token);
-      }
-    }
-    
-    // Set up listener for incoming messages
-    subscribeToIncomingPushNotifications((payload) => {
-      // Handle incoming notification
-      // This could display a toast or update the notification list
-      console.log('Received notification:', payload);
-    });
-  } catch (error) {
-    console.error('Error initializing notifications:', error);
-  }
+  
+  const data = badgeDoc.data();
+  return {
+    unreadCount: data.unreadCount || 0,
+    lastChecked: data.lastChecked ? new Date(data.lastChecked.toDate()) : null
+  };
 };

@@ -88,7 +88,8 @@ export const getMessages = async (chatId: string): Promise<ChatMessage[]> => {
       text: data.text,
       timestamp: data.timestamp,
       read: data.read,
-      imageUrl: data.imageUrl
+      imageUrl: data.imageUrl,
+      voiceUrl: data.voiceUrl
     };
   });
 };
@@ -114,7 +115,8 @@ export const subscribeToMessages = (
         text: data.text,
         timestamp: data.timestamp,
         read: data.read,
-        imageUrl: data.imageUrl
+        imageUrl: data.imageUrl,
+        voiceUrl: data.voiceUrl
       };
     });
     
@@ -220,6 +222,67 @@ export const sendMessageWithImage = async (
     return messageRef.id;
   } catch (error) {
     console.error("Error sending message with image:", error);
+    return null;
+  }
+};
+
+/**
+ * Send a message with a voice attachment
+ */
+export const sendMessageWithVoice = async (
+  chatId: string,
+  senderId: string,
+  recipientId: string,
+  text: string,
+  voiceUrl: string
+): Promise<string | null> => {
+  try {
+    const messageRef = await addDoc(collection(db, "chats", chatId, "messages"), {
+      senderId,
+      recipientId,
+      text,
+      voiceUrl,
+      timestamp: serverTimestamp(),
+      read: false
+    });
+    
+    // Update the chat's updatedAt timestamp
+    await updateDoc(doc(db, "chats", chatId), {
+      updatedAt: serverTimestamp(),
+      "lastMessage": {
+        id: messageRef.id,
+        senderId,
+        recipientId,
+        text: voiceUrl ? "🎤 Voice message" : text,
+        timestamp: serverTimestamp(),
+        read: false,
+        hasVoice: !!voiceUrl
+      }
+    });
+    
+    // Create notification for the recipient
+    try {
+      const senderDoc = await getUserProfile(senderId);
+      const senderName = senderDoc?.displayName || "Someone";
+      
+      await createNotification(
+        recipientId,
+        'message',
+        'New Message',
+        voiceUrl ? `${senderName} sent you a voice message` : `${senderName} sent you a message`,
+        { 
+          chatId, 
+          senderId 
+        },
+        senderDoc?.photoURL || undefined
+      );
+    } catch (error) {
+      console.error("Error creating message notification:", error);
+    }
+    
+    return messageRef.id;
+  } catch (error) {
+    console.error("Error sending message with voice:", error);
     return null;
   }
 };
