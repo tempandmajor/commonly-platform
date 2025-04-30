@@ -1002,6 +1002,10 @@ export type Database = {
         | "podcast"
         | "event"
         | "system"
+        | "event_update"
+        | "new_follower"
+        | "referral_earnings"
+        | "sponsorship"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1125,6 +1129,10 @@ export const Constants = {
         "podcast",
         "event",
         "system",
+        "event_update",
+        "new_follower",
+        "referral_earnings",
+        "sponsorship",
       ],
     },
   },
