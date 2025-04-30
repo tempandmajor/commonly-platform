@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Navbar from "@/components/layout/Navbar";
-import { getPodcasts, getPodcastCategories } from "@/services/podcast";
+import { supabase } from "@/integrations/supabase/client";
 import { isUserPro } from "@/services/subscriptionService";
 import { Podcast, PodcastCategory } from "@/types/podcast";
 import { useToast } from "@/components/ui/use-toast";
@@ -16,6 +16,86 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle, RefreshCcw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+// Helper functions to replace Firebase services
+const getPodcasts = async (
+  limit = 12,
+  lastDoc = null,
+  category = "",
+  searchTerm = ""
+) => {
+  try {
+    let query = supabase.from("podcasts").select("*");
+
+    // Apply filters
+    if (category) {
+      query = query.eq("category_id", category);
+    }
+    
+    if (searchTerm) {
+      query = query.ilike("title", `%${searchTerm}%`);
+    }
+    
+    // Filter for published podcasts only
+    query = query.eq("published", true);
+    
+    // Add pagination
+    if (lastDoc) {
+      query = query.gt("id", lastDoc);
+    }
+    
+    // Order and limit
+    query = query.order("created_at", { ascending: false }).limit(limit);
+    
+    const { data, error } = await query;
+    
+    if (error) throw error;
+    
+    const podcasts = data.map(item => ({
+      id: item.id,
+      title: item.title,
+      description: item.description,
+      imageUrl: item.image_url,
+      audioUrl: item.audio_url,
+      duration: item.duration,
+      userId: item.user_id,
+      categoryId: item.category_id,
+      createdAt: item.created_at,
+      updatedAt: item.updated_at,
+      published: item.published,
+      viewCount: item.view_count,
+      likeCount: item.like_count,
+      shareCount: item.share_count,
+      featured: item.featured
+    }));
+    
+    return {
+      podcasts,
+      lastDoc: data.length > 0 ? data[data.length - 1].id : null,
+    };
+  } catch (error) {
+    console.error("Error getting podcasts:", error);
+    throw error;
+  }
+};
+
+const getPodcastCategories = async () => {
+  try {
+    const { data, error } = await supabase.from("podcast_categories").select("*");
+    
+    if (error) throw error;
+    
+    return data.map(item => ({
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      icon: item.icon
+    }));
+  } catch (error) {
+    console.error("Error getting podcast categories:", error);
+    throw error;
+  }
+};
 
 const Podcasts = () => {
   const [activeTab, setActiveTab] = useState<string>("all");
@@ -83,7 +163,7 @@ const Podcasts = () => {
   const checkProStatus = async () => {
     if (currentUser) {
       try {
-        const isPro = await isUserPro(currentUser.uid);
+        const isPro = await isUserPro(currentUser.id);
         setIsProUser(isPro);
       } catch (error) {
         console.error("Error checking pro status:", error);

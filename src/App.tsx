@@ -43,7 +43,7 @@ const AppContent = () => {
   useEffect(() => {
     if (authLoading) return;
     
-    // No Firebase services to initialize, so just mark as initialized
+    // Mark as initialized since we're now using Supabase
     setIsServiceInitialized(true);
     
   }, [currentUser, authLoading, toast]);

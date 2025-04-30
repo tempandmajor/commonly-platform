@@ -45,6 +45,30 @@ export type Database = {
         }
         Relationships: []
       }
+      chats: {
+        Row: {
+          created_at: string | null
+          id: string
+          last_message: Json | null
+          participants: string[]
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          last_message?: Json | null
+          participants: string[]
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          last_message?: Json | null
+          participants?: string[]
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       content: {
         Row: {
           content: Json | null
@@ -246,6 +270,105 @@ export type Database = {
           },
         ]
       }
+      messages: {
+        Row: {
+          chat_id: string
+          id: string
+          image_url: string | null
+          read: boolean | null
+          recipient_id: string | null
+          sender_id: string | null
+          text: string | null
+          timestamp: string | null
+          voice_url: string | null
+        }
+        Insert: {
+          chat_id: string
+          id?: string
+          image_url?: string | null
+          read?: boolean | null
+          recipient_id?: string | null
+          sender_id?: string | null
+          text?: string | null
+          timestamp?: string | null
+          voice_url?: string | null
+        }
+        Update: {
+          chat_id?: string
+          id?: string
+          image_url?: string | null
+          read?: boolean | null
+          recipient_id?: string | null
+          sender_id?: string | null
+          text?: string | null
+          timestamp?: string | null
+          voice_url?: string | null
+        }
+        Relationships: []
+      }
+      notification_settings: {
+        Row: {
+          email_notifications: boolean | null
+          in_app_notifications: boolean | null
+          marketing_emails: boolean | null
+          push_notifications: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          email_notifications?: boolean | null
+          in_app_notifications?: boolean | null
+          marketing_emails?: boolean | null
+          push_notifications?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          email_notifications?: boolean | null
+          in_app_notifications?: boolean | null
+          marketing_emails?: boolean | null
+          push_notifications?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          action_url: string | null
+          body: string | null
+          created_at: string | null
+          id: string
+          image_url: string | null
+          read: boolean | null
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+          user_id: string | null
+        }
+        Insert: {
+          action_url?: string | null
+          body?: string | null
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+          read?: boolean | null
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+          user_id?: string | null
+        }
+        Update: {
+          action_url?: string | null
+          body?: string | null
+          created_at?: string | null
+          id?: string
+          image_url?: string | null
+          read?: boolean | null
+          title?: string
+          type?: Database["public"]["Enums"]["notification_type"]
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       payment_transactions: {
         Row: {
           amount: number
@@ -315,6 +438,127 @@ export type Database = {
         }
         Relationships: []
       }
+      podcast_categories: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          icon: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      podcast_comments: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          podcast_id: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          podcast_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          podcast_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "podcast_comments_podcast_id_fkey"
+            columns: ["podcast_id"]
+            isOneToOne: false
+            referencedRelation: "podcasts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      podcasts: {
+        Row: {
+          audio_url: string | null
+          category_id: string | null
+          created_at: string | null
+          description: string | null
+          duration: number | null
+          featured: boolean | null
+          id: string
+          image_url: string | null
+          like_count: number | null
+          published: boolean | null
+          share_count: number | null
+          title: string
+          updated_at: string | null
+          user_id: string | null
+          view_count: number | null
+        }
+        Insert: {
+          audio_url?: string | null
+          category_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          duration?: number | null
+          featured?: boolean | null
+          id?: string
+          image_url?: string | null
+          like_count?: number | null
+          published?: boolean | null
+          share_count?: number | null
+          title: string
+          updated_at?: string | null
+          user_id?: string | null
+          view_count?: number | null
+        }
+        Update: {
+          audio_url?: string | null
+          category_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          duration?: number | null
+          featured?: boolean | null
+          id?: string
+          image_url?: string | null
+          like_count?: number | null
+          published?: boolean | null
+          share_count?: number | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string | null
+          view_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_podcast_category"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "podcast_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       presale_campaigns: {
         Row: {
           created_at: string | null
@@ -341,6 +585,48 @@ export type Database = {
           goal_amount?: number
           id?: string
           status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      products: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          digital_file_url: string | null
+          id: string
+          image_url: string | null
+          inventory_count: number | null
+          is_digital: boolean | null
+          merchant_id: string | null
+          name: string
+          price: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          digital_file_url?: string | null
+          id?: string
+          image_url?: string | null
+          inventory_count?: number | null
+          is_digital?: boolean | null
+          merchant_id?: string | null
+          name: string
+          price: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          digital_file_url?: string | null
+          id?: string
+          image_url?: string | null
+          inventory_count?: number | null
+          is_digital?: boolean | null
+          merchant_id?: string | null
+          name?: string
+          price?: number
           updated_at?: string | null
         }
         Relationships: []
@@ -572,6 +858,42 @@ export type Database = {
           },
         ]
       }
+      wallets: {
+        Row: {
+          available_balance: number | null
+          created_at: string | null
+          has_payout_method: boolean | null
+          pending_balance: number | null
+          platform_credits: number | null
+          stripe_connect_id: string | null
+          total_earnings: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          available_balance?: number | null
+          created_at?: string | null
+          has_payout_method?: boolean | null
+          pending_balance?: number | null
+          platform_credits?: number | null
+          stripe_connect_id?: string | null
+          total_earnings?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          available_balance?: number | null
+          created_at?: string | null
+          has_payout_method?: boolean | null
+          pending_balance?: number | null
+          platform_credits?: number | null
+          stripe_connect_id?: string | null
+          total_earnings?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -621,7 +943,14 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      notification_type:
+        | "message"
+        | "like"
+        | "follow"
+        | "comment"
+        | "podcast"
+        | "event"
+        | "system"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -736,6 +1065,16 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      notification_type: [
+        "message",
+        "like",
+        "follow",
+        "comment",
+        "podcast",
+        "event",
+        "system",
+      ],
+    },
   },
 } as const

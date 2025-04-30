@@ -27,7 +27,7 @@ export const useAuthActions = (
       
       toast({
         title: "Account created successfully",
-        description: `Welcome to Commonly, ${displayName}!`,
+        description: `Welcome to EventRoom, ${displayName}!`,
       });
     } catch (error: any) {
       const errorMessage = error.message || "Failed to create account";
@@ -60,7 +60,7 @@ export const useAuthActions = (
       
       toast({
         title: "Login successful",
-        description: "Welcome back to Commonly!",
+        description: "Welcome back to EventRoom!",
       });
     } catch (error: any) {
       const errorMessage = error.message || "Failed to log in";
@@ -83,7 +83,7 @@ export const useAuthActions = (
       
       toast({
         title: "Login successful",
-        description: "Welcome to Commonly!",
+        description: "Welcome to EventRoom!",
       });
     } catch (error: any) {
       const errorMessage = error.message || "Failed to sign in with Google";
@@ -191,14 +191,14 @@ export const useAuthActions = (
       const fileName = `${currentUser.id}-${Date.now()}.${fileExt}`;
       const filePath = `profiles/${fileName}`;
       
-      const { error: uploadError } = await supabase.storage
+      const { error: uploadError, data } = await supabase.storage
         .from('avatars')
         .upload(filePath, file);
       
       if (uploadError) throw uploadError;
       
-      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      const downloadURL = data.publicUrl;
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const downloadURL = urlData.publicUrl;
       
       // Update user profile
       await updateUserProfile({ photoURL: downloadURL });

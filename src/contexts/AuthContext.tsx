@@ -18,7 +18,7 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
-  const [loading, setLoading] = useState(true);  // Add this loading state
+  const [loading, setLoading] = useState(true);
 
   const authActions = useAuthActions(currentUser, userData, setUserData);
 
@@ -311,15 +311,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
+  // Create compatibility methods to match the required interface
+  const signIn = authActions.login;
+  const signUp = authActions.signup;
+  const signOut = authActions.logout;
+  const resetPassword = authActions.resetPassword;
+  const updateProfile = authActions.updateUserProfile;
+  const deleteAccount = async () => {
+    if (!currentUser) throw new Error("No authenticated user");
+    
+    try {
+      const { error } = await supabase.auth.admin.deleteUser(currentUser.id);
+      if (error) throw error;
+    } catch (error) {
+      console.error("Error deleting account:", error);
+      throw error;
+    }
+  };
+
   const value: AuthContextType = {
     currentUser,
     userData,
-    loading,  // Add loading to the context value
+    loading,
+    // Compatibility methods
+    signIn,
+    signUp,
+    signOut,
+    resetPassword,
+    updateProfile,
+    deleteAccount,
     followUser,
     unfollowUser,
     isFollowing,
     enableTwoFactorAuth,
     disableTwoFactorAuth,
+    // Direct access to authActions
     ...authActions,
   };
 
