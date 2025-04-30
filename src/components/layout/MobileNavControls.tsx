@@ -19,7 +19,7 @@ const MobileNavControls = ({ isMenuOpen, toggleMenu }: MobileNavControlsProps) =
       {currentUser && (
         <>
           <Link to="/messages" className="mr-2">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className="rounded-full hover:bg-gray-100">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"
@@ -41,11 +41,15 @@ const MobileNavControls = ({ isMenuOpen, toggleMenu }: MobileNavControlsProps) =
           </div>
         </>
       )}
-      <Button variant="ghost" onClick={toggleMenu}>
+      <Button 
+        variant="ghost" 
+        onClick={toggleMenu} 
+        className="rounded-full border border-gray-300 p-2 hover:shadow-md"
+      >
         {isMenuOpen ? (
-          <X className="h-6 w-6" />
+          <X className="h-5 w-5" />
         ) : (
-          <Menu className="h-6 w-6" />
+          <Menu className="h-5 w-5" />
         )}
       </Button>
     </div>

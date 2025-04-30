@@ -14,34 +14,34 @@ import {
 const NavLinks = () => {
   return (
     <>
-      <Link to="/events" className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">
+      <Link to="/events" className="text-black hover:text-gray-600 px-3 py-2 rounded-md text-sm font-medium">
         Events
       </Link>
-      <Link to="/venues" className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">
+      <Link to="/venues" className="text-black hover:text-gray-600 px-3 py-2 rounded-md text-sm font-medium">
         Venues
       </Link>
-      <Link to="/catering" className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium">
+      <Link to="/catering" className="text-black hover:text-gray-600 px-3 py-2 rounded-md text-sm font-medium">
         Catering
       </Link>
       
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium flex items-center">
+          <Button variant="ghost" className="text-black hover:text-gray-600 px-3 py-2 rounded-md text-sm font-medium flex items-center">
             More <ChevronDown className="ml-1 h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem asChild>
+        <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-lg border-gray-200">
+          <DropdownMenuItem asChild className="hover:bg-gray-100 rounded-md">
             <Link to="/podcasts" className="w-full">Podcasts</Link>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
+          <DropdownMenuItem asChild className="hover:bg-gray-100 rounded-md">
             <Link to="/store" className="w-full">Marketplace</Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
+          <DropdownMenuItem asChild className="hover:bg-gray-100 rounded-md">
             <Link to="/content/about" className="w-full">About Us</Link>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
+          <DropdownMenuItem asChild className="hover:bg-gray-100 rounded-md">
             <Link to="/content/help" className="w-full">Help Center</Link>
           </DropdownMenuItem>
         </DropdownMenuContent>
