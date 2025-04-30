@@ -30,11 +30,11 @@ const Navbar = () => {
       <div className="container mx-auto px-6 lg:px-8">
         <div className="flex justify-between h-20">
           <div className="flex items-center">
-            <Link to="/" className="font-bold text-xl flex items-center space-x-2">
+            <Link to="/" className="font-bold text-xl flex items-center space-x-3">
               <img 
                 src="/lovable-uploads/7dbb7250-aa06-4fd6-826c-3c6c2e956283.png" 
                 alt="EventRoom Logo" 
-                className="h-8"
+                className="h-12 w-auto" 
               />
             </Link>
           </div>

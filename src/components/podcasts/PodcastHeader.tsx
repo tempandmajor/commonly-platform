@@ -54,9 +54,9 @@ const PodcastHeader: React.FC<PodcastHeaderProps> = ({
   };
 
   return (
-    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 bg-white">
       <div>
-        <h1 className="text-3xl font-bold flex items-center">
+        <h1 className="text-3xl font-bold flex items-center text-black">
           <PodcastIcon className="h-8 w-8 mr-2" />
           Podcasts
         </h1>
@@ -66,11 +66,11 @@ const PodcastHeader: React.FC<PodcastHeaderProps> = ({
       </div>
 
       <div className="flex flex-col sm:flex-row gap-2">
-        <Button onClick={handleCreateClick} className="flex items-center">
+        <Button onClick={handleCreateClick} className="flex items-center bg-black hover:bg-black/90 text-white">
           <Mic className="h-4 w-4 mr-2" />
           Record Podcast
         </Button>
-        <Button variant="outline" onClick={handleUploadClick}>
+        <Button variant="outline" onClick={handleUploadClick} className="border-black text-black hover:bg-gray-100">
           <Upload className="h-4 w-4 mr-2" />
           Upload Podcast
         </Button>
