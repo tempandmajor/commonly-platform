@@ -44,7 +44,7 @@ export interface UserTyping {
   updated_at: string;
 }
 
-// Update podcast interfaces to match what our createPodcast function expects
+// Update podcast interfaces to match what our database expects
 export interface PodcastCreateInput {
   title: string;
   description?: string;
@@ -66,3 +66,6 @@ export interface PodcastCreateInput {
   creatorId?: string;
   creatorName?: string;
 }
+
+// Re-export Podcast type to fix circular dependency issues
+export type { Podcast } from '../types/podcast';

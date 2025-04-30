@@ -41,5 +41,6 @@ export interface PodcastComment {
   userPhotoUrl?: string;
   content: string;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
+  likes?: number;
 }

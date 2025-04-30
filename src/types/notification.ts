@@ -1,4 +1,5 @@
 
+// This must match the Supabase enum definition for notification_type
 export type NotificationType = 
   | 'message' 
   | 'like' 

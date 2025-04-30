@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { Podcast, PodcastCreateInput } from "@/types/chat";
+import { Podcast, PodcastCreateInput } from "@/types/podcast";
 
 // Fetch podcasts with pagination and filtering
 export const getPodcasts = async (
@@ -12,7 +12,7 @@ export const getPodcasts = async (
   try {
     let query = supabase
       .from('podcasts')
-      .select('*, users!podcasts_user_id_fkey(display_name, photo_url)')
+      .select('*, podcast_categories(*)')
       .eq('published', true)
       .order('created_at', { ascending: false });
 
@@ -51,22 +51,22 @@ export const getPodcasts = async (
       description: podcast.description || undefined,
       imageUrl: podcast.image_url || undefined,
       audioUrl: podcast.audio_url || undefined,
-      videoUrl: podcast.video_url || undefined,
-      thumbnailUrl: podcast.thumbnailUrl || undefined,
+      videoUrl: undefined, // Not in current schema
+      thumbnailUrl: undefined, // Not in current schema
       duration: podcast.duration || 0,
       createdAt: podcast.created_at,
       userId: podcast.user_id,
-      userName: podcast.users?.display_name || "Unknown",
-      userPhotoUrl: podcast.users?.photo_url || undefined,
+      userName: "Unknown", // We'll need to fetch user data separately
+      userPhotoUrl: undefined,
       categoryId: podcast.category_id || undefined,
       likeCount: podcast.like_count || 0,
       viewCount: podcast.view_count || 0,
       shareCount: podcast.share_count || 0,
       published: podcast.published || false,
-      type: podcast.type || 'audio',
-      visibility: podcast.visibility || 'public',
-      listens: podcast.listens || 0,
-      tags: podcast.tags || []
+      type: 'audio', // Default since not in schema
+      visibility: 'public', // Default since not in schema
+      listens: 0, // Default since not in schema
+      tags: [] // Default since not in schema
     }));
 
     return {
@@ -84,7 +84,7 @@ export const getPodcast = async (id: string): Promise<Podcast | null> => {
   try {
     const { data, error } = await supabase
       .from('podcasts')
-      .select('*, users!podcasts_user_id_fkey(display_name, photo_url)')
+      .select('*, podcast_categories(*)')
       .eq('id', id)
       .single();
     
@@ -98,24 +98,24 @@ export const getPodcast = async (id: string): Promise<Podcast | null> => {
       description: data.description || undefined,
       imageUrl: data.image_url || undefined,
       audioUrl: data.audio_url || undefined,
-      videoUrl: data.video_url || undefined,
-      thumbnailUrl: data.thumbnailUrl || undefined,
+      videoUrl: undefined, // Not in current schema
+      thumbnailUrl: undefined, // Not in current schema
       duration: data.duration || 0,
       createdAt: data.created_at,
       userId: data.user_id,
-      userName: data.users?.display_name || "Unknown",
-      userPhotoUrl: data.users?.photo_url || undefined,
+      userName: "Unknown",
+      userPhotoUrl: undefined,
       categoryId: data.category_id || undefined,
       likeCount: data.like_count || 0,
       viewCount: data.view_count || 0,
       shareCount: data.share_count || 0,
       published: data.published || false,
-      type: data.type || 'audio',
-      visibility: data.visibility || 'public',
-      listens: data.listens || 0,
-      tags: data.tags || [],
+      type: 'audio', // Default since not in schema
+      visibility: 'public', // Default since not in schema
+      listens: 0, // Default since not in schema
+      tags: [], // Default since not in schema
       creatorId: data.user_id,
-      creatorName: data.users?.display_name || "Unknown"
+      creatorName: "Unknown"
     };
     
     return podcast;
@@ -132,7 +132,7 @@ export const getPodcastsByCreator = async (
   try {
     const { data, error } = await supabase
       .from('podcasts')
-      .select('*, users!podcasts_user_id_fkey(display_name, photo_url)')
+      .select('*, podcast_categories(*)')
       .eq('user_id', creatorId)
       .order('created_at', { ascending: false });
     
@@ -145,22 +145,22 @@ export const getPodcastsByCreator = async (
       description: podcast.description || undefined,
       imageUrl: podcast.image_url || undefined,
       audioUrl: podcast.audio_url || undefined,
-      videoUrl: podcast.video_url || undefined,
-      thumbnailUrl: podcast.thumbnailUrl || undefined,
+      videoUrl: undefined, // Not in current schema
+      thumbnailUrl: undefined, // Not in current schema
       duration: podcast.duration || 0,
       createdAt: podcast.created_at,
       userId: podcast.user_id,
-      userName: podcast.users?.display_name || "Unknown",
-      userPhotoUrl: podcast.users?.photo_url || undefined,
+      userName: "Unknown",
+      userPhotoUrl: undefined,
       categoryId: podcast.category_id || undefined,
       likeCount: podcast.like_count || 0,
       viewCount: podcast.view_count || 0,
       shareCount: podcast.share_count || 0,
       published: podcast.published || false,
-      type: podcast.type || 'audio',
-      visibility: podcast.visibility || 'public',
-      listens: podcast.listens || 0,
-      tags: podcast.tags || []
+      type: 'audio', // Default since not in schema
+      visibility: 'public', // Default since not in schema
+      listens: 0, // Default since not in schema
+      tags: [] // Default since not in schema
     }));
     
     return podcasts;
@@ -179,8 +179,7 @@ export const createPodcast = async (
 ): Promise<string> => {
   try {
     let audioUrl;
-    let videoUrl;
-    let thumbnailUrl;
+    let imageUrl;
     
     // Upload files to Supabase Storage
     if (thumbnailFile) {
@@ -195,7 +194,7 @@ export const createPodcast = async (
         .from('podcasts')
         .getPublicUrl(filePath);
         
-      thumbnailUrl = urlData.publicUrl;
+      imageUrl = urlData.publicUrl;
     }
 
     if (audioFile) {
@@ -213,42 +212,21 @@ export const createPodcast = async (
       audioUrl = urlData.publicUrl;
     }
 
-    if (videoFile) {
-      const filePath = `video/${podcastData.userId}/${Date.now()}_${videoFile.name.replace(/\s/g, '_')}`;
-      const { error: uploadError } = await supabase.storage
-        .from('podcasts')
-        .upload(filePath, videoFile);
-        
-      if (uploadError) throw uploadError;
-      
-      const { data: urlData } = supabase.storage
-        .from('podcasts')
-        .getPublicUrl(filePath);
-        
-      videoUrl = urlData.publicUrl;
-    }
-
-    // Insert podcast record
+    // Insert podcast record - only use fields that exist in the database schema
     const { data: podcast, error } = await supabase
       .from('podcasts')
       .insert({
         title: podcastData.title,
         description: podcastData.description,
-        image_url: thumbnailUrl || podcastData.imageUrl,
+        image_url: imageUrl || podcastData.imageUrl,
         audio_url: audioUrl || podcastData.audioUrl,
-        video_url: videoUrl || podcastData.videoUrl,
         duration: podcastData.duration || 0,
         user_id: podcastData.userId,
         category_id: podcastData.categoryId,
         published: podcastData.published,
-        type: podcastData.type || 'audio',
-        visibility: podcastData.visibility || 'public',
-        tags: podcastData.tags || [],
         like_count: podcastData.likeCount || 0,
         view_count: podcastData.viewCount || 0,
-        share_count: podcastData.shareCount || 0,
-        creator_id: podcastData.creatorId,
-        creator_name: podcastData.creatorName
+        share_count: podcastData.shareCount || 0
       })
       .select()
       .single();
@@ -269,7 +247,7 @@ export const updatePodcast = async (
   thumbnailFile?: File
 ): Promise<void> => {
   try {
-    let thumbnailUrl = podcastData.thumbnailUrl;
+    let imageUrl = podcastData.imageUrl;
     
     // Upload new thumbnail if provided
     if (thumbnailFile) {
@@ -284,23 +262,22 @@ export const updatePodcast = async (
         .from('podcasts')
         .getPublicUrl(filePath);
         
-      thumbnailUrl = urlData.publicUrl;
+      imageUrl = urlData.publicUrl;
     }
 
-    // Map our Podcast type to database format
+    // Map our Podcast type to database format - only include fields that exist in the database
     const updateData: Record<string, any> = {};
     
     if (podcastData.title !== undefined) updateData.title = podcastData.title;
     if (podcastData.description !== undefined) updateData.description = podcastData.description;
-    if (thumbnailUrl !== undefined) updateData.image_url = thumbnailUrl;
+    if (imageUrl !== undefined) updateData.image_url = imageUrl;
     if (podcastData.audioUrl !== undefined) updateData.audio_url = podcastData.audioUrl;
-    if (podcastData.videoUrl !== undefined) updateData.video_url = podcastData.videoUrl;
     if (podcastData.duration !== undefined) updateData.duration = podcastData.duration;
     if (podcastData.categoryId !== undefined) updateData.category_id = podcastData.categoryId;
     if (podcastData.published !== undefined) updateData.published = podcastData.published;
-    if (podcastData.type !== undefined) updateData.type = podcastData.type;
-    if (podcastData.visibility !== undefined) updateData.visibility = podcastData.visibility;
-    if (podcastData.tags !== undefined) updateData.tags = podcastData.tags;
+    if (podcastData.likeCount !== undefined) updateData.like_count = podcastData.likeCount;
+    if (podcastData.viewCount !== undefined) updateData.view_count = podcastData.viewCount;
+    if (podcastData.shareCount !== undefined) updateData.share_count = podcastData.shareCount;
     
     // Update the podcast record
     const { error } = await supabase
@@ -343,15 +320,10 @@ export const deletePodcast = async (id: string): Promise<void> => {
       const promises = [];
       
       const audioPath = getPathFromUrl(podcast.audio_url);
-      const videoPath = getPathFromUrl(podcast.video_url);
       const imagePath = getPathFromUrl(podcast.image_url);
       
       if (audioPath) {
         promises.push(supabase.storage.from('podcasts').remove([audioPath]));
-      }
-      
-      if (videoPath) {
-        promises.push(supabase.storage.from('podcasts').remove([videoPath]));
       }
       
       if (imagePath) {

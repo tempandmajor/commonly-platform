@@ -20,6 +20,8 @@ export const getPodcastComments = async (
     return snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
+      createdAt: doc.data().createdAt?.toDate?.().toISOString() || new Date().toISOString(),
+      updatedAt: doc.data().updatedAt?.toDate?.().toISOString() || new Date().toISOString(),
     })) as PodcastComment[];
   } catch (error) {
     console.error("Error fetching podcast comments:", error);
@@ -48,16 +50,24 @@ export const addPodcastComment = async (
       userPhotoUrl: user.photoURL,
       content,
       createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
       likes: 0,
     };
     
     const docRef = await addDoc(commentRef, comment);
+    const timestamp = new Date().toISOString();
     
     return {
       id: docRef.id,
-      ...comment,
-      createdAt: Timestamp.now(),
-    } as PodcastComment;
+      podcastId,
+      userId,
+      userName: user.displayName || "Anonymous",
+      userPhotoUrl: user.photoURL,
+      content,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      likes: 0
+    };
   } catch (error) {
     console.error("Error adding podcast comment:", error);
     throw error;

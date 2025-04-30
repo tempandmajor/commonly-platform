@@ -27,7 +27,6 @@ function App() {
     <>
       <Router>
         <Routes>
-          {/* Add only the route for messages since that's what we're fixing */}
           <Route path="/messages/:chatId" element={<Messages />} />
           <Route path="/messages" element={<Messages />} />
           <Route path="*" element={<Navigate to="/messages" replace />} />
