@@ -5,3 +5,4 @@ export * from './podcast/podcastCrudService';
 export * from './podcast/commentService';
 export * from './podcast/sessionService';
 export * from './podcast/statsService';
+export * from './podcast/index';
