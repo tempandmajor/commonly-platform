@@ -20,14 +20,13 @@ export const updateTypingStatus = async (
     }
     
     // Use direct table operations with the user_typing table
-    // Let database handle default values for updated_at
     const { error } = await supabase
       .from('user_typing')
       .upsert({
         chat_id: chatId,
         user_id: userId,
         is_typing: isTyping,
-        // Let the database handle updated_at with default
+        updated_at: new Date().toISOString() // Explicitly set updated_at
       });
       
     if (error) {
@@ -87,20 +86,30 @@ export const getTypingStatus = async (chatId: string): Promise<{ data: UserTypin
 };
 
 /**
- * Clean up typing status for a user (used when they leave chat)
+ * Clear typing status for a user (used when they leave chat)
+ * Can be called with just userId to clear all typing statuses for that user
+ * Or with both chatId and userId to clear status for a specific chat
  */
 export const clearTypingStatus = async (
-  userId: string
+  userId: string,
+  chatId?: string
 ): Promise<{ success: boolean; error?: string }> => {
   try {
     if (!userId) {
       return { success: false, error: "Missing user ID" };
     }
     
-    const { error } = await supabase
+    let query = supabase
       .from('user_typing')
       .delete()
       .eq('user_id', userId);
+      
+    // If chatId is provided, only delete for that specific chat
+    if (chatId) {
+      query = query.eq('chat_id', chatId);
+    }
+    
+    const { error } = await query;
       
     if (error) {
       console.error('Error clearing typing status:', error);
@@ -114,6 +123,41 @@ export const clearTypingStatus = async (
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error('Exception clearing typing status:', errorMessage);
+    return { 
+      success: false, 
+      error: errorMessage 
+    };
+  }
+};
+
+/**
+ * Clear all typing statuses in a specific chat
+ */
+export const clearChatTypingStatuses = async (
+  chatId: string
+): Promise<{ success: boolean; error?: string }> => {
+  try {
+    if (!chatId) {
+      return { success: false, error: "Missing chat ID" };
+    }
+    
+    const { error } = await supabase
+      .from('user_typing')
+      .delete()
+      .eq('chat_id', chatId);
+      
+    if (error) {
+      console.error('Error clearing chat typing statuses:', error);
+      return { 
+        success: false, 
+        error: error.message 
+      };
+    }
+    
+    return { success: true };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Exception clearing chat typing statuses:', errorMessage);
     return { 
       success: false, 
       error: errorMessage 

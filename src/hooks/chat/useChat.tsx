@@ -8,6 +8,7 @@ import { useTypingStatus } from "./useTypingStatus";
 import { useMessageSender } from "./useMessageSender";
 import { useEmojiPicker } from "./useEmojiPicker";
 import { toast } from "@/hooks/use-toast";
+import { clearTypingStatus } from "@/services/chat";
 
 export const useChat = () => {
   const { chatId } = useParams<{ chatId: string }>();
@@ -66,6 +67,18 @@ export const useChat = () => {
       setError(null);
     }
   }, [messagesError, userError, typingError, sendError]);
+
+  // Clean up typing status when the hook unmounts or when chatId/user changes
+  useEffect(() => {
+    return () => {
+      if (currentUser && chatId) {
+        // Clear typing status for this user in this chat when leaving
+        clearTypingStatus(currentUser.uid, chatId).catch(err => {
+          console.error("Error clearing typing status when leaving chat:", err);
+        });
+      }
+    };
+  }, [chatId, currentUser]);
   
   return {
     messages,

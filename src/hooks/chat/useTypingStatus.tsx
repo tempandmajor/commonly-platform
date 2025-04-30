@@ -44,14 +44,17 @@ export const useTypingStatus = () => {
   useEffect(() => {
     if (!chatId || !currentUser) return;
 
-    // Get the other user's ID from the chat ID
-    const getOtherUserID = async () => {
+    let channel: any = null;
+    
+    // Subscribe to user_typing table for this chat
+    const setupSubscription = async () => {
       try {
+        // Get the other user's ID from the chat ID
         const { data: chatData, error } = await supabase
           .from('chats')
           .select('participants')
           .eq('id', chatId)
-          .maybeSingle();  // Use maybeSingle instead of single
+          .maybeSingle();
           
         if (error) {
           console.error("Error fetching chat data:", error);
@@ -59,35 +62,20 @@ export const useTypingStatus = () => {
           return null;
         }
         
-        if (chatData) {
-          const otherUserId = chatData.participants.find(id => id !== currentUser.uid);
-          return otherUserId || null;
-        } else {
-          // Handle case when chat not found
-          console.warn("Chat not found:", chatId);
+        if (!chatData || !chatData.participants) {
+          console.warn("Chat not found or has no participants:", chatId);
           return null;
         }
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        console.error("Exception in getOtherUserID:", errorMessage);
-        setError(`Failed to get other user: ${errorMessage}`);
-      }
-      
-      return null;
-    };
-    
-    // Subscribe to typing status changes
-    const setupSubscription = async () => {
-      try {
-        const otherUserId = await getOtherUserID();
+        
+        const otherUserId = chatData.participants.find(id => id !== currentUser.uid);
         
         if (!otherUserId) {
           console.warn("Could not find other user ID in chat");
           return null;
         }
         
-        // Subscribe to user_typing table for other user
-        const channel = supabase
+        // Subscribe to typing status changes for the other user in this chat
+        channel = supabase
           .channel(`typing_${chatId}`)
           .on('postgres_changes', {
             event: '*',
@@ -97,7 +85,6 @@ export const useTypingStatus = () => {
           }, (payload) => {
             try {
               if (payload.new) {
-                // Use nullish coalescing to default to false if null
                 setIsOtherUserTyping((payload.new as any).is_typing ?? false);
               }
             } catch (err) {
@@ -122,21 +109,26 @@ export const useTypingStatus = () => {
       }
     };
     
-    let channel: any = null;
-    
     setupSubscription().then(ch => {
       channel = ch;
     });
     
-    // Clean up typing status when leaving the chat
+    // Clear typing status when component unmounts or chatId/currentUser changes
     return () => {
-      if (currentUser) {
-        // Ensure we clear the typing status when leaving the component
+      if (currentUser && chatId) {
+        // First, set typing status to false
         updateTypingStatus(chatId, currentUser.uid, false)
-          .then(() => clearTypingStatus(currentUser.uid))
+          .then(() => {
+            // Then clear the typing status for this user in this chat
+            clearTypingStatus(currentUser.uid, chatId)
+              .catch(err => {
+                const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+                console.error("Error cleaning up typing status on unmount:", errorMessage);
+              });
+          })
           .catch(err => {
             const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-            console.error("Error cleaning up typing status on unmount:", errorMessage);
+            console.error("Error updating typing status on unmount:", errorMessage);
           });
       }
       

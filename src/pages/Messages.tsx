@@ -12,8 +12,10 @@ import MessageInput from "@/components/messages/MessageInput";
 import EmojiPicker from "@/components/messages/EmojiPicker";
 import { useAuth } from "@/contexts/AuthContext";
 import { clearTypingStatus } from "@/services/chat";
+import { useParams } from "react-router-dom";
 
 const Messages = () => {
+  const { chatId } = useParams<{ chatId: string }>();
   const { currentUser } = useAuth();
   const {
     messages,
@@ -35,16 +37,20 @@ const Messages = () => {
 
   const [newMessage, setNewMessage] = useState<string>("");
 
-  // Clean up typing status on component unmount
+  // Clean up typing status when component unmounts or chatId/user changes
   useEffect(() => {
+    // Component mount - nothing to clean up initially
+    
+    // Component unmount or chatId/user changes
     return () => {
-      if (currentUser) {
-        clearTypingStatus(currentUser.uid).catch(err => {
+      if (currentUser && chatId) {
+        // Clear specifically for this user in this chat
+        clearTypingStatus(currentUser.uid, chatId).catch(err => {
           console.error("Error clearing typing status on component unmount:", err);
         });
       }
     };
-  }, [currentUser]);
+  }, [currentUser, chatId]);
 
   const addEmojiToMessage = (emoji: string) => {
     setNewMessage(prev => prev + emoji);
