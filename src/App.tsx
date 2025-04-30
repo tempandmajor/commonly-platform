@@ -6,6 +6,7 @@ import { queryClient } from '@/lib/queryClient';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LocationProvider } from './contexts/LocationContext'; 
 import { Toaster } from './components/ui/toaster';
+import ErrorBoundary from './components/ErrorBoundary';
 import Index from './pages/Index';
 import Events from './pages/Events';
 import CreateEvent from './pages/CreateEvent';
@@ -53,91 +54,93 @@ const AppContent = () => {
   }, [currentUser]);
   
   return (
-    <Routes>
-      <Route path="/" element={<Index />} />
-      <Route path="/events" element={<Events />} />
-      <Route path="/venues" element={<Venues />} />
-      <Route path="/venues/:id" element={<VenueDetail />} />
-      <Route path="/catering" element={<Catering />} />
-      <Route path="/catering/:id" element={<CatererDetail />} />
-      <Route path="/profile/:id" element={<UserProfile />} />
-      <Route path="/content/:slug" element={<ContentPage />} />
-      <Route path="/podcast/:id" element={<PodcastDetails />} />
-      <Route path="/podcasts" element={<Podcasts />} />
-      
-      <Route path="/admin-login" element={<AdminLogin />} />
-      <Route path="/admin/*" element={<AdminRoutes />} />
-      
-      {/* Protected Routes */}
-      <Route path="/create-event" element={
-        <ProtectedRoute>
-          <CreateEvent />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/create-venue" element={
-        <ProtectedRoute>
-          <CreateVenue />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/my-venues" element={
-        <ProtectedRoute>
-          <MyVenues />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/settings" element={
-        <ProtectedRoute>
-          <Settings />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/notification-settings" element={
-        <ProtectedRoute>
-          <NotificationSettings />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/wallet" element={
-        <ProtectedRoute>
-          <Wallet />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/my-podcasts" element={
-        <ProtectedRoute>
-          <UserPodcasts />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/messages" element={
-        <ProtectedRoute>
-          <MessagesList />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/messages/:chatId" element={
-        <ProtectedRoute>
-          <Messages />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/store" element={
-        <ProtectedRoute>
-          <StoreMarketplace />
-        </ProtectedRoute>
-      } />
-      
-      <Route path="/add-product" element={
-        <ProtectedRoute>
-          <AddProduct />
-        </ProtectedRoute>
-      } />
-      
-      {/* Catch-all route */}
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <ErrorBoundary>
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/events" element={<Events />} />
+        <Route path="/venues" element={<Venues />} />
+        <Route path="/venues/:id" element={<VenueDetail />} />
+        <Route path="/catering" element={<Catering />} />
+        <Route path="/catering/:id" element={<CatererDetail />} />
+        <Route path="/profile/:id" element={<UserProfile />} />
+        <Route path="/content/:slug" element={<ContentPage />} />
+        <Route path="/podcast/:id" element={<PodcastDetails />} />
+        <Route path="/podcasts" element={<Podcasts />} />
+        
+        <Route path="/admin-login" element={<AdminLogin />} />
+        <Route path="/admin/*" element={<AdminRoutes />} />
+        
+        {/* Protected Routes */}
+        <Route path="/create-event" element={
+          <ProtectedRoute>
+            <CreateEvent />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/create-venue" element={
+          <ProtectedRoute>
+            <CreateVenue />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/my-venues" element={
+          <ProtectedRoute>
+            <MyVenues />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/settings" element={
+          <ProtectedRoute>
+            <Settings />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/notification-settings" element={
+          <ProtectedRoute>
+            <NotificationSettings />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/wallet" element={
+          <ProtectedRoute>
+            <Wallet />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/my-podcasts" element={
+          <ProtectedRoute>
+            <UserPodcasts />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/messages" element={
+          <ProtectedRoute>
+            <MessagesList />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/messages/:chatId" element={
+          <ProtectedRoute>
+            <Messages />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/store" element={
+          <ProtectedRoute>
+            <StoreMarketplace />
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/add-product" element={
+          <ProtectedRoute>
+            <AddProduct />
+          </ProtectedRoute>
+        } />
+        
+        {/* Catch-all route */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </ErrorBoundary>
   );
 };
 
