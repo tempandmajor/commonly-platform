@@ -15,6 +15,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import AuthDialog from '../auth/AuthDialog';
 import { Menu, X, ChevronDown } from 'lucide-react';
 import NotificationsPopover from '../notifications/NotificationsPopover';
+import { SearchBox } from '../search/SearchBox';
+import { LocationSelector } from '../search/LocationSelector';
 
 const Navbar = () => {
   const { currentUser, userData, logout } = useAuth();
@@ -77,6 +79,12 @@ const Navbar = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+          </div>
+
+          {/* Search and Location - Desktop */}
+          <div className="hidden md:flex md:items-center md:flex-1 md:justify-center space-x-2 mx-4">
+            <SearchBox />
+            <LocationSelector />
           </div>
 
           <div className="hidden md:flex md:items-center md:space-x-2">
@@ -194,6 +202,12 @@ const Navbar = () => {
       {/* Mobile menu */}
       {isMenuOpen && (
         <div className="md:hidden bg-white shadow-lg">
+          {/* Search and Location - Mobile */}
+          <div className="p-4 space-y-3">
+            <SearchBox />
+            <LocationSelector />
+          </div>
+          
           <div className="pt-2 pb-3 space-y-1">
             <Link
               to="/events"

@@ -179,6 +179,9 @@ export type Database = {
           is_virtual: boolean | null
           likes_count: number | null
           location: string | null
+          location_lat: number | null
+          location_lng: number | null
+          location_radius: number | null
           published: boolean | null
           recording_url: string | null
           shares_count: number | null
@@ -199,6 +202,9 @@ export type Database = {
           is_virtual?: boolean | null
           likes_count?: number | null
           location?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
+          location_radius?: number | null
           published?: boolean | null
           recording_url?: string | null
           shares_count?: number | null
@@ -219,6 +225,9 @@ export type Database = {
           is_virtual?: boolean | null
           likes_count?: number | null
           location?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
+          location_radius?: number | null
           published?: boolean | null
           recording_url?: string | null
           shares_count?: number | null
@@ -572,6 +581,17 @@ export type Database = {
         Args: { event_id_param: string }
         Returns: undefined
       }
+      global_search: {
+        Args: { search_query: string; limit_count?: number }
+        Returns: {
+          id: string
+          title: string
+          description: string
+          image_url: string
+          type: string
+          created_at: string
+        }[]
+      }
       increment_event_likes: {
         Args: { event_id_param: string }
         Returns: undefined
@@ -579,6 +599,25 @@ export type Database = {
       increment_event_shares: {
         Args: { event_id_param: string }
         Returns: undefined
+      }
+      search_events_by_location: {
+        Args: {
+          lat: number
+          lng: number
+          radius?: number
+          limit_count?: number
+        }
+        Returns: {
+          id: string
+          title: string
+          description: string
+          image_url: string
+          date: string
+          location: string
+          location_lat: number
+          location_lng: number
+          distance_km: number
+        }[]
       }
     }
     Enums: {
