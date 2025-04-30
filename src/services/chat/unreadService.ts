@@ -1,51 +1,26 @@
 
-import { db } from "@/lib/firebase";
-import { 
-  collection, 
-  query, 
-  where, 
-  getDocs,
-  writeBatch,
-  doc,
-  updateDoc,
-  onSnapshot
-} from "firebase/firestore";
-import { ChatMessage } from "@/types/auth";
+import { supabase } from "@/integrations/supabase/client";
+import { ChatMessage } from "@/types/chat";
 
 /**
- * Get unread count for a specific chat
+ * Get count of unread messages in a chat for a user
  */
-export const getUnreadCount = (messages: ChatMessage[], currentUserId: string): number => {
-  return messages.filter(msg => msg.recipientId === currentUserId && !msg.read).length;
-};
+export const getUnreadCount = async (chatId: string, userId: string): Promise<number> => {
+  try {
+    const { count, error } = await supabase
+      .from('messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('chat_id', chatId)
+      .eq('recipient_id', userId)
+      .eq('read', false);
 
-/**
- * Mark all unread messages in a chat as read
- */
-export const markAllAsRead = async (chatId: string, currentUserId: string): Promise<void> => {
-  // Get all unread messages where the current user is the recipient
-  const messagesRef = collection(db, "chats", chatId, "messages");
-  const q = query(
-    messagesRef,
-    where("recipientId", "==", currentUserId),
-    where("read", "==", false)
-  );
-  
-  const querySnapshot = await getDocs(q);
-  
-  // If there are no unread messages, return
-  if (querySnapshot.empty) {
-    return;
+    if (error) throw error;
+    
+    return count || 0;
+  } catch (error) {
+    console.error("Error counting unread messages:", error);
+    return 0;
   }
-  
-  // Use a batch to update all messages as read
-  const batch = writeBatch(db);
-  
-  querySnapshot.docs.forEach(doc => {
-    batch.update(doc.ref, { read: true });
-  });
-  
-  await batch.commit();
 };
 
 /**
@@ -53,29 +28,15 @@ export const markAllAsRead = async (chatId: string, currentUserId: string): Prom
  */
 export const getTotalUnreadCount = async (userId: string): Promise<number> => {
   try {
-    const chatsRef = collection(db, "chats");
-    const q = query(
-      chatsRef,
-      where("participants", "array-contains", userId)
-    );
+    const { count, error } = await supabase
+      .from('messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('recipient_id', userId)
+      .eq('read', false);
+
+    if (error) throw error;
     
-    const querySnapshot = await getDocs(q);
-    let total = 0;
-    
-    for (const chatDoc of querySnapshot.docs) {
-      const chatId = chatDoc.id;
-      const messagesRef = collection(db, "chats", chatId, "messages");
-      const unreadQuery = query(
-        messagesRef,
-        where("recipientId", "==", userId),
-        where("read", "==", false)
-      );
-      
-      const unreadSnapshot = await getDocs(unreadQuery);
-      total += unreadSnapshot.size;
-    }
-    
-    return total;
+    return count || 0;
   } catch (error) {
     console.error("Error counting total unread messages:", error);
     return 0;
@@ -83,9 +44,20 @@ export const getTotalUnreadCount = async (userId: string): Promise<number> => {
 };
 
 /**
- * Update the read status of a message
+ * Update the read status of a specific message
  */
-export const updateMessageReadStatus = async (chatId: string, messageId: string, isRead: boolean): Promise<void> => {
-  const messageRef = doc(db, "chats", chatId, "messages", messageId);
-  await updateDoc(messageRef, { read: isRead });
+export const updateMessageReadStatus = async (
+  messageId: string, 
+  isRead: boolean
+): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('messages')
+      .update({ read: isRead })
+      .eq('id', messageId);
+      
+    if (error) throw error;
+  } catch (error) {
+    console.error("Error updating message read status:", error);
+  }
 };

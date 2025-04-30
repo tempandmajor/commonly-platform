@@ -1,6 +1,7 @@
 
 import React, { useRef, useEffect } from "react";
-import { ChatMessage, UserData } from "@/types/auth";
+import { ChatMessage } from "@/types/chat"; 
+import { UserData } from "@/types/auth";
 import MessageItem from "@/components/messages/MessageItem";
 
 interface MessageDisplayProps {

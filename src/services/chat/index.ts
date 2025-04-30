@@ -2,10 +2,17 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Chat, ChatMessage, ChatWithUser } from "@/types/chat";
 
-// Re-export functions from chat.ts
+// Re-export functions from chat service modules
+export * from './chatService';
+export * from './messageService';
+export * from './typingService';
+export * from './unreadService';
+
+// Re-export the legacy functions for backward compatibility
+// This ensures that any code still importing from '@/services/chat' works
 export * from "../chat";
 
-// Add these functions for sending messages with attachments
+// Add these functions back which are being used but were missing
 export const sendMessageWithImage = async (
   chatId: string,
   senderId: string,
