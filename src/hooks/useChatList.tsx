@@ -1,157 +1,125 @@
-import { useState, useEffect } from "react";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { ChatWithUser } from "@/types/chat";
 
-export const useChatList = () => {
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from '@/contexts/AuthContext';
+import { Chat, ChatWithUser } from '@/types/chat';
+
+export function useChatList() {
   const [chats, setChats] = useState<ChatWithUser[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const { currentUser } = useAuth();
 
-  useEffect(() => {
-    if (!currentUser) return;
-
-    const fetchChats = async () => {
-      setLoading(true);
-      try {
-        // Fetch chats where the current user is a participant
-        const { data: chatsData, error } = await supabase
-          .from('chats')
-          .select('*')
-          .contains('participants', [currentUser.uid]);
-        
-        if (error) throw error;
-        
-        // Process each chat to get the other user's data and unread count
-        const processedChats = await Promise.all(
-          chatsData.map(async (chat) => {
-            // Find the other user's ID
-            const otherUserId = chat.participants.find(id => id !== currentUser.uid);
-            if (!otherUserId) return null;
-            
-            // Get the other user's data
-            const { data: userData, error: userError } = await supabase
-              .from('users')
-              .select('*')
-              .eq('id', otherUserId)
-              .single();
-              
-            if (userError) throw userError;
-            
-            // Get unread message count
-            const { count, error: countError } = await supabase
-              .from('messages')
-              .select('*', { count: 'exact', head: true })
-              .eq('chat_id', chat.id)
-              .eq('recipient_id', currentUser.uid)
-              .eq('read', false);
-              
-            if (countError) throw countError;
-            
-            return {
-              ...chat,
-              user: userData,
-              unreadCount: count || 0,
-              lastMessage: chat.lastMessage ? {
-                ...chat.lastMessage,
-                recipientId: otherUserId
-              } : undefined
-            };
-          })
-        );
-
-        // Filter out any null values and set the chats
-        const validChats = processedChats.filter(Boolean) as ChatWithUser[];
-        setChats(validChats);
-      } catch (error) {
-        console.error("Error fetching chats:", error);
-      } finally {
-        setLoading(false);
-      }
+  const mapDbChatToChat = useCallback((dbChat: any): ChatWithUser => {
+    return {
+      id: dbChat.id,
+      participants: dbChat.participants || [],
+      lastMessage: dbChat.last_message ? {
+        text: dbChat.last_message.text || '',
+        senderId: dbChat.last_message.sender_id || '',
+        timestamp: dbChat.last_message.timestamp || new Date().toISOString(),
+        read: dbChat.last_message.read ?? false,
+      } : undefined,
+      user: dbChat.user ? {
+        uid: dbChat.user.id,
+        displayName: dbChat.user.display_name,
+        photoURL: dbChat.user.photo_url,
+        email: dbChat.user.email,
+      } : null,
+      createdAt: dbChat.created_at,
+      updatedAt: dbChat.updated_at,
     };
+  }, []);
 
-    fetchChats();
+  const fetchChats = useCallback(async () => {
+    if (!currentUser) return;
     
-    // Set up real-time subscription for chat updates
+    try {
+      setLoading(true);
+      
+      // Fetch all chats where current user is a participant
+      const { data: chatData, error: chatError } = await supabase
+        .from('chats')
+        .select('*')
+        .contains('participants', [currentUser.id]);
+      
+      if (chatError) throw chatError;
+      
+      // For each chat, get the other user's data
+      const chatsWithUserData = await Promise.all(
+        chatData.map(async (chat) => {
+          // Find the other user's ID
+          const otherUserId = chat.participants.find(
+            (id: string) => id !== currentUser.id
+          );
+          
+          if (!otherUserId) {
+            return { ...chat, user: null };
+          }
+          
+          // Get other user's data
+          const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', otherUserId)
+            .single();
+          
+          if (userError) {
+            console.error('Error fetching user data:', userError);
+            return { ...chat, user: null };
+          }
+          
+          return { ...chat, user: userData };
+        })
+      );
+      
+      // Map the data to our Chat type
+      const mappedChats = chatsWithUserData.map(mapDbChatToChat);
+      
+      // Sort by last message timestamp
+      mappedChats.sort((a, b) => {
+        const timeA = a.lastMessage?.timestamp ? new Date(a.lastMessage.timestamp).getTime() : 0;
+        const timeB = b.lastMessage?.timestamp ? new Date(b.lastMessage.timestamp).getTime() : 0;
+        return timeB - timeA;
+      });
+      
+      setChats(mappedChats);
+    } catch (err) {
+      setError(err as Error);
+      console.error("Error fetching chats:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentUser, mapDbChatToChat]);
+
+  const subscribeToChats = useCallback(() => {
+    if (!currentUser) return null;
+    
     const channel = supabase
       .channel('public:chats')
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'chats',
-        filter: `participants=cs.{${currentUser.uid}}`
-      }, (payload) => {
-        // Refresh chats when there's a change
+        filter: `participants=cs.{${currentUser.id}}`,
+      }, () => {
         fetchChats();
       })
       .subscribe();
-      
-    // Clean up subscription on unmount
+    
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentUser]);
+  }, [currentUser, fetchChats]);
 
-  const fetchChats = async () => {
-    setLoading(true);
-    try {
-      // Fetch chats where the current user is a participant
-      const { data: chatsData, error } = await supabase
-        .from('chats')
-        .select('*')
-        .contains('participants', [currentUser?.uid]);
+  useEffect(() => {
+    fetchChats();
+    const unsubscribe = subscribeToChats();
+    
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [fetchChats, subscribeToChats]);
 
-      if (error) throw error;
-
-      // Process each chat to get the other user's data and unread count
-      const processedChats = await Promise.all(
-        chatsData.map(async (chat) => {
-          // Find the other user's ID
-          const otherUserId = chat.participants.find(id => id !== currentUser?.uid);
-          if (!otherUserId) return null;
-
-          // Get the other user's data
-          const { data: userData, error: userError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', otherUserId)
-            .single();
-
-          if (userError) throw userError;
-
-          // Get unread message count
-          const { count, error: countError } = await supabase
-            .from('messages')
-            .select('*', { count: 'exact', head: true })
-            .eq('chat_id', chat.id)
-            .eq('recipient_id', currentUser?.uid)
-            .eq('read', false);
-
-          if (countError) throw countError;
-
-          return {
-            ...chat,
-            user: userData,
-            unreadCount: count || 0,
-            lastMessage: chat.lastMessage ? {
-              ...chat.lastMessage,
-              recipientId: otherUserId
-            } : undefined
-          };
-        })
-      );
-
-      // Filter out any null values and set the chats
-      const validChats = processedChats.filter(Boolean) as ChatWithUser[];
-      setChats(validChats);
-    } catch (error) {
-      console.error("Error fetching chats:", error);
-      setError(error as Error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return { chats, loading, error, refresh: fetchChats };
-};
+  return { chats, loading, error, refreshChats: fetchChats };
+}

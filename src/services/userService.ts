@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { UserData } from "@/types/auth";
 
@@ -118,5 +117,47 @@ export const updateUserProfile = async (userId: string, profileData: Partial<Use
   } catch (error) {
     console.error("Error updating user profile:", error);
     throw error;
+  }
+};
+
+export const searchUsers = async (query: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('*')
+      .or(`display_name.ilike.%${query}%,email.ilike.%${query}%`)
+      .limit(10);
+
+    if (error) throw error;
+    
+    return data.map((user) => ({
+      uid: user.id,
+      email: user.email,
+      displayName: user.display_name,
+      photoURL: user.photo_url,
+      isAdmin: user.is_admin,
+      isPro: user.is_pro,
+      isMerchant: user.is_merchant,
+    }));
+  } catch (error) {
+    console.error("Error searching users:", error);
+    throw error;
+  }
+};
+
+export const isUserPro = async (userId: string): Promise<boolean> => {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('is_pro')
+      .eq('id', userId)
+      .single();
+    
+    if (error) throw error;
+    
+    return !!data?.is_pro;
+  } catch (error) {
+    console.error("Error checking user pro status:", error);
+    return false;
   }
 };

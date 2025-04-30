@@ -1,24 +1,38 @@
 
-import { UserData } from "./auth";
+export interface ChatUser {
+  uid: string;
+  displayName?: string | null;
+  photoURL?: string | null;
+  email?: string | null;
+  isOnline?: boolean;
+  lastSeen?: string | null;
+}
 
-export interface ChatWithUser {
+export interface Chat {
   id: string;
   participants: string[];
   lastMessage?: {
     text: string;
     senderId: string;
-    timestamp: any;
+    timestamp: string;
     read: boolean;
-    recipientId: string;
   };
-  createdAt: any;
-  updatedAt: any;
-  user: UserData;
-  unreadCount?: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface TypingStatus {
-  userId: string;
-  isTyping: boolean;
-  timestamp: any;
+export interface ChatWithUser extends Chat {
+  user: ChatUser | null;
+}
+
+export interface ChatMessage {
+  id: string;
+  chatId: string;
+  senderId: string;
+  recipientId: string | null;
+  text?: string;
+  imageUrl?: string;
+  voiceUrl?: string;
+  timestamp: string;
+  read: boolean;
 }

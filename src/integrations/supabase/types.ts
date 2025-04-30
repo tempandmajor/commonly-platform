@@ -899,6 +899,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_notification: {
+        Args: {
+          user_id_param: string
+          type_param: string
+          title_param: string
+          body_param: string
+          image_url_param?: string
+          action_url_param?: string
+          data_param?: Json
+        }
+        Returns: string
+      }
       decrement_event_likes: {
         Args: { event_id_param: string }
         Returns: undefined
@@ -920,6 +932,10 @@ export type Database = {
       }
       increment_event_shares: {
         Args: { event_id_param: string }
+        Returns: undefined
+      }
+      increment_podcast_listens: {
+        Args: { podcast_id_param: string }
         Returns: undefined
       }
       search_events_by_location: {

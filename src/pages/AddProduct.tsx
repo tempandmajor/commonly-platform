@@ -1,35 +1,43 @@
-import React, { useState } from "react";
-import { useRouter } from 'next/navigation';
-import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { uploadFile } from "@/services/storageService";
-import { Product } from "@/types/merchant";
-import { Package } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { Loader2, ImagePlus } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const AddProduct = () => {
-  const [productData, setProductData] = useState({
-    name: "",
-    description: "",
-    price: 0,
-    inventoryCount: 0,
-    isDigital: false,
-  });
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { currentUser } = useAuth();
+  const { userData } = useAuth();
+  const navigate = useNavigate();
   const { toast } = useToast();
-  const navigate = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [digitalFile, setDigitalFile] = useState<File | null>(null);
+  
+  const [product, setProduct] = useState({
+    name: '',
+    description: '',
+    price: 0,
+    isDigital: false,
+    inventoryCount: 1,
+  });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setProductData((prevData) => ({
+    setProduct((prevData) => ({
       ...prevData,
       [name]: value,
     }));
@@ -39,7 +47,7 @@ const AddProduct = () => {
     const file = e.target.files?.[0];
 
     if (file) {
-      setSelectedImage(file);
+      setImageFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result as string);
@@ -49,88 +57,102 @@ const AddProduct = () => {
   };
 
   const handleIsDigitalChange = (checked: boolean) => {
-    setProductData((prevData) => ({
+    setProduct((prevData) => ({
       ...prevData,
       isDigital: checked,
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
-
+    
+    if (!userData?.uid) {
+      toast({
+        title: 'Error',
+        description: 'You must be logged in to create products',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    if (!product.name || product.price <= 0) {
+      toast({
+        title: 'Missing information',
+        description: 'Please fill in all required fields',
+        variant: 'destructive'
+      });
+      return;
+    }
+    
+    setLoading(true);
+    
     try {
-      if (!currentUser) {
-        toast({
-          title: "Authentication required",
-          description: "You must be logged in to create a product",
-          variant: "destructive",
-        });
-        return;
+      let imageUrl = '';
+      let digitalFileUrl = '';
+      
+      // Upload product image if provided
+      if (imageFile) {
+        const imagePath = `${userData.uid}/${Date.now()}-${imageFile.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from('products')
+          .upload(imagePath, imageFile);
+          
+        if (uploadError) throw uploadError;
+        
+        const { data } = supabase.storage
+          .from('products')
+          .getPublicUrl(imagePath);
+          
+        imageUrl = data.publicUrl;
       }
-
-      if (!productData.name || !productData.price) {
-        toast({
-          title: "Missing information",
-          description: "Please fill in all required fields",
-          variant: "destructive",
-        });
-        return;
+      
+      // Upload digital file if applicable
+      if (product.isDigital && digitalFile) {
+        const digitalFilePath = `${userData.uid}/${Date.now()}-${digitalFile.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from('products')
+          .upload(digitalFilePath, digitalFile);
+          
+        if (uploadError) throw uploadError;
+        
+        const { data } = supabase.storage
+          .from('products')
+          .getPublicUrl(digitalFilePath);
+          
+        digitalFileUrl = data.publicUrl;
       }
-
-      let imageUrl = "";
-
-      // Upload image if selected
-      if (selectedImage) {
-        imageUrl = await uploadFile(selectedImage, "products");
-      }
-
-      // Create the product in Supabase
-      const productToCreate: Partial<Product> = {
-        merchantId: currentUser.uid,
-        name: productData.name,
-        description: productData.description,
-        price: productData.price,
-        imageUrl: imageUrl,
-        inventoryCount: productData.inventoryCount || 0,
-        isDigital: productData.isDigital || false,
-      };
-
-      const { data, error } = await supabase
+      
+      // Create the product
+      const { error } = await supabase
         .from('products')
-        .insert(productToCreate)
-        .select()
-        .single();
-
+        .insert({
+          name: product.name,
+          description: product.description,
+          price: product.price,
+          inventory_count: product.inventoryCount,
+          is_digital: product.isDigital,
+          digital_file_url: digitalFileUrl || null,
+          image_url: imageUrl || null,
+          merchant_id: userData.uid
+        });
+        
       if (error) throw error;
-
+      
       toast({
-        title: "Product created",
-        description: "Your product has been created successfully",
+        title: 'Product created',
+        description: 'Your product has been created successfully'
       });
-
-      // Reset form
-      setProductData({
-        name: "",
-        description: "",
-        price: 0,
-        inventoryCount: 0,
-        isDigital: false,
-      });
-      setSelectedImage(null);
-      setImagePreview("");
-
-      // Navigate to store dashboard
-      navigate("/store/dashboard");
-    } catch (error) {
-      console.error("Error creating product:", error);
+      
+      navigate('/merchant/dashboard');
+    } catch (error: any) {
+      console.error('Error creating product:', error);
       toast({
-        title: "Error creating product",
-        description: "Failed to create product. Please try again.",
-        variant: "destructive",
+        title: 'Error',
+        description: error.message || 'Failed to create product',
+        variant: 'destructive'
       });
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
@@ -146,7 +168,7 @@ const AddProduct = () => {
               type="text"
               id="name"
               name="name"
-              value={productData.name}
+              value={product.name}
               onChange={handleInputChange}
               placeholder="Enter product name"
               required
@@ -158,7 +180,7 @@ const AddProduct = () => {
             <Textarea
               id="description"
               name="description"
-              value={productData.description}
+              value={product.description}
               onChange={handleInputChange}
               placeholder="Enter product description"
               className="min-h-[100px]"
@@ -171,7 +193,7 @@ const AddProduct = () => {
               type="number"
               id="price"
               name="price"
-              value={productData.price}
+              value={product.price}
               onChange={handleInputChange}
               placeholder="Enter product price"
               required
@@ -184,7 +206,7 @@ const AddProduct = () => {
               type="number"
               id="inventoryCount"
               name="inventoryCount"
-              value={productData.inventoryCount}
+              value={product.inventoryCount}
               onChange={handleInputChange}
               placeholder="Enter inventory count"
             />
@@ -194,7 +216,7 @@ const AddProduct = () => {
             <Label htmlFor="isDigital">Is Digital Product?</Label>
             <Switch
               id="isDigital"
-              checked={productData.isDigital}
+              checked={product.isDigital}
               onCheckedChange={handleIsDigitalChange}
             />
           </div>
@@ -219,8 +241,8 @@ const AddProduct = () => {
             )}
           </div>
 
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Creating..." : "Create Product"}
+          <Button type="submit" disabled={loading}>
+            {loading ? <Loader2 className="animate-spin" /> : "Create Product"}
           </Button>
         </div>
       </form>
