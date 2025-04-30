@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Route, Routes } from 'react-router-dom';
-import { Layout, Users, LayoutDashboard, CalendarDays, Building2, FilePenLine, CreditCard, Activity, FileText } from 'lucide-react';
+import { Layout, User as UsersIcon, LayoutDashboard, CalendarDays, Building2, FilePenLine, CreditCard, Activity, FileText } from 'lucide-react';
 
 import AdminLogin from '../AdminLogin';
 import AdminProtectedRoute from '@/components/auth/AdminProtectedRoute';
@@ -17,7 +17,7 @@ import Documentation from './Documentation';
 
 const navigation = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-  { name: 'Users', href: '/admin/users', icon: Users },
+  { name: 'Users', href: '/admin/users', icon: UsersIcon },
   { name: 'Events', href: '/admin/events', icon: CalendarDays },
   { name: 'Venues', href: '/admin/venues', icon: Building2 },
   { name: 'Content', href: '/admin/content', icon: FilePenLine },

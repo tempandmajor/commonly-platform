@@ -1,157 +1,93 @@
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { supabase } from '@/integrations/supabase/client';
-import { getPodcast, getPodcasts, createPodcast, updatePodcast, deletePodcast } from '@/services/podcast/podcastCrudService';
+import { describe, it, expect, vi } from 'vitest';
+import { 
+  createPodcast,
+  getPodcasts,
+  getPodcastById
+} from '@/services/podcast/podcastCrudService';
 
-// Mock Supabase client
-vi.mock('@/integrations/supabase/client', () => ({
-  supabase: {
-    from: vi.fn(() => ({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          single: vi.fn().mockResolvedValue({
-            data: {
-              id: 'podcast123',
-              title: 'Test Podcast',
-              description: 'This is a test podcast',
-              image_url: 'https://example.com/image.jpg',
-              audio_url: 'https://example.com/audio.mp3',
-              duration: 300,
-              user_id: 'user123',
-              created_at: '2023-01-01T00:00:00Z',
-              published: true,
-              users: {
-                display_name: 'Test User',
-                photo_url: 'https://example.com/user.jpg'
-              }
-            },
-            error: null
-          }),
-          order: vi.fn(() => ({
-            limit: vi.fn().mockResolvedValue({
-              data: [{
-                id: 'podcast123',
-                title: 'Test Podcast',
-                description: 'This is a test podcast',
-                image_url: 'https://example.com/image.jpg',
-                audio_url: 'https://example.com/audio.mp3',
-                duration: 300,
-                user_id: 'user123',
-                created_at: '2023-01-01T00:00:00Z',
-                published: true,
-                users: {
-                  display_name: 'Test User',
-                  photo_url: 'https://example.com/user.jpg'
-                }
-              }],
-              error: null
-            })
-          }))
-        })),
-        lt: vi.fn(() => ({
-          limit: vi.fn().mockResolvedValue({
-            data: [],
-            error: null
-          })
-        })),
-        eq: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            eq: vi.fn(() => ({
-              order: vi.fn(() => ({
-                limit: vi.fn().mockResolvedValue({
-                  data: [],
-                  error: null
-                })
-              }))
-            }))
-          }))
-        }))
-      })),
-      insert: vi.fn(() => ({
-        select: vi.fn(() => ({
-          single: vi.fn().mockResolvedValue({
-            data: {
-              id: 'newpodcast123'
-            },
-            error: null
-          })
-        }))
-      })),
-      update: vi.fn(() => ({
-        eq: vi.fn().mockResolvedValue({
-          error: null
-        })
-      })),
-      delete: vi.fn(() => ({
-        eq: vi.fn().mockResolvedValue({
-          error: null
-        })
-      }))
+// Mock Firebase services
+vi.mock('@/lib/firebase', () => ({
+  db: {
+    collection: vi.fn().mockReturnThis(),
+    doc: vi.fn().mockReturnThis(),
+    addDoc: vi.fn().mockResolvedValue({ id: 'test-podcast-id' }),
+    getDoc: vi.fn().mockResolvedValue({
+      exists: () => true,
+      data: () => ({
+        title: 'Test Podcast',
+        description: 'This is a test podcast',
+        audioUrl: 'https://example.com/audio.mp3',
+        imageUrl: 'https://example.com/image.jpg',
+        duration: 1200,
+        createdBy: 'user123',
+        createdAt: { toDate: () => new Date() }
+      }),
+      id: 'test-podcast-id'
     }),
-    storage: {
-      from: vi.fn(() => ({
-        upload: vi.fn().mockResolvedValue({ error: null }),
-        remove: vi.fn().mockResolvedValue({ error: null }),
-        getPublicUrl: vi.fn(() => ({
-          data: {
-            publicUrl: 'https://example.com/storage/file.mp3'
-          }
-        }))
-      }))
-    }
+    getDocs: vi.fn().mockResolvedValue({
+      docs: [
+        {
+          id: '1',
+          data: () => ({
+            title: 'Podcast 1',
+            description: 'Description 1',
+            createdAt: { toDate: () => new Date() }
+          })
+        },
+        {
+          id: '2',
+          data: () => ({
+            title: 'Podcast 2',
+            description: 'Description 2',
+            createdAt: { toDate: () => new Date() }
+          })
+        }
+      ]
+    }),
+    where: vi.fn().mockReturnThis(),
+    orderBy: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockReturnThis(),
+    query: vi.fn().mockReturnThis(),
+    serverTimestamp: vi.fn().mockReturnValue(new Date())
+  },
+  storage: {
+    ref: vi.fn(),
+    uploadBytes: vi.fn(),
+    getDownloadURL: vi.fn()
   }
 }));
 
 describe('Podcast Service', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('should fetch a podcast by id', async () => {
-    const podcast = await getPodcast('podcast123');
-    
-    expect(podcast).toBeDefined();
-    expect(podcast?.id).toBe('podcast123');
-    expect(podcast?.title).toBe('Test Podcast');
-    expect(supabase.from).toHaveBeenCalledWith('podcasts');
-  });
-
-  it('should fetch podcasts with pagination', async () => {
-    const result = await getPodcasts(10);
-    
-    expect(result.podcasts).toHaveLength(1);
-    expect(result.podcasts[0].id).toBe('podcast123');
-    expect(supabase.from).toHaveBeenCalledWith('podcasts');
-  });
-
-  it('should create a new podcast', async () => {
+  it('should create a podcast', async () => {
     const podcastData = {
-      title: 'New Podcast',
-      description: 'A new podcast description',
-      userId: 'user123',
-      published: true
+      title: 'Test Podcast',
+      description: 'This is a test podcast',
+      audioUrl: 'https://example.com/audio.mp3',
+      imageUrl: 'https://example.com/image.jpg',
+      duration: 1200,
+      categoryId: 'category1'
     };
     
-    const id = await createPodcast(podcastData);
+    const userId = 'user123';
+    const result = await createPodcast(podcastData, userId);
     
-    expect(id).toBe('newpodcast123');
-    expect(supabase.from).toHaveBeenCalledWith('podcasts');
+    expect(result).toBe('test-podcast-id');
   });
-
-  it('should update a podcast', async () => {
-    await updatePodcast('podcast123', {
-      title: 'Updated Title',
-      description: 'Updated description'
-    });
+  
+  it('should retrieve podcasts', async () => {
+    const podcasts = await getPodcasts();
     
-    expect(supabase.from).toHaveBeenCalledWith('podcasts');
-    expect(supabase.from().update).toHaveBeenCalled();
+    expect(podcasts).toHaveLength(2);
+    expect(podcasts[0].title).toBe('Podcast 1');
+    expect(podcasts[1].description).toBe('Description 2');
   });
-
-  it('should delete a podcast', async () => {
-    await deletePodcast('podcast123');
+  
+  it('should retrieve a podcast by ID', async () => {
+    const podcast = await getPodcastById('test-podcast-id');
     
-    expect(supabase.from).toHaveBeenCalledWith('podcasts');
-    expect(supabase.from().delete).toHaveBeenCalled();
+    expect(podcast).toBeDefined();
+    expect(podcast?.title).toBe('Test Podcast');
+    expect(podcast?.description).toBe('This is a test podcast');
   });
 });

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { sendMessage, sendMessageWithImage, sendMessageWithVoice } from "@/services/chat";
+import { messageSending } from "@/services/chat";
 import { useToast } from "@/hooks/use-toast";
 import { uploadFile } from "@/services/storageService";
 
@@ -47,7 +47,7 @@ export const useMessageSender = (otherUserId: string | null) => {
           clearInterval(simulateProgress);
           setUploadProgress(100);
           
-          await sendMessageWithImage(
+          await messageSending.sendMessageWithImage(
             chatId,
             currentUser.uid,
             otherUserId,
@@ -88,7 +88,7 @@ export const useMessageSender = (otherUserId: string | null) => {
           clearInterval(simulateProgress);
           setUploadProgress(100);
           
-          await sendMessageWithVoice(
+          await messageSending.sendMessageWithVoice(
             chatId,
             currentUser.uid,
             otherUserId,
@@ -109,7 +109,7 @@ export const useMessageSender = (otherUserId: string | null) => {
         }
       } else {
         // Send text-only message
-        await sendMessage(
+        await messageSending.sendMessage(
           chatId,
           currentUser.uid,
           otherUserId,
