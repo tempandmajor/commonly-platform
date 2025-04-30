@@ -7,7 +7,8 @@ import {
   getDocs,
   writeBatch,
   doc,
-  updateDoc
+  updateDoc,
+  onSnapshot
 } from "firebase/firestore";
 import { ChatMessage } from "@/types/auth";
 

@@ -1,5 +1,6 @@
 
 export * from "./chatService";
-export { getMessages, sendMessage, sendMessageWithImage, subscribeToMessages, markMessagesAsRead, sendMessageWithVoice, updateTypingStatus } from "./messageService";
+export { getMessages, subscribeToMessages, markMessagesAsRead, updateTypingStatus } from "./messageService";
+export { sendMessage, sendMessageWithImage, sendMessageWithVoice } from "./sendMessageService";
 export * from "./participantService";
 export { getUnreadCount as getMessagesUnreadCount, markAllAsRead, getTotalUnreadCount, updateMessageReadStatus } from "./unreadService";

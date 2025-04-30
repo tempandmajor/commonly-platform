@@ -10,8 +10,7 @@ import {
   doc, 
   getDoc, 
   getDocs, 
-  serverTimestamp, 
-  updateDoc 
+  serverTimestamp
 } from "firebase/firestore";
 import { Chat } from "@/types/auth";
 

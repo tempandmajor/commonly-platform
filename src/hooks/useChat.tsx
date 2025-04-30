@@ -13,7 +13,7 @@ import {
 } from "@/services/chat";
 import { ChatMessage, UserData } from "@/types/auth";
 import { useToast } from "@/hooks/use-toast";
-import { doc, onSnapshot, collection, query, where } from "firebase/firestore";
+import { doc, onSnapshot, collection, query } from "firebase/firestore";
 import { db, storage } from "@/lib/firebase";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 
@@ -107,8 +107,11 @@ export const useChat = () => {
         }));
         
         // Find if other user is typing
-        const otherUserTypingData = typingData.find(data => data.userId !== currentUser.uid);
-        if (otherUserTypingData && otherUserTypingData.isTyping) {
+        const otherUserTypingData = typingData.find(data => 
+          data.id !== currentUser.uid && data.isTyping === true
+        );
+        
+        if (otherUserTypingData) {
           setIsOtherUserTyping(true);
         } else {
           setIsOtherUserTyping(false);
@@ -116,6 +119,7 @@ export const useChat = () => {
       });
       
       return () => {
+        unsubscribe();
         unsubscribeTyping();
       };
     }
