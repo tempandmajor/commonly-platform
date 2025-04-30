@@ -22,10 +22,10 @@ export function formatTime(date: Date): string {
   }).format(date);
 }
 
-export function formatCurrency(amount: number, currency: string = 'USD'): string {
+export function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency,
+    currency: 'USD',
   }).format(amount);
 }
 

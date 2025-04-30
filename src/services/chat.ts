@@ -2,6 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Chat, ChatMessage, ChatWithUser } from "@/types/chat";
 import { getUserProfile } from "./userService";
+import { updateTypingStatus as updateTypingStatusFromService } from "./chat/typingService";
 
 // Create a new chat between two users
 export const createChat = async (participantIds: string[]): Promise<string> => {
@@ -97,7 +98,12 @@ export const getUserChats = async (userId: string): Promise<ChatWithUser[]> => {
       return {
         id: chat.id,
         participants: chat.participants,
-        lastMessage: chat.last_message || null,
+        lastMessage: chat.last_message ? {
+          text: chat.last_message.text || '',
+          senderId: chat.last_message.senderId || '',
+          timestamp: chat.last_message.timestamp || '',
+          read: chat.last_message.read || false
+        } : null,
         createdAt: chat.created_at,
         updatedAt: chat.updated_at,
         user: otherUser ? {
@@ -105,8 +111,8 @@ export const getUserChats = async (userId: string): Promise<ChatWithUser[]> => {
           displayName: otherUser.displayName,
           photoURL: otherUser.photoURL,
           email: otherUser.email,
-          isOnline: Boolean(otherUser.isOnline),
-          lastSeen: otherUser.lastSeen || null
+          isOnline: false, // Default until we implement presence
+          lastSeen: null // Default until we implement presence
         } : null
       };
     });
@@ -121,32 +127,23 @@ export const getUserChats = async (userId: string): Promise<ChatWithUser[]> => {
 // Check if a user is typing in a chat
 export const isUserTyping = async (chatId: string, userId: string): Promise<boolean> => {
   try {
-    const { data, error } = await supabase.rpc('get_typing_status', {
-      p_chat_id: chatId,
-      p_user_id: userId
-    });
-    
-    if (error) {
-      // Fallback to direct query
-      const { data: fallbackData, error: fallbackError } = await supabase
-        .from('user_typing')
-        .select('is_typing')
-        .eq('chat_id', chatId)
-        .eq('user_id', userId)
-        .single();
-        
-      if (fallbackError) {
-        if (fallbackError.code === 'PGRST116') {
-          // No record means not typing
-          return false;
-        }
-        throw fallbackError;
-      }
+    // Use the direct query instead of RPC for now
+    const { data, error } = await supabase
+      .from('user_typing')
+      .select('is_typing')
+      .eq('chat_id', chatId)
+      .eq('user_id', userId)
+      .single();
       
-      return Boolean(fallbackData?.is_typing);
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // No record means not typing
+        return false;
+      }
+      throw error;
     }
     
-    return Boolean(data);
+    return Boolean(data?.is_typing);
   } catch (error) {
     console.error("Error checking typing status:", error);
     return false;
@@ -221,26 +218,5 @@ export const updateTypingStatus = async (
   userId: string,
   isTyping: boolean
 ): Promise<void> => {
-  try {
-    const { error } = await supabase.rpc('update_typing_status', {
-      p_chat_id: chatId,
-      p_user_id: userId,
-      p_is_typing: isTyping
-    });
-    
-    if (error) {
-      // Fallback to direct upsert
-      await supabase
-        .from('user_typing')
-        .upsert({
-          chat_id: chatId,
-          user_id: userId,
-          is_typing: isTyping,
-          updated_at: new Date().toISOString()
-        });
-    }
-  } catch (error) {
-    console.error("Error updating typing status:", error);
-    throw error;
-  }
+  return updateTypingStatusFromService(chatId, userId, isTyping);
 };

@@ -38,8 +38,8 @@ export const sendMessageWithImage = async (
         updated_at: new Date().toISOString(),
         last_message: {
           text: imageUrl ? "📷 Image" : text,
-          sender_id: senderId,
-          recipient_id: recipientId,
+          senderId: senderId,
+          recipientId: recipientId,
           timestamp: new Date().toISOString(),
           read: false
         }
@@ -85,8 +85,8 @@ export const sendMessageWithVoice = async (
         updated_at: new Date().toISOString(),
         last_message: {
           text: voiceUrl ? "🎤 Voice message" : text,
-          sender_id: senderId,
-          recipient_id: recipientId,
+          senderId: senderId,
+          recipientId: recipientId,
           timestamp: new Date().toISOString(),
           read: false
         }
