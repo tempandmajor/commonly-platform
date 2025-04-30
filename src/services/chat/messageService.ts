@@ -10,10 +10,14 @@ export const sendMessage = async (
   text?: string,
   imageUrl?: string,
   voiceUrl?: string
-): Promise<ChatMessage> => {
+): Promise<{ message?: ChatMessage; error?: string }> => {
   try {
+    // Input validation
+    if (!chatId) return { error: "Chat ID is required" };
+    if (!senderId) return { error: "Sender ID is required" };
+    if (!recipientId) return { error: "Recipient ID is required" };
     if (!text && !imageUrl && !voiceUrl) {
-      throw new Error("Message must have text, image, or voice content");
+      return { error: "Message must have text, image, or voice content" };
     }
 
     // Create the message
@@ -36,7 +40,14 @@ export const sendMessage = async (
       .select()
       .single();
       
-    if (messageError) throw messageError;
+    if (messageError) {
+      console.error("Error creating message:", messageError);
+      return { error: messageError.message };
+    }
+
+    if (!message) {
+      return { error: "Failed to create message - no data returned" };
+    }
 
     // Update the chat's last message
     const lastMessage = {
@@ -55,30 +66,43 @@ export const sendMessage = async (
       })
       .eq('id', chatId);
       
-    if (chatError) throw chatError;
+    if (chatError) {
+      console.error("Error updating chat last message:", chatError);
+      // Don't fail the entire operation if updating the chat fails
+      // as the message was already sent
+    }
 
-    return message as ChatMessage;
+    return { message: message as ChatMessage };
   } catch (error) {
-    console.error("Error sending message:", error);
-    throw error;
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error("Exception in sendMessage:", errorMessage);
+    return { error: errorMessage };
   }
 };
 
 // Get messages for a specific chat
-export const getMessages = async (chatId: string): Promise<ChatMessage[]> => {
+export const getMessages = async (chatId: string): Promise<{ messages: ChatMessage[]; error?: string }> => {
   try {
+    if (!chatId) {
+      return { messages: [], error: "Chat ID is required" };
+    }
+    
     const { data, error } = await supabase
       .from('messages')
       .select('*')
       .eq('chat_id', chatId)
       .order('timestamp', { ascending: true });
     
-    if (error) throw error;
+    if (error) {
+      console.error("Error fetching messages:", error);
+      return { messages: [], error: error.message };
+    }
     
-    return data as ChatMessage[] || [];
+    return { messages: data as ChatMessage[] || [] };
   } catch (error) {
-    console.error("Error fetching messages:", error);
-    throw error;
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error("Exception in getMessages:", errorMessage);
+    return { messages: [], error: errorMessage };
   }
 };
 
@@ -86,8 +110,11 @@ export const getMessages = async (chatId: string): Promise<ChatMessage[]> => {
 export const markMessagesAsRead = async (
   chatId: string, 
   userId: string
-): Promise<void> => {
+): Promise<{ success: boolean; error?: string }> => {
   try {
+    if (!chatId) return { success: false, error: "Chat ID is required" };
+    if (!userId) return { success: false, error: "User ID is required" };
+    
     // Update all unread messages where the current user is the recipient
     const { error: messagesError } = await supabase
       .from('messages')
@@ -96,7 +123,10 @@ export const markMessagesAsRead = async (
       .eq('recipient_id', userId)
       .eq('read', false);
     
-    if (messagesError) throw messagesError;
+    if (messagesError) {
+      console.error("Error marking messages as read:", messagesError);
+      return { success: false, error: messagesError.message };
+    }
     
     // Check if the last message needs to be updated as well
     const { data: chat, error: chatError } = await supabase
@@ -105,7 +135,11 @@ export const markMessagesAsRead = async (
       .eq('id', chatId)
       .single();
     
-    if (chatError) throw chatError;
+    if (chatError) {
+      console.error("Error fetching chat for read status update:", chatError);
+      // Don't fail the entire operation if this part fails
+      return { success: true };
+    }
     
     if (chat && chat.last_message) {
       const lastMessage = chat.last_message as any;
@@ -121,11 +155,44 @@ export const markMessagesAsRead = async (
           })
           .eq('id', chatId);
         
-        if (updateError) throw updateError;
+        if (updateError) {
+          console.error("Error updating chat last message read status:", updateError);
+          // Don't fail the entire operation if this part fails
+        }
       }
     }
+    
+    return { success: true };
   } catch (error) {
-    console.error("Error marking messages as read:", error);
-    throw error;
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error("Exception in markMessagesAsRead:", errorMessage);
+    return { success: false, error: errorMessage };
+  }
+};
+
+/**
+ * Delete a specific message
+ */
+export const deleteMessage = async (messageId: string): Promise<{ success: boolean; error?: string }> => {
+  try {
+    if (!messageId) {
+      return { success: false, error: "Message ID is required" };
+    }
+    
+    const { error } = await supabase
+      .from('messages')
+      .delete()
+      .eq('id', messageId);
+      
+    if (error) {
+      console.error("Error deleting message:", error);
+      return { success: false, error: error.message };
+    }
+    
+    return { success: true };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error("Exception in deleteMessage:", errorMessage);
+    return { success: false, error: errorMessage };
   }
 };

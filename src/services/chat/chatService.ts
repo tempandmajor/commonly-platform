@@ -2,17 +2,25 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Chat, ChatWithUser } from "@/types/chat";
 import { getUserProfile } from "../userService";
+import { toast } from "@/hooks/use-toast";
 
 // Create a new chat between two users
-export const createChat = async (participantIds: string[]): Promise<string> => {
+export const createChat = async (participantIds: string[]): Promise<{ id?: string; error?: string }> => {
   try {
+    if (!participantIds || participantIds.length < 2) {
+      return { error: "At least two participants are required" };
+    }
+
     // Check for existing chat with these participants
     const { data: existingChats, error: queryError } = await supabase
       .from('chats')
       .select('*')
       .contains('participants', participantIds);
 
-    if (queryError) throw queryError;
+    if (queryError) {
+      console.error("Error checking existing chats:", queryError);
+      return { error: queryError.message };
+    }
 
     // If chat exists, return the first match
     if (existingChats && existingChats.length > 0) {
@@ -22,7 +30,7 @@ export const createChat = async (participantIds: string[]): Promise<string> => {
                chat.participants.every(id => participantIds.includes(id))
       );
       
-      if (exactMatch) return exactMatch.id;
+      if (exactMatch) return { id: exactMatch.id };
     }
 
     // Create a new chat
@@ -37,18 +45,30 @@ export const createChat = async (participantIds: string[]): Promise<string> => {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error("Error creating chat:", error);
+      return { error: error.message };
+    }
     
-    return data.id;
+    if (!data) {
+      return { error: "No data returned when creating chat" };
+    }
+    
+    return { id: data.id };
   } catch (error) {
-    console.error("Error creating chat:", error);
-    throw error;
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error("Exception in createChat:", errorMessage);
+    return { error: errorMessage };
   }
 };
 
 // Get all chats for a user with the most recent message
-export const getUserChats = async (userId: string): Promise<ChatWithUser[]> => {
+export const getUserChats = async (userId: string): Promise<{ chats: ChatWithUser[]; error?: string }> => {
   try {
+    if (!userId) {
+      return { chats: [], error: "User ID is required" };
+    }
+    
     // Fetch all chats where the user is a participant
     const { data: chatData, error } = await supabase
       .from('chats')
@@ -56,10 +76,13 @@ export const getUserChats = async (userId: string): Promise<ChatWithUser[]> => {
       .contains('participants', [userId])
       .order('updated_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.error("Error fetching user chats:", error);
+      return { chats: [], error: error.message };
+    }
 
     if (!chatData || chatData.length === 0) {
-      return [];
+      return { chats: [] };
     }
 
     // Collect all unique participant IDs (excluding the current user)
@@ -82,6 +105,11 @@ export const getUserChats = async (userId: string): Promise<ChatWithUser[]> => {
         }
       } catch (e) {
         console.error(`Error fetching user ${id}:`, e);
+        toast({
+          title: "Error",
+          description: "Failed to load some user profiles",
+          variant: "destructive"
+        });
       }
     }
 
@@ -123,9 +151,42 @@ export const getUserChats = async (userId: string): Promise<ChatWithUser[]> => {
       };
     });
 
-    return chatsWithUsers;
+    return { chats: chatsWithUsers };
   } catch (error) {
-    console.error("Error fetching user chats:", error);
-    throw error;
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error("Exception in getUserChats:", errorMessage);
+    return { chats: [], error: errorMessage };
+  }
+};
+
+/**
+ * Check if a chat exists between two users
+ */
+export const checkChatExists = async (userIds: string[]): Promise<{ exists: boolean; chatId?: string; error?: string }> => {
+  try {
+    if (!userIds || userIds.length < 2) {
+      return { exists: false, error: "At least two user IDs required" };
+    }
+
+    const { data, error } = await supabase
+      .from('chats')
+      .select('id')
+      .contains('participants', userIds)
+      .filter(`array_length(participants, 1) = ${userIds.length}`)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Error checking if chat exists:", error);
+      return { exists: false, error: error.message };
+    }
+
+    return {
+      exists: !!data,
+      chatId: data?.id
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error("Exception in checkChatExists:", errorMessage);
+    return { exists: false, error: errorMessage };
   }
 };
