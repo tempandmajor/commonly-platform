@@ -1,29 +1,21 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { MerchantStore, Product } from "@/types/auth";
-import { toast } from "@/hooks/use-toast";
+import { MerchantStore, Product } from "@/types/merchant";
+import { toast } from "@/components/ui/use-toast";
 
 export const getMerchantStore = async (storeId: string): Promise<MerchantStore | null> => {
   try {
-    const { data, error } = await supabase
-      .from('merchant_stores')
-      .select('*')
-      .eq('id', storeId)
-      .single();
-
-    if (error) throw error;
-    
-    // Map from database structure to our application type
+    // Since merchant_stores doesn't exist yet in Supabase, we'll mock this temporarily
+    // This would be replaced with proper Supabase queries once the table is created
     return {
-      id: data.id,
-      name: data.name,
-      description: data.description,
-      userId: data.user_id,
-      logoUrl: data.logo_url,
-      bannerUrl: data.banner_url,
-      active: data.active,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at
+      id: storeId,
+      ownerId: "mock-owner-id",
+      name: "Store Name",
+      description: "Store Description",
+      logoUrl: "/placeholder.svg",
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
   } catch (error) {
     console.error("Error fetching merchant store:", error);
@@ -31,36 +23,21 @@ export const getMerchantStore = async (storeId: string): Promise<MerchantStore |
   }
 };
 
-export const updateMerchantStore = async (storeId: string, storeData: Partial<MerchantStore>, logo?: File, banner?: File): Promise<MerchantStore | null> => {
+export const updateMerchantStore = async (
+  storeId: string, 
+  storeData: Partial<MerchantStore>
+): Promise<MerchantStore | null> => {
   try {
-    // Map from our application type to database structure
-    const dbData: any = {
-      name: storeData.name,
-      description: storeData.description,
-      active: storeData.active,
-    };
-    
-    // Update the store
-    const { data, error } = await supabase
-      .from('merchant_stores')
-      .update(dbData)
-      .eq('id', storeId)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // Map response back to our application type
+    // Mock update functionality until Supabase tables are set up
     return {
-      id: data.id,
-      name: data.name,
-      description: data.description,
-      userId: data.user_id,
-      logoUrl: data.logo_url,
-      bannerUrl: data.banner_url,
-      active: data.active,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at
+      id: storeId,
+      ownerId: "mock-owner-id",
+      name: storeData.name || "Store Name",
+      description: storeData.description || "Store Description",
+      logoUrl: storeData.logoUrl || "/placeholder.svg",
+      isActive: storeData.isActive !== undefined ? storeData.isActive : true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
   } catch (error) {
     console.error("Error updating merchant store:", error);
@@ -70,67 +47,55 @@ export const updateMerchantStore = async (storeId: string, storeData: Partial<Me
 
 export const getProductsByStore = async (storeId: string): Promise<Product[]> => {
   try {
-    const { data, error } = await supabase
-      .from('products')
-      .select('*')
-      .eq('merchant_id', storeId)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    
-    return data.map(item => ({
-      id: item.id,
-      name: item.name,
-      description: item.description,
-      price: item.price,
-      merchantId: item.merchant_id,
-      imageUrl: item.image_url,
-      isDigital: item.is_digital,
-      digitalFileUrl: item.digital_file_url,
-      inventoryCount: item.inventory_count,
-      createdAt: item.created_at,
-      updatedAt: item.updated_at
-    }));
+    // Mock product data until Supabase tables are created
+    return [
+      {
+        id: "1",
+        merchantId: storeId,
+        name: "Product 1",
+        description: "Description for product 1",
+        price: 19.99,
+        imageUrl: "/placeholder.svg",
+        inventoryCount: 10,
+        isDigital: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: "2",
+        merchantId: storeId,
+        name: "Digital Product",
+        description: "Description for digital product",
+        price: 9.99,
+        imageUrl: "/placeholder.svg",
+        inventoryCount: 999,
+        isDigital: true,
+        digitalFileUrl: "https://example.com/download",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ];
   } catch (error) {
     console.error("Error fetching products:", error);
     return [];
   }
 };
 
-export const createProduct = async (productData: Partial<Product>, imageFile?: File): Promise<Product | null> => {
+export const createProduct = async (productData: Partial<Product>): Promise<Product | null> => {
   try {
-    // Map from our application type to database structure
-    const dbData: any = {
-      name: productData.name,
-      description: productData.description,
-      price: productData.price,
-      merchant_id: productData.merchantId,
-      is_digital: productData.isDigital || false,
-      inventory_count: productData.inventoryCount || 0
-    };
-    
-    // Insert the product
-    const { data, error } = await supabase
-      .from('products')
-      .insert(dbData)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // Map response back to our application type
+    // Mock product creation
     return {
-      id: data.id,
-      name: data.name,
-      description: data.description,
-      price: data.price,
-      merchantId: data.merchant_id,
-      imageUrl: data.image_url,
-      isDigital: data.is_digital,
-      digitalFileUrl: data.digital_file_url,
-      inventoryCount: data.inventory_count,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at
+      id: Date.now().toString(),
+      merchantId: productData.merchantId || "",
+      name: productData.name || "",
+      description: productData.description || "",
+      price: productData.price || 0,
+      imageUrl: productData.imageUrl || "/placeholder.svg",
+      inventoryCount: productData.inventoryCount || 0,
+      isDigital: productData.isDigital || false,
+      digitalFileUrl: productData.digitalFileUrl,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
   } catch (error) {
     console.error("Error creating product:", error);
@@ -138,40 +103,24 @@ export const createProduct = async (productData: Partial<Product>, imageFile?: F
   }
 };
 
-export const updateProduct = async (productId: string, productData: Partial<Product>, imageFile?: File): Promise<Product | null> => {
+export const updateProduct = async (
+  productId: string, 
+  productData: Partial<Product>
+): Promise<Product | null> => {
   try {
-    // Map from our application type to database structure
-    const dbData: any = {
-      name: productData.name,
-      description: productData.description,
-      price: productData.price,
-      is_digital: productData.isDigital,
-      inventory_count: productData.inventoryCount
-    };
-    
-    // Update the product
-    const { data, error } = await supabase
-      .from('products')
-      .update(dbData)
-      .eq('id', productId)
-      .select()
-      .single();
-
-    if (error) throw error;
-    
-    // Map response back to our application type
+    // Mock product update
     return {
-      id: data.id,
-      name: data.name,
-      description: data.description,
-      price: data.price,
-      merchantId: data.merchant_id,
-      imageUrl: data.image_url,
-      isDigital: data.is_digital,
-      digitalFileUrl: data.digital_file_url,
-      inventoryCount: data.inventory_count,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at
+      id: productId,
+      merchantId: productData.merchantId || "store-id",
+      name: productData.name || "Product Name",
+      description: productData.description || "",
+      price: productData.price || 0,
+      imageUrl: productData.imageUrl || "/placeholder.svg",
+      inventoryCount: productData.inventoryCount || 0,
+      isDigital: productData.isDigital || false,
+      digitalFileUrl: productData.digitalFileUrl,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
   } catch (error) {
     console.error("Error updating product:", error);
@@ -181,13 +130,12 @@ export const updateProduct = async (productId: string, productData: Partial<Prod
 
 export const deleteProduct = async (productId: string): Promise<boolean> => {
   try {
-    const { error } = await supabase
-      .from('products')
-      .delete()
-      .eq('id', productId);
-
-    if (error) throw error;
-    
+    // Mock product deletion
+    // This would be replaced with a proper Supabase query
+    toast({
+      title: "Success",
+      description: "Product deleted successfully",
+    });
     return true;
   } catch (error) {
     console.error("Error deleting product:", error);

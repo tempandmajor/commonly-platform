@@ -8,6 +8,30 @@ CREATE TABLE IF NOT EXISTS public.user_follows (
   UNIQUE(follower_id, following_id)
 );
 
+-- Add indexes for performance
+CREATE INDEX IF NOT EXISTS idx_user_follows_follower ON public.user_follows(follower_id);
+CREATE INDEX IF NOT EXISTS idx_user_follows_following ON public.user_follows(following_id);
+
+-- Apply RLS policies
+ALTER TABLE public.user_follows ENABLE ROW LEVEL SECURITY;
+
+-- Allow users to see follower relationships
+CREATE POLICY "Users can view follows"
+  ON public.user_follows 
+  FOR SELECT 
+  USING (true);
+
+-- Allow users to manage their own follow relationships
+CREATE POLICY "Users can follow/unfollow"
+  ON public.user_follows 
+  FOR INSERT 
+  WITH CHECK (auth.uid() = follower_id);
+
+CREATE POLICY "Users can unfollow"
+  ON public.user_follows 
+  FOR DELETE 
+  USING (auth.uid() = follower_id);
+
 -- Add RPC functions for user followers and following
 CREATE OR REPLACE FUNCTION public.get_user_followers(user_id_param UUID)
 RETURNS SETOF jsonb

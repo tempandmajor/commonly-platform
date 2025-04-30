@@ -70,6 +70,7 @@ export interface PodcastCreateInput {
 export interface PodcastSession {
   id?: string;
   userId: string;
+  hostId?: string; // Added hostId field
   title: string;
   description?: string;
   participants: string[];

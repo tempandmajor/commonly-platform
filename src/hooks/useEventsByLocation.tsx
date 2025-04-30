@@ -24,6 +24,8 @@ export const useEventsByLocation = (radius: number = 50) => {
   useEffect(() => {
     if (data) {
       setEvents(data);
+    } else {
+      setEvents([]);
     }
   }, [data]);
 

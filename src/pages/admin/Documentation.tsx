@@ -1,13 +1,19 @@
 
 import React from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
-import TechnicalDocs from '@/components/admin/documentation/TechnicalDocs';
+import AdminProtectedRoute from '@/components/auth/AdminProtectedRoute';
+import { TechnicalDocs } from '@/components/admin/documentation/TechnicalDocs';
 
-const Documentation: React.FC = () => {
+const Documentation = () => {
   return (
-    <AdminLayout>
-      <TechnicalDocs />
-    </AdminLayout>
+    <AdminProtectedRoute>
+      <AdminLayout>
+        <div className="p-6">
+          <h1 className="text-2xl font-bold mb-6">Documentation</h1>
+          <TechnicalDocs />
+        </div>
+      </AdminLayout>
+    </AdminProtectedRoute>
   );
 };
 

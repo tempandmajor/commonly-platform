@@ -1,13 +1,19 @@
 
 import React from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
-import ServiceMonitor from '@/components/admin/monitoring/ServiceMonitor';
+import AdminProtectedRoute from '@/components/auth/AdminProtectedRoute';
+import { ServiceMonitor } from '@/components/admin/monitoring/ServiceMonitor';
 
-const Monitoring: React.FC = () => {
+const Monitoring = () => {
   return (
-    <AdminLayout>
-      <ServiceMonitor />
-    </AdminLayout>
+    <AdminProtectedRoute>
+      <AdminLayout>
+        <div className="p-6">
+          <h1 className="text-2xl font-bold mb-6">System Monitoring</h1>
+          <ServiceMonitor />
+        </div>
+      </AdminLayout>
+    </AdminProtectedRoute>
   );
 };
 

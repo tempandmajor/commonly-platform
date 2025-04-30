@@ -6,9 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { Search, ShoppingCart, Filter, SlidersHorizontal } from "lucide-react";
+import { Search, ShoppingCart, SlidersHorizontal } from "lucide-react";
 import { Link } from "react-router-dom";
-import { Product, ProductImage } from "@/types/product";
+import { Product } from "@/types/merchant";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Sheet,
@@ -38,54 +38,11 @@ const CATEGORIES = [
   "Books",
 ];
 
-// Mock data for products
-const MOCK_PRODUCTS: (Product & { images?: ProductImage[] })[] = [
-  {
-    id: "1",
-    merchantId: "merchant1",
-    name: "Wireless Headphones",
-    description: "High quality wireless headphones with noise cancellation",
-    price: 129.99,
-    imageUrl: "https://example.com/headphones.jpg",
-    inventoryCount: 15,
-    isDigital: false,
-    category: "Electronics",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "2",
-    merchantId: "merchant1",
-    name: "Digital Marketing eBook",
-    description: "Comprehensive guide to digital marketing strategies",
-    price: 24.99,
-    imageUrl: "https://example.com/ebook.jpg",
-    inventoryCount: 999,
-    isDigital: true,
-    digitalFileUrl: "https://example.com/files/ebook.pdf",
-    category: "Books",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "3",
-    merchantId: "merchant2",
-    name: "Premium T-Shirt",
-    description: "100% cotton premium quality t-shirt",
-    price: 29.99,
-    imageUrl: "https://example.com/tshirt.jpg",
-    inventoryCount: 50,
-    isDigital: false,
-    category: "Clothing",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
-
+// Use the service to fetch products
 const StoreMarketplace: React.FC = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [products, setProducts] = useState<(Product & { images?: ProductImage[] })[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [priceRange, setPriceRange] = useState([0, 1000]);
@@ -97,9 +54,53 @@ const StoreMarketplace: React.FC = () => {
       try {
         setLoading(true);
         
-        // Use mock data instead of Supabase
+        // Simulate API call with timeout
         setTimeout(() => {
-          setProducts(MOCK_PRODUCTS);
+          // Mock data for products (this would be replaced with actual Supabase calls)
+          const mockProducts: Product[] = [
+            {
+              id: "1",
+              merchantId: "merchant1",
+              name: "Wireless Headphones",
+              description: "High quality wireless headphones with noise cancellation",
+              price: 129.99,
+              imageUrl: "/placeholder.svg",
+              inventoryCount: 15,
+              isDigital: false,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              category: "Electronics",
+            },
+            {
+              id: "2",
+              merchantId: "merchant1",
+              name: "Digital Marketing eBook",
+              description: "Comprehensive guide to digital marketing strategies",
+              price: 24.99,
+              imageUrl: "/placeholder.svg",
+              inventoryCount: 999,
+              isDigital: true,
+              digitalFileUrl: "https://example.com/files/ebook.pdf",
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              category: "Books",
+            },
+            {
+              id: "3",
+              merchantId: "merchant2",
+              name: "Premium T-Shirt",
+              description: "100% cotton premium quality t-shirt",
+              price: 29.99,
+              imageUrl: "/placeholder.svg",
+              inventoryCount: 50,
+              isDigital: false,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              category: "Clothing",
+            },
+          ];
+          
+          setProducts(mockProducts);
           setLoading(false);
         }, 500);
         
@@ -118,13 +119,8 @@ const StoreMarketplace: React.FC = () => {
   }, [toast]);
 
   // Get main image for a product
-  const getMainImage = (product: Product & { images?: ProductImage[] }) => {
-    if (product.imageUrl) return product.imageUrl;
-    if (product.images && product.images.length > 0) {
-      const mainImage = product.images.find(img => img.isMainImage);
-      return mainImage ? mainImage.url : product.images[0].url;
-    }
-    return '/placeholder-product.png';
+  const getMainImage = (product: Product) => {
+    return product.imageUrl || '/placeholder.svg';
   };
 
   const filteredProducts = products
@@ -186,7 +182,7 @@ const StoreMarketplace: React.FC = () => {
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="outline">
-                <Filter className="h-4 w-4 mr-2" /> Filter
+                <SlidersHorizontal className="h-4 w-4 mr-2" /> Filter
               </Button>
             </SheetTrigger>
             <SheetContent>

@@ -1,40 +1,74 @@
 
-import React from "react";
-import { Mic, X } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
+import React, { useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { X, Play, Pause } from 'lucide-react';
 
-interface VoicePreviewProps {
-  isUploading: boolean;
-  uploadProgress: number;
+export interface VoicePreviewProps {
+  voiceUrl?: string;
+  voiceBlob?: Blob;
   onCancel: () => void;
 }
 
-const VoicePreview: React.FC<VoicePreviewProps> = ({
-  isUploading,
-  uploadProgress,
-  onCancel
-}) => {
+const VoicePreview: React.FC<VoicePreviewProps> = ({ voiceUrl, voiceBlob, onCancel }) => {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string>('');
+
+  useEffect(() => {
+    if (voiceUrl) {
+      setPreviewUrl(voiceUrl);
+    } else if (voiceBlob) {
+      const url = URL.createObjectURL(voiceBlob);
+      setPreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    }
+  }, [voiceUrl, voiceBlob]);
+
+  const togglePlayback = () => {
+    if (!audioRef.current) return;
+    
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
+    
+    setIsPlaying(!isPlaying);
+  };
+
+  const handleAudioEnded = () => {
+    setIsPlaying(false);
+  };
+
   return (
-    <div className="p-3 border-t">
-      <div className="flex items-center gap-2">
-        <div className="bg-primary/10 text-primary px-3 py-2 rounded-lg">
-          <div className="flex items-center gap-2">
-            <Mic className="h-4 w-4" />
-            <span className="text-sm">Voice message</span>
-            <button 
-              onClick={onCancel}
-              className="ml-2 text-gray-500 hover:text-gray-700"
-              type="button"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          </div>
-        </div>
-        
-        {isUploading && (
-          <Progress value={uploadProgress} className="h-1 flex-1" />
-        )}
-      </div>
+    <div className="relative p-4 border rounded-md bg-gray-50 mb-4 flex items-center">
+      <audio 
+        ref={audioRef} 
+        src={previewUrl} 
+        onEnded={handleAudioEnded}
+        className="hidden"
+      />
+      
+      <Button
+        type="button"
+        size="icon"
+        className="h-8 w-8 mr-3 rounded-full"
+        onClick={togglePlayback}
+      >
+        {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+      </Button>
+      
+      <span className="text-sm text-gray-500">Voice message</span>
+      
+      <Button 
+        type="button" 
+        size="icon" 
+        variant="ghost" 
+        className="absolute top-2 right-2 h-6 w-6"
+        onClick={onCancel}
+      >
+        <X className="h-3 w-3" />
+      </Button>
     </div>
   );
 };

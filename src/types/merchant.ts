@@ -10,7 +10,6 @@ export interface Product {
   isDigital: boolean;
   digitalFileUrl?: string;
   category?: string;
-  images?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -67,6 +66,4 @@ export interface MerchantStore {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-  logo?: File; // Added for form handling
-  banner?: File; // Added for form handling
 }
