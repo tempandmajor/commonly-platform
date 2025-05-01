@@ -70,7 +70,7 @@ export interface PodcastCreateInput {
 export interface PodcastSession {
   id?: string;
   userId: string;
-  hostId?: string; // Added hostId field
+  hostId?: string;
   title: string;
   description?: string;
   participants: string[];
@@ -78,4 +78,5 @@ export interface PodcastSession {
   status: 'recording' | 'processing' | 'completed' | 'failed' | 'scheduled';
   recordingUrl?: string;
   createdAt?: string;
+  agoraChannelName?: string;
 }

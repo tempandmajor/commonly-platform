@@ -1,71 +1,46 @@
 
-export interface ChatUser {
-  uid: string;
-  displayName?: string | null;
-  photoURL?: string | null;
-  email?: string | null;
-  isOnline?: boolean;
-  lastSeen?: string | null;
+import { Podcast, PodcastCreateInput } from "@/types/podcast";
+
+export interface ChatMessage {
+  id: string;
+  chatId: string;
+  senderId: string;
+  recipientId: string;
+  text?: string;
+  imageUrl?: string;
+  voiceUrl?: string;
+  timestamp: string;
+  read: boolean;
+}
+
+export interface ChatParticipant {
+  id: string;
+  displayName?: string;
+  photoURL?: string;
+  online?: boolean;
+  typing?: boolean;
+  lastSeen?: string;
 }
 
 export interface Chat {
   id: string;
   participants: string[];
   lastMessage?: {
+    id: string;
+    senderId: string;
+    recipientId: string;
     text?: string;
-    senderId?: string;
-    timestamp?: string;
-    read?: boolean;
-  } | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface ChatWithUser extends Chat {
-  user: ChatUser | null;
-}
-
-export interface ChatMessage {
-  id: string;
-  chat_id: string;
-  sender_id: string;
-  recipient_id: string | null;
-  text?: string;
-  image_url?: string | null;
-  voice_url?: string | null;
-  timestamp: string;
-  read: boolean;
-}
-
-export interface UserTyping {
-  chat_id: string;
-  user_id: string;
-  is_typing: boolean;
+    timestamp: string;
+    read: boolean;
+  };
+  created_at: string;
   updated_at: string;
 }
 
-// Update podcast interfaces to match what our database expects
-export interface PodcastCreateInput {
-  title: string;
-  description?: string;
-  userId: string;
-  userName?: string;
-  userPhotoUrl?: string;
-  categoryId?: string;
-  type: 'audio' | 'video';
-  duration?: number;
-  published: boolean;
-  visibility: 'public' | 'private' | 'unlisted';
-  tags?: string[];
-  audioUrl?: string;
-  videoUrl?: string;
-  imageUrl?: string;
-  likeCount?: number;
-  viewCount?: number;
-  shareCount?: number;
-  creatorId?: string;
-  creatorName?: string;
+export interface ChatWithParticipants extends Chat {
+  participantDetails: ChatParticipant[];
+  unreadCount: number;
 }
 
-// Re-export Podcast type to fix circular dependency issues
-export type { Podcast } from '../types/podcast';
+// Re-export podcast types for backward compatibility if needed
+export { Podcast, PodcastCreateInput };

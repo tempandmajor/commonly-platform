@@ -1,153 +1,140 @@
 
 import React, { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { reportCaterer } from '@/services/catererService';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+import { reportCaterer } from '@/services/catererService';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { toast } from 'sonner';
-import { useForm } from 'react-hook-form';
-import { Flag } from 'lucide-react';
 
 interface ReportCatererDialogProps {
-  catererId: string;
-  catererName: string;
   isOpen: boolean;
   onClose: () => void;
+  catererId: string;
+  catererName: string;
 }
 
-const reportReasons = [
-  'Inaccurate information',
-  'Inappropriate content',
-  'Scam or fraud',
-  'Caterer does not exist',
-  'Food quality issues',
-  'Other',
+const reasonOptions = [
+  { value: 'inappropriate', label: 'Inappropriate content' },
+  { value: 'fraud', label: 'Fraudulent business' },
+  { value: 'quality', label: 'Poor quality service' },
+  { value: 'behavior', label: 'Unprofessional behavior' },
+  { value: 'other', label: 'Other' }
 ];
 
 const ReportCatererDialog: React.FC<ReportCatererDialogProps> = ({ 
-  catererId, 
-  catererName, 
   isOpen, 
-  onClose 
+  onClose,
+  catererId,
+  catererName
 }) => {
+  const [reason, setReason] = useState('');
+  const [details, setDetails] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { currentUser } = useAuth();
-  const [submitting, setSubmitting] = useState(false);
-  const [selectedReason, setSelectedReason] = useState('');
+  const { toast } = useToast();
   
-  const form = useForm({
-    defaultValues: {
-      description: '',
-    },
-  });
-
-  const handleSubmit = async (data: { description: string }) => {
+  const handleSubmit = async () => {
     if (!currentUser) {
-      toast.error('You must be logged in to report a caterer');
+      toast({
+        title: "Error",
+        description: "You must be logged in to report a caterer",
+        variant: "destructive",
+      });
       return;
     }
     
-    if (!selectedReason) {
-      toast.error('Please select a reason for reporting');
+    if (!reason) {
+      toast({
+        title: "Error",
+        description: "Please select a reason for your report",
+        variant: "destructive",
+      });
       return;
     }
     
     try {
-      setSubmitting(true);
+      setIsSubmitting(true);
       
-      await reportCaterer({
-        catererId,
-        userId: currentUser.uid,
-        reason: selectedReason,
-        description: data.description,
-      });
+      const success = await reportCaterer(
+        currentUser.uid, 
+        catererId, 
+        reason, 
+        details
+      );
       
-      toast.success('Report submitted successfully');
-      onClose();
-      form.reset();
-      setSelectedReason('');
+      if (success) {
+        toast({
+          title: "Report submitted",
+          description: "Thank you for your report. We will review it shortly.",
+        });
+        onClose();
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to submit report. Please try again.",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
-      toast.error('Failed to submit report');
-      console.error('Error reporting caterer:', error);
+      console.error("Error submitting report:", error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
     } finally {
-      setSubmitting(false);
+      setIsSubmitting(false);
     }
   };
-
+  
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Report Caterer</DialogTitle>
+          <DialogTitle>Report {catererName}</DialogTitle>
           <DialogDescription>
-            Please provide details about why you're reporting "{catererName}".
+            Please let us know why you're reporting this caterer.
+            All reports are confidential.
           </DialogDescription>
         </DialogHeader>
         
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            <div>
-              <FormLabel>Reason for reporting</FormLabel>
-              <div className="mt-2 grid grid-cols-1 gap-2">
-                {reportReasons.map((reason) => (
-                  <div
-                    key={reason}
-                    className={`border rounded-md p-3 cursor-pointer transition-all ${
-                      selectedReason === reason 
-                        ? 'border-primary bg-primary/5' 
-                        : 'hover:border-primary/50'
-                    }`}
-                    onClick={() => setSelectedReason(reason)}
-                  >
-                    {reason}
-                  </div>
-                ))}
+        <div className="space-y-4 py-4">
+          <RadioGroup 
+            value={reason} 
+            onValueChange={setReason}
+          >
+            {reasonOptions.map((option) => (
+              <div key={option.value} className="flex items-start space-x-2">
+                <RadioGroupItem value={option.value} id={option.value} />
+                <Label className="font-normal" htmlFor={option.value}>
+                  {option.label}
+                </Label>
               </div>
-            </div>
-            
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Additional details</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Please provide more details about the issue"
-                      className="min-h-[100px]"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={submitting}>
-                {submitting ? 'Submitting...' : 'Submit Report'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+            ))}
+          </RadioGroup>
+          
+          <Textarea
+            placeholder="Provide additional details about your report..."
+            value={details}
+            onChange={(e) => setDetails(e.target.value)}
+            className="min-h-[100px]"
+          />
+        </div>
+        
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSubmit} 
+            disabled={!reason || isSubmitting}
+          >
+            {isSubmitting ? "Submitting..." : "Submit Report"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

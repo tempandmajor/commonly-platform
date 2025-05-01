@@ -2,7 +2,7 @@
 import React from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import AdminProtectedRoute from '@/components/auth/AdminProtectedRoute';
-import { ServiceMonitor } from '@/components/admin/monitoring/ServiceMonitor';
+import ServiceMonitor from '@/components/admin/monitoring/ServiceMonitor';
 
 const Monitoring = () => {
   return (

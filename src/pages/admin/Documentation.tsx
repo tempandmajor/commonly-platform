@@ -2,7 +2,7 @@
 import React from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import AdminProtectedRoute from '@/components/auth/AdminProtectedRoute';
-import { TechnicalDocs } from '@/components/admin/documentation/TechnicalDocs';
+import TechnicalDocs from '@/components/admin/documentation/TechnicalDocs';
 
 const Documentation = () => {
   return (

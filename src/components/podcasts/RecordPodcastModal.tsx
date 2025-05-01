@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -65,11 +66,10 @@ const RecordPodcastModal: React.FC<RecordPodcastModalProps> = ({
         hostId: currentUser.uid,
         title: data.title,
         description: data.description,
-        scheduledFor: new Date(),
-        duration: 60, // Default scheduled duration (minutes)
         participants: [currentUser.uid],
         status: "scheduled",
         agoraChannelName: uniqueChannelName,
+        userId: currentUser.uid,
       });
       
       setActiveTab("record");

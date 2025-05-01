@@ -1,8 +1,18 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { globalSearch, SearchResult } from '@/services/searchService';
+import { globalSearch, searchEventsByLocation, EventWithDistance } from '@/services/searchService';
 import { useDebounce } from '@/hooks/useDebounce';
+
+// Define the SearchResult interface if it's not already defined in searchService.ts
+interface SearchResult {
+  id: string;
+  title: string;
+  description: string | null;
+  image_url: string | null;
+  type: string;
+  created_at: string;
+}
 
 export const useSearch = (initialQuery: string = '') => {
   const [query, setQuery] = useState(initialQuery);
@@ -24,7 +34,7 @@ export const useSearch = (initialQuery: string = '') => {
   return { 
     query,
     setQuery,
-    results: results || [],
+    results: results as SearchResult[] || [],
     isLoading,
     error,
     isSearching: debouncedQuery.length > 2 && isLoading
