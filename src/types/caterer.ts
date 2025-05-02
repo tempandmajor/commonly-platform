@@ -91,6 +91,7 @@ export interface CatererSearchParams {
   services?: string[];
   rating?: number;
   availability?: string;
+  cuisineTypes?: string[];
   cuisineType?: string | null;
   priceMin?: number;
   priceMax?: number;

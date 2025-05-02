@@ -3,7 +3,7 @@ import React from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import TechnicalDocs from '@/components/admin/documentation/TechnicalDocs';
 
-const Documentation: React.FC = () => {
+const Documentation = () => {
   return (
     <AdminLayout>
       <TechnicalDocs />

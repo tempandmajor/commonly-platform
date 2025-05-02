@@ -3,7 +3,7 @@ import React from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import ServiceMonitor from '@/components/admin/monitoring/ServiceMonitor';
 
-const Monitoring: React.FC = () => {
+const Monitoring = () => {
   return (
     <AdminLayout>
       <ServiceMonitor />

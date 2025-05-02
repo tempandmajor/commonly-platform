@@ -5,6 +5,7 @@ import { AuthContextType, UserData, UserSession } from "@/types/auth";
 import { useAuthActions } from "@/hooks/useAuthActions";
 import { User } from "@supabase/supabase-js";
 import { toast } from "@/hooks/use-toast";
+import { adaptUser } from "@/utils/userAdapter";
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
@@ -123,11 +124,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Also update the target user's followers count
       try {
-        // If the rpc function exists
-        await supabase.rpc('decrement_follower_count', { target_user_id: userId });
-      } catch (rpcError) {
-        console.error('RPC error:', rpcError);
-        // Fallback: direct update if RPC fails
+        // Direct update since the RPC function is not available
         const { data: targetUser } = await supabase
           .from('users')
           .select('followers, follower_count')
@@ -144,6 +141,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             })
             .eq('id', userId);
         }
+      } catch (error) {
+        console.error('Error updating target user:', error);
       }
       
       toast({
@@ -217,7 +216,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setCurrentUser(session?.user ?? null);
+        const adaptedUser = adaptUser(session?.user ?? null);
+        setCurrentUser(adaptedUser);
         
         if (session?.user) {
           try {
@@ -305,7 +305,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Initial session check
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setCurrentUser(session?.user ?? null);
+      const adaptedUser = adaptUser(session?.user ?? null);
+      setCurrentUser(adaptedUser);
       
       if (!session) {
         setLoading(false);
