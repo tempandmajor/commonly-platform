@@ -3,176 +3,254 @@ import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-const TechnicalDocs = () => {
+const TechnicalDocs: React.FC = () => {
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="api" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="api">API</TabsTrigger>
-          <TabsTrigger value="database">Database</TabsTrigger>
-          <TabsTrigger value="frontend">Frontend</TabsTrigger>
-          <TabsTrigger value="deployment">Deployment</TabsTrigger>
+      <Tabs defaultValue="api">
+        <TabsList>
+          <TabsTrigger value="api">API Reference</TabsTrigger>
+          <TabsTrigger value="database">Database Schema</TabsTrigger>
+          <TabsTrigger value="deployment">Deployment Guide</TabsTrigger>
+          <TabsTrigger value="integrations">Integrations</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="api" className="mt-6">
+        <TabsContent value="api" className="space-y-4 mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>API Documentation</CardTitle>
-              <CardDescription>
-                Overview of available API endpoints and authentication
-              </CardDescription>
+              <CardTitle>REST API Documentation</CardTitle>
+              <CardDescription>Complete reference for the application's RESTful API endpoints</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <section>
-                <h3 className="text-lg font-medium">Authentication</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  All API requests require authentication using JWT tokens. Tokens are obtained through the authentication endpoints.
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold">Authentication</h3>
+                <p className="text-sm text-muted-foreground">
+                  All API requests require authentication using JWT tokens. Include the token in the 
+                  Authorization header as a Bearer token.
                 </p>
-                <pre className="mt-2 p-2 bg-muted rounded-md">
-                  <code>
-                    {`POST /auth/login
-POST /auth/register
-POST /auth/refresh-token`}
-                  </code>
+                <pre className="bg-muted p-4 rounded-md overflow-x-auto">
+                  <code>Authorization: Bearer YOUR_TOKEN_HERE</code>
                 </pre>
-              </section>
+              </div>
               
-              <section>
-                <h3 className="text-lg font-medium">User Endpoints</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Endpoints for user profile management
-                </p>
-                <pre className="mt-2 p-2 bg-muted rounded-md">
-                  <code>
-                    {`GET /users/profile
-PUT /users/profile
-GET /users/{id}
-GET /users/search`}
-                  </code>
-                </pre>
-              </section>
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold">User Endpoints</h3>
+                <div className="border rounded-md">
+                  <div className="p-4 border-b">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded">GET</span>
+                        <code>/api/users</code>
+                      </div>
+                      <span className="text-sm text-muted-foreground">Get all users</span>
+                    </div>
+                  </div>
+                  <div className="p-4 border-b">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded">GET</span>
+                        <code>/api/users/{'{id}'}</code>
+                      </div>
+                      <span className="text-sm text-muted-foreground">Get user by ID</span>
+                    </div>
+                  </div>
+                  <div className="p-4 border-b">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <span className="bg-green-500 text-white text-xs px-2 py-1 rounded">POST</span>
+                        <code>/api/users</code>
+                      </div>
+                      <span className="text-sm text-muted-foreground">Create user</span>
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <span className="bg-yellow-500 text-white text-xs px-2 py-1 rounded">PUT</span>
+                        <code>/api/users/{'{id}'}</code>
+                      </div>
+                      <span className="text-sm text-muted-foreground">Update user</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
         
-        <TabsContent value="database" className="mt-6">
+        <TabsContent value="database" className="space-y-4 mt-6">
           <Card>
             <CardHeader>
               <CardTitle>Database Schema</CardTitle>
-              <CardDescription>
-                Overview of database tables and relationships
-              </CardDescription>
+              <CardDescription>Overview of the database structure and relationships</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="bg-muted">
-                      <th className="border p-2 text-left">Table Name</th>
-                      <th className="border p-2 text-left">Description</th>
-                      <th className="border p-2 text-left">Key Relationships</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className="border p-2">users</td>
-                      <td className="border p-2">User accounts and profiles</td>
-                      <td className="border p-2">Referenced by many tables</td>
-                    </tr>
-                    <tr>
-                      <td className="border p-2">events</td>
-                      <td className="border p-2">Event details and metadata</td>
-                      <td className="border p-2">created_by → users.id</td>
-                    </tr>
-                    <tr>
-                      <td className="border p-2">podcasts</td>
-                      <td className="border p-2">Podcast episodes</td>
-                      <td className="border p-2">user_id → users.id</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="frontend" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Frontend Architecture</CardTitle>
-              <CardDescription>
-                Technical details about the frontend application
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <section>
-                  <h3 className="text-lg font-medium">Tech Stack</h3>
-                  <ul className="list-disc pl-5 mt-2">
-                    <li>React 18 with Hooks</li>
-                    <li>TypeScript for type safety</li>
-                    <li>Tailwind CSS for styling</li>
-                    <li>React Router for navigation</li>
-                    <li>TanStack Query for data fetching and caching</li>
-                    <li>Supabase for backend integration</li>
-                  </ul>
-                </section>
+            <CardContent className="space-y-4">
+              <p>
+                This application uses Supabase with PostgreSQL as the main database. The schema 
+                consists of the following primary tables:
+              </p>
+              
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold">Users Table</h3>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full border border-gray-200 rounded-md">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Column</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        <tr>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm">id</td>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm">UUID</td>
+                          <td className="px-4 py-2 text-sm">Primary key</td>
+                        </tr>
+                        <tr>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm">email</td>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm">TEXT</td>
+                          <td className="px-4 py-2 text-sm">User's email address</td>
+                        </tr>
+                        <tr>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm">display_name</td>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm">TEXT</td>
+                          <td className="px-4 py-2 text-sm">User's display name</td>
+                        </tr>
+                        <tr>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm">created_at</td>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm">TIMESTAMP</td>
+                          <td className="px-4 py-2 text-sm">When the user was created</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
                 
-                <section>
-                  <h3 className="text-lg font-medium">Component Structure</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Components are organized using a feature-based approach with shared UI components.
-                  </p>
-                  <pre className="mt-2 p-2 bg-muted rounded-md">
-                    <code>
-                      {`src/
-  ├── components/       # Shared components
-  ├── pages/           # Page components
-  ├── hooks/           # Custom React hooks
-  ├── contexts/        # React context providers
-  ├── services/        # API and service functions
-  ├── types/           # TypeScript type definitions
-  └── utils/           # Utility functions`}
-                    </code>
-                  </pre>
-                </section>
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold">Events Table</h3>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full border border-gray-200 rounded-md">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Column</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        <tr>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm">id</td>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm">UUID</td>
+                          <td className="px-4 py-2 text-sm">Primary key</td>
+                        </tr>
+                        <tr>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm">title</td>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm">TEXT</td>
+                          <td className="px-4 py-2 text-sm">Event title</td>
+                        </tr>
+                        <tr>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm">description</td>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm">TEXT</td>
+                          <td className="px-4 py-2 text-sm">Event description</td>
+                        </tr>
+                        <tr>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm">created_by</td>
+                          <td className="px-4 py-2 whitespace-nowrap text-sm">UUID</td>
+                          <td className="px-4 py-2 text-sm">Foreign key to users table</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
         
-        <TabsContent value="deployment" className="mt-6">
+        <TabsContent value="deployment" className="space-y-4 mt-6">
           <Card>
             <CardHeader>
               <CardTitle>Deployment Guide</CardTitle>
-              <CardDescription>
-                Instructions for deploying the application
-              </CardDescription>
+              <CardDescription>Instructions for deploying the application to production</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <section>
-                  <h3 className="text-lg font-medium">Environment Setup</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Required environment variables:
-                  </p>
-                  <pre className="mt-2 p-2 bg-muted rounded-md">
-                    <code>
-                      {`VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-VITE_API_BASE_URL=your_api_base_url`}
-                    </code>
-                  </pre>
-                </section>
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold">Prerequisites</h3>
+                  <ul className="list-disc pl-5 space-y-1 text-sm">
+                    <li>Node.js v18+ and npm</li>
+                    <li>Supabase account</li>
+                    <li>Vercel account (recommended)</li>
+                  </ul>
+                </div>
                 
-                <section>
-                  <h3 className="text-lg font-medium">Build Process</h3>
-                  <ol className="list-decimal pl-5 mt-2">
-                    <li>Run <code>npm install</code> to install dependencies</li>
-                    <li>Run <code>npm run build</code> to create production build</li>
-                    <li>Deploy the contents of the <code>dist</code> folder</li>
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold">Deployment Steps</h3>
+                  <ol className="list-decimal pl-5 space-y-2 text-sm">
+                    <li className="space-y-1">
+                      <p className="font-medium">Set up Supabase project</p>
+                      <p className="text-muted-foreground">Create a new Supabase project and run the migrations</p>
+                    </li>
+                    <li className="space-y-1">
+                      <p className="font-medium">Configure environment variables</p>
+                      <p className="text-muted-foreground">Copy the .env.example file to .env and update the values</p>
+                    </li>
+                    <li className="space-y-1">
+                      <p className="font-medium">Build the application</p>
+                      <pre className="bg-muted p-2 rounded-md"><code>npm run build</code></pre>
+                    </li>
+                    <li className="space-y-1">
+                      <p className="font-medium">Deploy to Vercel</p>
+                      <p className="text-muted-foreground">Connect your GitHub repository to Vercel and deploy</p>
+                    </li>
                   </ol>
-                </section>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="integrations" className="space-y-4 mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Integrations</CardTitle>
+              <CardDescription>Third-party services integrated with the application</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold">Authentication</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Authentication is handled through Supabase Auth, which provides email/password,
+                    magic link, and social login options.
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold">Payment Processing</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Payment processing is handled through Stripe. The integration allows for 
+                    one-time payments, subscriptions, and marketplace transactions with 
+                    connected accounts.
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold">Real-time Communication</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Real-time features such as chat and notifications are powered by Supabase 
+                    Realtime, which uses PostgreSQL's LISTEN/NOTIFY functionality.
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold">File Storage</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Files are stored in Supabase Storage, which provides a secure and scalable 
+                    solution for user uploads.
+                  </p>
+                </div>
               </div>
             </CardContent>
           </Card>

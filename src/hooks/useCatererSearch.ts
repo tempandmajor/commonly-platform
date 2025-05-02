@@ -26,7 +26,7 @@ export const useCatererSearch = () => {
       }
       
       setLastVisible(result.lastVisible);
-      setHasMore(result.caterers.length >= 12);
+      setHasMore(!!result.lastVisible);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('An unknown error occurred'));
       console.error('Error fetching caterers:', err);

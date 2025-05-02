@@ -27,11 +27,12 @@ export const globalSearch = async (query: string): Promise<SearchResult[]> => {
   }
 
   try {
+    // Call the global_search function
     const { data, error } = await supabase
-      .from('global_search_view')
-      .select('*')
-      .ilike('title', `%${query}%`)
-      .limit(20);
+      .rpc('global_search', { 
+        search_query: query,
+        limit_count: 20 
+      });
       
     if (error) throw error;
     
@@ -49,10 +50,10 @@ export const searchEventsByLocation = async (
 ): Promise<EventWithDistance[]> => {
   try {
     const { data, error } = await supabase
-      .rpc('find_events_by_location', {
-        user_lat: latitude,
-        user_lng: longitude,
-        radius_km: radiusKm
+      .rpc('search_events_by_location', {
+        lat: latitude,
+        lng: longitude,
+        radius: radiusKm
       });
     
     if (error) throw error;

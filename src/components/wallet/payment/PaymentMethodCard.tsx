@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CreditCard, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
-import { PaymentMethod } from "@/types/merchant";
+import { PaymentMethod } from "@/types/wallet";
 
 interface PaymentMethodCardProps {
   paymentMethod: PaymentMethod;

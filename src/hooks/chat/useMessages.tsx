@@ -42,7 +42,20 @@ export const useMessages = () => {
           return;
         }
         
-        setMessages(data as ChatMessage[] || []);
+        // Map the snake_case fields to camelCase
+        const formattedMessages = data?.map(msg => ({
+          id: msg.id,
+          chatId: msg.chat_id,
+          senderId: msg.sender_id,
+          recipientId: msg.recipient_id,
+          text: msg.text,
+          imageUrl: msg.image_url,
+          voiceUrl: msg.voice_url,
+          timestamp: msg.timestamp,
+          read: msg.read
+        })) || [];
+        
+        setMessages(formattedMessages);
         setError(null);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';

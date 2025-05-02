@@ -4,10 +4,8 @@ import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { PaymentMethod } from "@/types/merchant";
-import { LoadingSpinner } from "@/components/common/LoadingSpinner";
+import { PaymentMethod } from "@/types/wallet";
 import PaymentMethodCard from "./payment/PaymentMethodCard";
-import EmptyPaymentMethods from "./payment/EmptyPaymentMethods";
 
 // Mock data helper function
 const generateMockPaymentMethods = (userId: string): PaymentMethod[] => {
@@ -138,7 +136,7 @@ const PaymentMethodsTab: React.FC<PaymentMethodsTabProps> = ({
   };
 
   if (loading) {
-    return <LoadingSpinner />;
+    return <div className="flex justify-center py-8"><div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div></div>;
   }
 
   return (
@@ -152,7 +150,11 @@ const PaymentMethodsTab: React.FC<PaymentMethodsTabProps> = ({
       </div>
 
       {paymentMethods.length === 0 ? (
-        <EmptyPaymentMethods onAddPaymentMethod={handleAddPaymentMethod} />
+        <div className="text-center p-10 border rounded-lg">
+          <h3 className="text-lg font-medium mb-2">No payment methods</h3>
+          <p className="text-gray-500 mb-4">You haven't added any payment methods yet</p>
+          <Button onClick={handleAddPaymentMethod}>Add Payment Method</Button>
+        </div>
       ) : (
         <div className="grid gap-4">
           {paymentMethods.map((method) => (

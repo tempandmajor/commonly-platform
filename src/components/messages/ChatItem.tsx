@@ -18,8 +18,8 @@ const ChatItem: React.FC<ChatItemProps> = ({ chat, active }) => {
     : "";
 
   // Get user initials for avatar fallback
-  const userInitial = chat.user?.displayName
-    ? chat.user.displayName.charAt(0).toUpperCase()
+  const userInitial = chat.otherUser?.displayName
+    ? chat.otherUser.displayName.charAt(0).toUpperCase()
     : "U";
     
   // Determine if the chat has unread messages
@@ -35,16 +35,16 @@ const ChatItem: React.FC<ChatItemProps> = ({ chat, active }) => {
     >
       <div className="relative">
         <Avatar className="h-12 w-12">
-          <AvatarImage src={chat.user?.photoURL || ""} alt={chat.user?.displayName || "User"} />
+          <AvatarImage src={chat.otherUser?.photoURL || ""} alt={chat.otherUser?.displayName || "User"} />
           <AvatarFallback>{userInitial}</AvatarFallback>
         </Avatar>
-        {chat.user?.isOnline && (
+        {chat.otherUser?.isOnline && (
           <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-white dark:border-gray-900"></span>
         )}
       </div>
       <div className="ml-3 flex-1 overflow-hidden">
         <div className="flex justify-between items-center">
-          <h4 className="text-sm font-medium truncate">{chat.user?.displayName || "Unknown User"}</h4>
+          <h4 className="text-sm font-medium truncate">{chat.otherUser?.displayName || "Unknown User"}</h4>
           <span className="text-xs text-gray-500">{timestamp}</span>
         </div>
         <div className="flex justify-between items-center mt-1">

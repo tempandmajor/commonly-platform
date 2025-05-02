@@ -1,42 +1,37 @@
 
-import { useState, useCallback, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { globalSearch, searchEventsByLocation, EventWithDistance } from '@/services/searchService';
-import { useDebounce } from '@/hooks/useDebounce';
+import { useState, useCallback } from 'react';
+import { SearchResult, globalSearch } from '@/services/searchService';
 
-// Define the SearchResult interface if it's not already defined in searchService.ts
-interface SearchResult {
-  id: string;
-  title: string;
-  description: string | null;
-  image_url: string | null;
-  type: string;
-  created_at: string;
-}
+export function useSearch() {
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
-export const useSearch = (initialQuery: string = '') => {
-  const [query, setQuery] = useState(initialQuery);
-  const debouncedQuery = useDebounce(query, 300);
-  
-  const { data: results, isLoading, error, refetch } = useQuery({
-    queryKey: ['search', debouncedQuery],
-    queryFn: () => globalSearch(debouncedQuery),
-    enabled: debouncedQuery.length > 2, // Only search when query has at least 3 characters
-  });
-
-  // Reset search when query is empty
-  useEffect(() => {
-    if (!debouncedQuery) {
-      refetch();
+  const search = useCallback(async (query: string) => {
+    if (!query || query.trim().length < 2) {
+      setResults([]);
+      return;
     }
-  }, [debouncedQuery, refetch]);
 
-  return { 
-    query,
-    setQuery,
-    results: results as SearchResult[] || [],
-    isLoading,
+    setLoading(true);
+    setError(null);
+
+    try {
+      const searchResults = await globalSearch(query);
+      setResults(searchResults);
+    } catch (err) {
+      const errMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+      setError(errMessage);
+      console.error('Search failed:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return {
+    results,
+    loading,
     error,
-    isSearching: debouncedQuery.length > 2 && isLoading
+    search
   };
-};
+}

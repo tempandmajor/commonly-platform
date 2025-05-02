@@ -25,7 +25,7 @@ const MessageList: React.FC<MessageListProps> = ({
   return (
     <>
       {messages.map((message) => {
-        const isMyMessage = currentUser?.uid === message.sender_id;
+        const isMyMessage = currentUser?.uid === message.senderId;
         
         return (
           <MessageBubble 

@@ -2,7 +2,6 @@
 import React from "react";
 import { Avatar } from "@/components/ui/avatar";
 import { ChatMessage } from "@/types/chat";
-import { UserData } from "@/types/auth";
 import { formatTime } from "@/lib/utils";
 
 interface MessageBubbleProps {
@@ -37,10 +36,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
       <div className={`max-w-[70%] ${isMyMessage ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-800'} rounded-lg px-4 py-2`}>
         {message.text && <p>{message.text}</p>}
         
-        {message.image_url && (
+        {message.imageUrl && (
           <div className="mt-2">
             <img 
-              src={message.image_url} 
+              src={message.imageUrl} 
               alt="Message attachment" 
               className="rounded-md max-w-full" 
               style={{ maxHeight: '200px' }}
@@ -48,11 +47,11 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({
           </div>
         )}
         
-        {message.voice_url && (
+        {message.voiceUrl && (
           <div className="mt-2">
             <audio 
               controls 
-              src={message.voice_url}
+              src={message.voiceUrl}
               className="w-full"
             >
               Your browser does not support the audio element.

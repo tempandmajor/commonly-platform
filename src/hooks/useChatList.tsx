@@ -27,21 +27,23 @@ export function useChatList() {
       id: dbChat.id,
       participants: dbChat.participants || [],
       lastMessage: dbChat.last_message ? {
-        text: dbChat.last_message.text || '',
+        id: dbChat.last_message.id || '',
         senderId: dbChat.last_message.sender_id || '',
+        recipientId: dbChat.last_message.recipient_id || '',
+        text: dbChat.last_message.text || '',
         timestamp: dbChat.last_message.timestamp || new Date().toISOString(),
         read: dbChat.last_message.read ?? false,
       } : undefined,
-      user: userData ? {
-        uid: userData.uid,
+      otherUser: userData ? {
+        id: userData.uid,
         displayName: userData.displayName,
         photoURL: userData.photoURL,
-        email: userData.email,
         isOnline: userData.isOnline || false,
         lastSeen: userData.lastSeen
-      } : null,
-      createdAt: dbChat.created_at,
-      updatedAt: dbChat.updated_at,
+      } : undefined,
+      unreadCount: 0, // We'll calculate this separately if needed
+      created_at: dbChat.created_at,
+      updated_at: dbChat.updated_at,
     };
   }, [currentUser]);
 

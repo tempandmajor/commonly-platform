@@ -21,11 +21,14 @@ const ServiceMonitor: React.FC = () => {
     setLoading(true);
     try {
       // In a real app, we'd fetch this from an API endpoint
-      // For now, we'll simulate the response
+      // For now, we'll simulate the response with a direct check
       
       // Check Supabase connection as an example
       const start = Date.now();
-      const { data, error } = await supabase.from('health_checks').select('*').limit(1);
+      
+      // Use a table that we know exists instead of health_checks
+      const { error } = await supabase.from('users').select('id').limit(1);
+      
       const end = Date.now();
       const latency = end - start;
       

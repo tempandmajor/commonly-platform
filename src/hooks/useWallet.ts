@@ -1,15 +1,6 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { 
-  getUserWallet, 
-  getUserTransactions, 
-  getUserReferralStats,
-  getUserPaymentMethods,
-  initiateWithdrawal,
-  createConnectAccountLink
-} from "@/services/walletService";
-import { UserWallet, Transaction, ReferralStats, PaymentMethod } from "@/types/auth";
+import { PaymentMethod, ReferralStats, Transaction, UserWallet } from "@/types/wallet";
 import { useToast } from "@/hooks/use-toast";
 
 interface TransactionFilters {
@@ -36,25 +27,44 @@ export const useWallet = (userId: string) => {
   const [totalTransactions, setTotalTransactions] = useState<number>(0);
   const [statsPeriod, setStatsPeriod] = useState<'week' | 'month' | 'year' | 'all'>('month');
 
-  // Fetch wallet data
+  // Mock implementation for now
   const fetchWalletData = useCallback(async () => {
-    if (!userId) return;
-    
     setLoading(true);
-    try {
-      const walletData = await getUserWallet(userId);
-      setWallet(walletData);
-    } catch (error) {
-      console.error("Error fetching wallet:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load wallet data",
-        variant: "destructive",
+    // Simulate API call
+    setTimeout(() => {
+      setWallet({
+        userId,
+        totalEarnings: 1250.75,
+        availableBalance: 875.50,
+        pendingBalance: 200.00,
+        platformCredits: 50,
+        stripeConnectId: null,
+        hasPayoutMethod: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        transactions: []
       });
-    } finally {
+      setPaymentMethods(generateMockPaymentMethods(userId));
       setLoading(false);
-    }
-  }, [userId, toast]);
+    }, 800);
+  }, [userId]);
+
+  // Mock helper function
+  const generateMockPaymentMethods = (userId: string): PaymentMethod[] => {
+    return [
+      {
+        id: "pm_1",
+        userId,
+        type: "card",
+        brand: "Visa",
+        last4: "4242",
+        expMonth: 12,
+        expYear: 2025,
+        isDefault: true,
+        createdAt: new Date().toISOString()
+      }
+    ];
+  };
 
   // Fetch transactions with filters
   const fetchTransactions = useCallback(async (
@@ -229,11 +239,8 @@ export const useWallet = (userId: string) => {
   useEffect(() => {
     if (userId) {
       fetchWalletData();
-      fetchTransactions();
-      fetchReferralStats();
-      fetchPaymentMethods();
     }
-  }, [userId, fetchWalletData, fetchTransactions, fetchReferralStats, fetchPaymentMethods]);
+  }, [userId, fetchWalletData]);
 
   return {
     wallet,
@@ -246,7 +253,6 @@ export const useWallet = (userId: string) => {
     connectAccountLoading,
     currentPage,
     totalTransactions,
-    statsPeriod,
     filters,
     fetchWalletData,
     fetchTransactions,
@@ -256,7 +262,6 @@ export const useWallet = (userId: string) => {
     handleCreateConnectAccount,
     exportTransactionsToCSV,
     setFilters,
-    setCurrentPage,
-    setStatsPeriod
+    setCurrentPage
   };
 };

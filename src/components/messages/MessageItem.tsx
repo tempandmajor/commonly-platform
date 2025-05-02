@@ -12,7 +12,7 @@ interface MessageItemProps {
 
 const MessageItem: React.FC<MessageItemProps> = ({ message, otherUser }) => {
   const { currentUser } = useAuth();
-  const isMyMessage = currentUser?.uid === message.sender_id;
+  const isMyMessage = currentUser?.uid === message.senderId;
   
   return (
     <MessageBubble
