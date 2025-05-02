@@ -86,6 +86,8 @@ export interface MerchantStore {
   bannerUrl?: string;
   createdAt: string;
   updatedAt: string;
+  isActive: boolean;
+  active?: boolean;
 }
 
 export interface Product {
@@ -100,6 +102,19 @@ export interface Product {
   digitalFileUrl?: string;
   createdAt: string;
   updatedAt: string;
+  category?: string;
+}
+
+// Chat with user details
+export interface ChatWithUser extends Chat {
+  otherUser?: {
+    id: string;
+    displayName?: string;
+    photoURL?: string;
+    isOnline?: boolean;
+    lastSeen?: string;
+  };
+  unreadCount: number;
 }
 
 // Notification types
@@ -143,6 +158,7 @@ export interface UserWallet {
   hasPayoutMethod: boolean;
   createdAt: string;
   updatedAt: string;
+  transactions: Transaction[];
 }
 
 export interface Transaction {
@@ -185,4 +201,21 @@ export interface FollowStats {
   followingCount: number;
   followers: UserData[];
   following: UserData[];
+}
+
+export interface Order {
+  id: string;
+  status: string;
+  total: number;
+  customerName: string;
+  createdAt: string;
+  items: OrderItem[];
+}
+
+export interface OrderItem {
+  id: string;
+  productId: string;
+  productName: string;
+  price: number;
+  quantity: number;
 }

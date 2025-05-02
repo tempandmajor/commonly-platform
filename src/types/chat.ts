@@ -42,5 +42,16 @@ export interface ChatWithParticipants extends Chat {
   unreadCount: number;
 }
 
+export interface ChatWithUser extends Chat {
+  otherUser?: {
+    id: string;
+    displayName?: string;
+    photoURL?: string;
+    isOnline?: boolean;
+    lastSeen?: string;
+  };
+  unreadCount: number;
+}
+
 // Re-export podcast types for backward compatibility if needed
 export { Podcast, PodcastCreateInput };

@@ -8,6 +8,7 @@ import Messages from './pages/Messages';
 import MessagesList from './pages/MessagesList';
 import { Toaster } from "@/components/ui/toaster";
 import UserProfile from './pages/UserProfile';
+import AppWalkthrough from './components/user/AppWalkthrough';
 
 function App() {
   const { currentUser, loading } = useAuth();
@@ -59,6 +60,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
+      <AppWalkthrough />
       <Toaster />
     </>
   );

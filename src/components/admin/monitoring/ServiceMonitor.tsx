@@ -1,118 +1,204 @@
 
-import React from 'react';
-import { Activity, Database, Server, Cloud, CheckCircle, AlertCircle } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useEffect, useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { CheckCircle, AlertCircle, AlertTriangle, Clock } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
 
-const ServiceMonitor: React.FC = () => {
-  return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MonitoringCard 
-          title="API Server"
-          status="operational"
-          icon={<Server />}
-          metric="99.9%"
-          description="Uptime in last 30 days"
-        />
-        <MonitoringCard 
-          title="Database"
-          status="operational"
-          icon={<Database />}
-          metric="127ms"
-          description="Avg. response time"
-        />
-        <MonitoringCard 
-          title="Storage"
-          status="operational"
-          icon={<Cloud />}
-          metric="3.2TB"
-          description="Current usage"
-        />
-        <MonitoringCard 
-          title="Background Jobs"
-          status="issues"
-          icon={<Activity />}
-          metric="98.5%"
-          description="Success rate"
-        />
-      </div>
-      
-      <ServiceMetricsChart />
-      
-      <RecentIncidents />
-    </div>
-  );
-};
-
-interface MonitoringCardProps {
-  title: string;
-  status: 'operational' | 'issues' | 'down';
-  icon: React.ReactNode;
-  metric: string;
-  description: string;
+interface ServiceStatus {
+  name: string;
+  status: 'healthy' | 'warning' | 'error' | 'pending';
+  latency?: number;
+  lastChecked: string;
+  message?: string;
 }
 
-const MonitoringCard: React.FC<MonitoringCardProps> = ({ title, status, icon, metric, description }) => {
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <div className="flex items-center">
-          {status === 'operational' ? (
-            <CheckCircle className="h-4 w-4 text-green-500" />
-          ) : status === 'issues' ? (
-            <AlertCircle className="h-4 w-4 text-amber-500" />
-          ) : (
-            <AlertCircle className="h-4 w-4 text-red-500" />
-          )}
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{metric}</div>
-        <p className="text-xs text-muted-foreground">{description}</p>
-      </CardContent>
-    </Card>
-  );
-};
+const ServiceMonitor: React.FC = () => {
+  const [services, setServices] = useState<ServiceStatus[]>([]);
+  const [loading, setLoading] = useState(true);
 
-const ServiceMetricsChart = () => {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>System Performance</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="h-[200px] flex items-center justify-center">
-          <p className="text-muted-foreground">Interactive chart will be displayed here</p>
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
+  const fetchServiceStatus = async () => {
+    setLoading(true);
+    try {
+      // In a real app, we'd fetch this from an API endpoint
+      // For now, we'll simulate the response
+      
+      // Check Supabase connection as an example
+      const start = Date.now();
+      const { data, error } = await supabase.from('health_checks').select('*').limit(1);
+      const end = Date.now();
+      const latency = end - start;
+      
+      const mockServices: ServiceStatus[] = [
+        {
+          name: 'Database',
+          status: error ? 'error' : 'healthy',
+          latency: latency,
+          lastChecked: new Date().toISOString(),
+          message: error ? error.message : undefined
+        },
+        {
+          name: 'Authentication Service',
+          status: 'healthy',
+          latency: 35,
+          lastChecked: new Date().toISOString()
+        },
+        {
+          name: 'Storage Service',
+          status: 'healthy',
+          latency: 48,
+          lastChecked: new Date().toISOString()
+        },
+        {
+          name: 'Functions',
+          status: 'warning',
+          latency: 220,
+          lastChecked: new Date().toISOString(),
+          message: 'Higher than normal latency'
+        },
+      ];
+      
+      setServices(mockServices);
+    } catch (error) {
+      console.error('Error fetching service status:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-const RecentIncidents = () => {
+  useEffect(() => {
+    fetchServiceStatus();
+    
+    // Refresh status every 60 seconds
+    const interval = setInterval(fetchServiceStatus, 60000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'healthy':
+        return <CheckCircle className="h-5 w-5 text-green-500" />;
+      case 'warning':
+        return <AlertTriangle className="h-5 w-5 text-amber-500" />;
+      case 'error':
+        return <AlertCircle className="h-5 w-5 text-red-500" />;
+      case 'pending':
+      default:
+        return <Clock className="h-5 w-5 text-blue-500" />;
+    }
+  };
+
+  const formatTime = (date: string) => {
+    return new Date(date).toLocaleTimeString();
+  };
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Recent Incidents</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          <div className="border-l-4 border-amber-500 pl-4">
-            <h3 className="font-medium">Background Job Processing Delays</h3>
-            <p className="text-sm text-muted-foreground">May 1, 2025 - Some jobs are taking longer than expected to process.</p>
-          </div>
-          <div className="border-l-4 border-green-500 pl-4">
-            <h3 className="font-medium">Database Maintenance Completed</h3>
-            <p className="text-sm text-muted-foreground">April 28, 2025 - Scheduled maintenance completed successfully.</p>
-          </div>
-          <div className="border-l-4 border-green-500 pl-4">
-            <h3 className="font-medium">API Rate Limiting Issues Resolved</h3>
-            <p className="text-sm text-muted-foreground">April 25, 2025 - Fixed configuration issues causing false rate limit errors.</p>
-          </div>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold">Service Status</h2>
+        <Button 
+          variant="outline" 
+          onClick={fetchServiceStatus}
+          disabled={loading}
+        >
+          Refresh
+        </Button>
+      </div>
+      
+      {loading ? (
+        <div className="flex justify-center p-8">
+          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
         </div>
-      </CardContent>
-    </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {services.map((service) => (
+            <Card key={service.name} className={service.status === 'error' ? 'border-red-300' : ''}>
+              <CardHeader className="pb-2">
+                <div className="flex justify-between">
+                  <div>
+                    <CardTitle className="text-lg">{service.name}</CardTitle>
+                    <CardDescription>Last checked: {formatTime(service.lastChecked)}</CardDescription>
+                  </div>
+                  <div className="flex items-center">
+                    {getStatusIcon(service.status)}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-1">
+                  <div className="flex justify-between text-sm">
+                    <span>Status:</span>
+                    <span className={
+                      service.status === 'healthy' ? 'text-green-600' :
+                      service.status === 'warning' ? 'text-amber-600' :
+                      service.status === 'error' ? 'text-red-600' : 'text-blue-600'
+                    }>
+                      {service.status.charAt(0).toUpperCase() + service.status.slice(1)}
+                    </span>
+                  </div>
+                  
+                  {service.latency !== undefined && (
+                    <div className="flex justify-between text-sm">
+                      <span>Latency:</span>
+                      <span className={service.latency > 100 ? 'text-amber-600' : ''}>
+                        {service.latency} ms
+                      </span>
+                    </div>
+                  )}
+                  
+                  {service.message && (
+                    <div className="mt-2 text-sm text-muted-foreground">
+                      {service.message}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+      
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">System Metrics</CardTitle>
+          <CardDescription>Overall system health and performance</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div>
+              <div className="flex justify-between mb-1">
+                <span className="text-sm font-medium">Database CPU</span>
+                <span className="text-sm text-muted-foreground">18%</span>
+              </div>
+              <div className="h-2 bg-gray-200 rounded-full">
+                <div className="h-2 bg-green-500 rounded-full" style={{ width: '18%' }}></div>
+              </div>
+            </div>
+            
+            <div>
+              <div className="flex justify-between mb-1">
+                <span className="text-sm font-medium">Memory Usage</span>
+                <span className="text-sm text-muted-foreground">42%</span>
+              </div>
+              <div className="h-2 bg-gray-200 rounded-full">
+                <div className="h-2 bg-green-500 rounded-full" style={{ width: '42%' }}></div>
+              </div>
+            </div>
+            
+            <div>
+              <div className="flex justify-between mb-1">
+                <span className="text-sm font-medium">Storage</span>
+                <span className="text-sm text-muted-foreground">73%</span>
+              </div>
+              <div className="h-2 bg-gray-200 rounded-full">
+                <div className="h-2 bg-amber-500 rounded-full" style={{ width: '73%' }}></div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

@@ -1,56 +1,65 @@
 
-import { supabase } from "@/integrations/supabase/client";
-import { Event } from "@/types/event";
+import { supabase } from '@/integrations/supabase/client';
+
+export interface SearchResult {
+  id: string;
+  title: string;
+  description: string | null;
+  image_url: string | null;
+  type: string;
+  created_at: string;
+}
 
 export interface EventWithDistance {
   id: string;
   title: string;
   description: string | null;
   image_url: string | null;
-  date: string;
   location: string;
-  location_lat: number;
-  location_lng: number;
+  date: string;
   distance_km: number;
+  created_by: string;
 }
 
-export const searchEventsByLocation = async (
-  lat: number,
-  lng: number,
-  radius: number = 50
-): Promise<EventWithDistance[]> => {
+export const globalSearch = async (query: string): Promise<SearchResult[]> => {
+  if (!query || query.length < 3) {
+    return [];
+  }
+
   try {
-    const { data, error } = await supabase.rpc('search_events_by_location', {
-      lat,
-      lng,
-      radius
-    });
-
-    if (error) {
-      throw error;
-    }
-
-    return data || [];
+    const { data, error } = await supabase
+      .from('global_search_view')
+      .select('*')
+      .ilike('title', `%${query}%`)
+      .limit(20);
+      
+    if (error) throw error;
+    
+    return data as SearchResult[];
   } catch (error) {
-    console.error('Error searching events by location:', error);
+    console.error('Error in global search:', error);
     return [];
   }
 };
 
-export const globalSearch = async (query: string, limit: number = 10) => {
+export const searchEventsByLocation = async (
+  latitude: number,
+  longitude: number,
+  radiusKm: number = 10
+): Promise<EventWithDistance[]> => {
   try {
-    const { data, error } = await supabase.rpc('global_search', {
-      search_query: query,
-      limit_count: limit
-    });
-
-    if (error) {
-      throw error;
-    }
-
-    return data || [];
+    const { data, error } = await supabase
+      .rpc('find_events_by_location', {
+        user_lat: latitude,
+        user_lng: longitude,
+        radius_km: radiusKm
+      });
+    
+    if (error) throw error;
+    
+    return data as EventWithDistance[];
   } catch (error) {
-    console.error('Error performing global search:', error);
+    console.error('Error in location-based event search:', error);
     return [];
   }
 };
