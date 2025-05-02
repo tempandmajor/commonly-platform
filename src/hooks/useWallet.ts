@@ -1,7 +1,15 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { PaymentMethod, ReferralStats, Transaction, UserWallet } from "@/types/wallet";
 import { useToast } from "@/hooks/use-toast";
+import { 
+  getUserTransactions, 
+  getUserReferralStats, 
+  getUserPaymentMethods, 
+  initiateWithdrawal,
+  createConnectAccountLink 
+} from "@/services/walletService";
 
 interface TransactionFilters {
   type?: string;
@@ -56,7 +64,7 @@ export const useWallet = (userId: string) => {
         id: "pm_1",
         userId,
         type: "card",
-        brand: "Visa",
+        brand: "visa",
         last4: "4242",
         expMonth: 12,
         expYear: 2025,
@@ -217,7 +225,7 @@ export const useWallet = (userId: string) => {
       const row = [
         transaction.id,
         new Date(transaction.createdAt).toLocaleDateString(),
-        `"${transaction.description.replace(/"/g, '""')}"`,
+        `"${transaction.description?.replace(/"/g, '""') || ''}"`,
         transaction.amount.toFixed(2),
         transaction.type,
         transaction.status

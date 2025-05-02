@@ -1,123 +1,6 @@
-import { db, functions } from "@/lib/firebase";
-import { 
-  collection, 
-  doc, 
-  getDoc, 
-  getDocs, 
-  query, 
-  where, 
-  orderBy, 
-  limit,
-  addDoc,
-  updateDoc,
-  serverTimestamp,
-  Timestamp
-} from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
-import { UserWallet, Transaction, ReferralStats, PaymentMethod } from "@/types/auth";
 
-// Get user wallet
-export const getUserWallet = async (userId: string): Promise<UserWallet | null> => {
-  try {
-    const walletRef = doc(db, "wallets", userId);
-    const walletDoc = await getDoc(walletRef);
-    
-    if (!walletDoc.exists()) {
-      // Create a new wallet for the user
-      return createUserWallet(userId);
-    }
-    
-    const walletData = walletDoc.data();
-    
-    // Get recent transactions
-    const transactionsQuery = query(
-      collection(db, "transactions"),
-      where("userId", "==", userId),
-      orderBy("createdAt", "desc"),
-      limit(20)
-    );
-    
-    const transactionsSnapshot = await getDocs(transactionsQuery);
-    const transactions = transactionsSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as Transaction[];
-    
-    return {
-      id: walletDoc.id,
-      userId,
-      availableBalance: walletData.availableBalance || 0,
-      pendingBalance: walletData.pendingBalance || 0,
-      totalEarnings: walletData.totalEarnings || 0,
-      platformCredits: walletData.platformCredits || 0,
-      hasPayoutMethod: walletData.hasPayoutMethod || false,
-      stripeConnectId: walletData.stripeConnectId,
-      transactions,
-      lastUpdated: walletData.updatedAt || Timestamp.now()
-    } as UserWallet;
-  } catch (error) {
-    console.error("Error fetching user wallet:", error);
-    return null;
-  }
-};
-
-// Create a new wallet for a user
-const createUserWallet = async (userId: string): Promise<UserWallet> => {
-  try {
-    const newWallet = {
-      userId,
-      totalEarnings: 0,
-      availableBalance: 0,
-      pendingBalance: 0,
-      platformCredits: 0,
-      hasPayoutMethod: false,
-      updatedAt: serverTimestamp(),
-      lastUpdated: serverTimestamp()
-    };
-    
-    await updateDoc(doc(db, "wallets", userId), newWallet);
-    
-    return {
-      id: userId,
-      userId,
-      totalEarnings: 0,
-      availableBalance: 0,
-      pendingBalance: 0,
-      platformCredits: 0,
-      hasPayoutMethod: false,
-      transactions: [],
-      // Fix: Convert Timestamp to Date to match the expected type
-      lastUpdated: new Date()
-    };
-  } catch (error) {
-    console.error("Error creating user wallet:", error);
-    // Create the document if it doesn't exist
-    const walletRef = doc(db, "wallets", userId);
-    await updateDoc(walletRef, {
-      userId,
-      totalEarnings: 0,
-      availableBalance: 0,
-      pendingBalance: 0,
-      platformCredits: 0,
-      hasPayoutMethod: false,
-      updatedAt: serverTimestamp(),
-      lastUpdated: serverTimestamp()
-    });
-    
-    return {
-      id: userId,
-      userId,
-      totalEarnings: 0,
-      availableBalance: 0,
-      pendingBalance: 0,
-      platformCredits: 0,
-      hasPayoutMethod: false,
-      transactions: [],
-      // Fix: Convert Timestamp to Date to match the expected type
-      lastUpdated: new Date()
-    };
-  }
-};
+import { PaymentMethod, ReferralStats, Transaction, UserWallet } from "@/types/wallet";
+import { supabase } from '@/integrations/supabase/client';
 
 // Get user transactions with filtering
 export const getUserTransactions = async (
@@ -129,69 +12,71 @@ export const getUserTransactions = async (
     status?: string;
     search?: string;
   },
-  page = 1,
-  pageSize = 10
+  page: number = 1,
+  pageSize: number = 10
 ): Promise<{ transactions: Transaction[], total: number }> => {
   try {
-    let transactionsRef = collection(db, "transactions");
-    let constraints: any[] = [where("userId", "==", userId)];
+    // Mock implementation for now
+    // In real implementation, this would query Supabase
     
-    // Apply filters
+    // Simulate delay
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Generate mock transactions
+    const mockTransactions: Transaction[] = Array.from({ length: 20 }).map((_, i) => ({
+      id: `tr-${i + 1}`,
+      userId,
+      amount: Math.floor(Math.random() * 500) / 100 * (Math.random() > 0.5 ? 1 : -1),
+      type: ['payment', 'payout', 'refund', 'deposit', 'withdrawal'][Math.floor(Math.random() * 5)],
+      status: ['completed', 'pending', 'failed'][Math.floor(Math.random() * 3)],
+      description: `Transaction #${i + 1}`,
+      createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString()
+    }));
+    
+    // Filter transactions based on filters
+    let filtered = [...mockTransactions];
+    
     if (filters.type) {
-      constraints.push(where("type", "==", filters.type));
+      filtered = filtered.filter(t => t.type === filters.type);
     }
     
     if (filters.status) {
-      constraints.push(where("status", "==", filters.status));
+      filtered = filtered.filter(t => t.status === filters.status);
     }
     
-    if (filters.startDate) {
-      constraints.push(where("createdAt", ">=", filters.startDate.toISOString()));
-    }
-    
-    if (filters.endDate) {
-      constraints.push(where("createdAt", "<=", filters.endDate.toISOString()));
-    }
-    
-    // Create query
-    let q = query(
-      transactionsRef,
-      ...constraints,
-      orderBy("createdAt", "desc"),
-      limit(pageSize * page)
-    );
-    
-    const snapshot = await getDocs(q);
-    
-    // Filter by search if provided
-    let transactions = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as Transaction[];
-    
-    if (filters.search && filters.search.trim() !== "") {
-      const searchTerm = filters.search.toLowerCase();
-      transactions = transactions.filter(
-        t => t.description.toLowerCase().includes(searchTerm)
+    if (filters.search) {
+      filtered = filtered.filter(t => 
+        t.description?.toLowerCase().includes(filters.search!.toLowerCase()) || 
+        t.id.toLowerCase().includes(filters.search!.toLowerCase())
       );
     }
     
-    // Get the total count
-    const countQuery = query(transactionsRef, ...constraints);
-    const countSnapshot = await getDocs(countQuery);
-    const total = countSnapshot.size;
+    if (filters.startDate) {
+      filtered = filtered.filter(t => 
+        new Date(t.createdAt) >= new Date(filters.startDate!)
+      );
+    }
+    
+    if (filters.endDate) {
+      filtered = filtered.filter(t => 
+        new Date(t.createdAt) <= new Date(filters.endDate!)
+      );
+    }
+    
+    // Sort by date (newest first)
+    filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     
     // Paginate
-    const startIndex = (page - 1) * pageSize;
-    const paginatedTransactions = transactions.slice(startIndex, startIndex + pageSize);
+    const start = (page - 1) * pageSize;
+    const paginatedTransactions = filtered.slice(start, start + pageSize);
     
-    return { 
-      transactions: paginatedTransactions, 
-      total 
+    return {
+      transactions: paginatedTransactions,
+      total: filtered.length
     };
   } catch (error) {
-    console.error("Error fetching user transactions:", error);
-    return { transactions: [], total: 0 };
+    console.error('Error getting transactions:', error);
+    throw error;
   }
 };
 
@@ -201,31 +86,47 @@ export const getUserReferralStats = async (
   period: 'week' | 'month' | 'year' | 'all' = 'month'
 ): Promise<ReferralStats> => {
   try {
-    const getReferralStats = httpsCallable(functions, 'getReferralStats');
-    const result = await getReferralStats({ userId, period });
-    return result.data as ReferralStats;
-  } catch (error) {
-    console.error("Error fetching referral stats:", error);
+    // Mock implementation
+    // In real implementation, this would query Supabase
+    
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    // Generate mock stats based on period
+    let clickCount = 0;
+    let conversionCount = 0;
+    
+    switch (period) {
+      case 'week':
+        clickCount = Math.floor(Math.random() * 50);
+        conversionCount = Math.floor(clickCount * 0.2);
+        break;
+      case 'month':
+        clickCount = Math.floor(Math.random() * 200);
+        conversionCount = Math.floor(clickCount * 0.15);
+        break;
+      case 'year':
+        clickCount = Math.floor(Math.random() * 1000);
+        conversionCount = Math.floor(clickCount * 0.12);
+        break;
+      case 'all':
+        clickCount = Math.floor(Math.random() * 2000);
+        conversionCount = Math.floor(clickCount * 0.1);
+        break;
+    }
+    
+    const totalEarnings = conversionCount * 5; // $5 per conversion
+    const conversionRate = clickCount > 0 ? (conversionCount / clickCount) * 100 : 0;
+    
     return {
-      userId,
-      totalReferrals: 0,
-      conversionRate: 0,
-      totalEarnings: 0,
-      clickCount: 0,
-      conversionCount: 0,
+      totalReferrals: clickCount,
+      clickCount,
+      conversionCount,
+      totalEarnings,
+      conversionRate,
       period
     };
-  }
-};
-
-// Initiate withdrawal to Stripe Connect account
-export const initiateWithdrawal = async (userId: string, amount: number): Promise<boolean> => {
-  try {
-    const initiateWithdrawalFunc = httpsCallable(functions, 'initiateWithdrawal');
-    await initiateWithdrawalFunc({ userId, amount });
-    return true;
   } catch (error) {
-    console.error("Error initiating withdrawal:", error);
+    console.error('Error getting referral stats:', error);
     throw error;
   }
 };
@@ -233,55 +134,65 @@ export const initiateWithdrawal = async (userId: string, amount: number): Promis
 // Get user payment methods
 export const getUserPaymentMethods = async (userId: string): Promise<PaymentMethod[]> => {
   try {
-    const paymentMethodsQuery = query(
-      collection(db, "paymentMethods"),
-      where("userId", "==", userId),
-      orderBy("isDefault", "desc")
-    );
+    // Mock implementation
+    // In real implementation, this would query Supabase
     
-    const snapshot = await getDocs(paymentMethodsQuery);
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as PaymentMethod[];
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    return [
+      {
+        id: "pm_1",
+        userId,
+        type: "card",
+        brand: "visa",
+        last4: "4242",
+        expMonth: 12,
+        expYear: 2025,
+        isDefault: true,
+        createdAt: new Date().toISOString()
+      }
+    ];
   } catch (error) {
-    console.error("Error fetching payment methods:", error);
-    return [];
-  }
-};
-
-// Add platform credits to user wallet
-export const addPlatformCredits = async (userId: string, amount: number, description: string): Promise<boolean> => {
-  try {
-    const addCreditsFunc = httpsCallable(functions, 'addPlatformCredits');
-    await addCreditsFunc({ userId, amount, description });
-    return true;
-  } catch (error) {
-    console.error("Error adding platform credits:", error);
+    console.error('Error getting payment methods:', error);
     throw error;
   }
 };
 
-// Use platform credits for a transaction
-export const usePlatformCredits = async (userId: string, amount: number, description: string): Promise<boolean> => {
+// Initiate withdrawal
+export const initiateWithdrawal = async (userId: string, amount: number): Promise<void> => {
   try {
-    const useCreditsFunc = httpsCallable(functions, 'usePlatformCredits');
-    await useCreditsFunc({ userId, amount, description });
-    return true;
+    // Mock implementation
+    // In real implementation, this would call Supabase functions
+    
+    if (amount <= 0) {
+      throw new Error('Amount must be greater than zero');
+    }
+    
+    // Simulate processing delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // In real implementation, would update wallet balance and create transaction
+    console.log(`Initiated withdrawal of ${amount} for user ${userId}`);
+    
+    return;
   } catch (error) {
-    console.error("Error using platform credits:", error);
+    console.error('Error initiating withdrawal:', error);
     throw error;
   }
 };
 
-// Create a Stripe Connect account setup link
+// Create Stripe Connect account link
 export const createConnectAccountLink = async (userId: string): Promise<string> => {
   try {
-    const createAccountLinkFunc = httpsCallable(functions, 'createConnectAccountLink');
-    const result = await createAccountLinkFunc({ userId });
-    return (result.data as { url: string }).url;
+    // Mock implementation
+    // In real implementation, this would call a Supabase function/API
+    
+    await new Promise(resolve => setTimeout(resolve, 800));
+    
+    // Return a mock URL
+    return "https://connect.stripe.com/setup/c/mock-account-link";
   } catch (error) {
-    console.error("Error creating Connect account link:", error);
+    console.error('Error creating connect account link:', error);
     throw error;
   }
 };

@@ -1,6 +1,6 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Chat, ChatWithUser } from "@/types/chat";
+import { UserData } from "@/types/auth";
 import { toast } from "@/hooks/use-toast";
 
 // Helper to map database fields to our Chat type
@@ -157,42 +157,32 @@ export const getChatById = async (
  * Update the last message in a chat
  */
 export const updateLastMessage = async (
-  chatId: string,
-  messageData: {
+  chatId: string, 
+  messageContent: { 
     text?: string;
     senderId: string;
-    recipientId?: string;
+    recipientId: string;
     timestamp: string;
-    read: boolean;
+    read: boolean; 
+    id: string; // Add the message id
   }
-): Promise<{ success: boolean; error?: string }> => {
+): Promise<boolean> => {
   try {
-    const { error } = await supabase
-      .rpc('update_chat_last_message', {
-        p_chat_id: chatId,
-        p_last_message: messageData
-      });
-
-    if (error) {
-      console.error("Error updating last message:", error);
-      toast({
-        title: "Error updating chat",
-        description: error.message,
-        variant: "destructive"
-      });
-      return { success: false, error: error.message };
-    }
-
-    return { success: true };
+    // Call the RPC function to update the last message
+    const { error } = await supabase.rpc(
+      'update_chat_last_message', 
+      { 
+        p_chat_id: chatId, 
+        p_last_message: messageContent 
+      }
+    );
+    
+    if (error) throw error;
+    
+    return true;
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error("Exception in updateLastMessage:", errorMessage);
-    toast({
-      title: "Error updating chat",
-      description: errorMessage,
-      variant: "destructive"
-    });
-    return { success: false, error: errorMessage };
+    console.error('Error updating last message:', error);
+    return false;
   }
 };
 

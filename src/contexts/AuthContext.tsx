@@ -1,9 +1,9 @@
-
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { AuthContextType, UserData } from "@/types/auth";
+import { AuthContextType, UserData, UserSession } from "@/types/auth";
 import { useAuthActions } from "@/hooks/useAuthActions";
 import { User } from "@supabase/supabase-js";
+import { toast } from "react-toastify";
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
@@ -90,67 +90,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Unfollow a user
   const unfollowUser = async (userId: string) => {
-    if (!currentUser || !userData) throw new Error("No authenticated user");
+    if (!currentUser) return;
     
     try {
-      const currentUserId = currentUser.id;
+      // Remove from following array
+      const updatedFollowing = userData?.following ? 
+        userData.following.filter(id => id !== userId) : 
+        [];
       
-      // Get current following list
-      const { data: currentUserData, error: fetchError } = await supabase
+      // Update in Supabase
+      const { error } = await supabase
         .from('users')
-        .select('following, following_count')
-        .eq('id', currentUserId)
-        .single();
-      
-      if (fetchError) throw fetchError;
-      
-      // Remove target user from current user's following list
-      const following = (currentUserData.following || []).filter(id => id !== userId);
-      const followingCount = Math.max((currentUserData.following_count || 0) - 1, 0);
-      
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({ 
-          following, 
-          following_count: followingCount
+        .update({
+          following: updatedFollowing,
+          following_count: updatedFollowing.length
         })
-        .eq('id', currentUserId);
+        .eq('id', currentUser.uid);
       
-      if (updateError) throw updateError;
+      if (error) throw error;
       
-      // Get target user's follower list
-      const { data: targetUserData, error: targetFetchError } = await supabase
-        .from('users')
-        .select('followers, follower_count')
-        .eq('id', userId)
-        .single();
+      // Update local state
+      if (userData) {
+        setUserData({
+          ...userData,
+          following: updatedFollowing,
+          followingCount: updatedFollowing.length
+        });
+      }
       
-      if (targetFetchError) throw targetFetchError;
+      // Also update the target user's followers count
+      await supabase.rpc('decrement_follower_count', { target_user_id: userId });
       
-      // Remove current user from target user's followers list
-      const followers = (targetUserData.followers || []).filter(id => id !== currentUserId);
-      const followerCount = Math.max((targetUserData.follower_count || 0) - 1, 0);
-      
-      const { error: targetUpdateError } = await supabase
-        .from('users')
-        .update({ 
-          followers, 
-          follower_count: followerCount
-        })
-        .eq('id', userId);
-      
-      if (targetUpdateError) throw targetUpdateError;
-      
-      // Update local user data
-      setUserData({
-        ...userData,
-        following: (userData.following || []).filter(id => id !== userId),
-        followingCount: Math.max((userData.followingCount || 0) - 1, 0)
+      toast({
+        title: "Success",
+        description: "You have unfollowed this user",
       });
-      
     } catch (error) {
-      console.error("Error unfollowing user:", error);
-      throw error;
+      console.error('Error unfollowing user:', error);
+      toast({
+        title: "Error",
+        description: "Failed to unfollow user",
+        variant: "destructive",
+      });
     }
   };
 

@@ -1,6 +1,20 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { ChatMessage } from "@/types/chat";
+
+// Convert database message format to application format
+const adaptMessageFromDB = (dbMessage: any): ChatMessage => {
+  return {
+    id: dbMessage.id,
+    chatId: dbMessage.chat_id,
+    senderId: dbMessage.sender_id,
+    recipientId: dbMessage.recipient_id,
+    text: dbMessage.text || undefined,
+    imageUrl: dbMessage.image_url || undefined,
+    voiceUrl: dbMessage.voice_url || undefined,
+    timestamp: dbMessage.timestamp,
+    read: dbMessage.read,
+  };
+};
 
 // Send a message in a chat
 export const sendMessage = async (
@@ -77,29 +91,40 @@ export const sendMessage = async (
   }
 };
 
-// Get messages for a specific chat
-export const getMessages = async (chatId: string): Promise<{ messages: ChatMessage[]; error?: string }> => {
+// Get a single message by ID
+export const getMessageById = async (messageId: string): Promise<ChatMessage | null> => {
   try {
-    if (!chatId) {
-      return { messages: [], error: "Chat ID is required" };
-    }
+    const { data: message, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('id', messageId)
+      .single();
     
-    const { data, error } = await supabase
+    if (error) throw error;
+    if (!message) return null;
+    
+    return adaptMessageFromDB(message);
+  } catch (error) {
+    console.error('Error getting message:', error);
+    throw error;
+  }
+};
+
+// Get messages for a specific chat
+export const getMessages = async (chatId: string): Promise<ChatMessage[]> => {
+  try {
+    const { data: messages, error } = await supabase
       .from('messages')
       .select('*')
       .eq('chat_id', chatId)
       .order('timestamp', { ascending: true });
+      
+    if (error) throw error;
     
-    if (error) {
-      console.error("Error fetching messages:", error);
-      return { messages: [], error: error.message };
-    }
-    
-    return { messages: data as ChatMessage[] || [] };
+    return messages ? messages.map(adaptMessageFromDB) : [];
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error("Exception in getMessages:", errorMessage);
-    return { messages: [], error: errorMessage };
+    console.error('Error getting messages:', error);
+    return [];
   }
 };
 
