@@ -1,9 +1,10 @@
+
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AuthContextType, UserData, UserSession } from "@/types/auth";
 import { useAuthActions } from "@/hooks/useAuthActions";
 import { User } from "@supabase/supabase-js";
-import { toast } from "react-toastify";
+import { toast } from "@/hooks/use-toast";
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
@@ -76,11 +77,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (targetUpdateError) throw targetUpdateError;
       
       // Update local user data
-      setUserData({
-        ...userData,
-        following: [...(userData.following || []), userId],
-        followingCount: (userData.followingCount || 0) + 1
-      });
+      if (userData && Array.isArray(userData.following)) {
+        setUserData({
+          ...userData,
+          following: [...userData.following, userId],
+          followingCount: (userData.followingCount || 0) + 1
+        });
+      }
       
     } catch (error) {
       console.error("Error following user:", error);
@@ -105,12 +108,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           following: updatedFollowing,
           following_count: updatedFollowing.length
         })
-        .eq('id', currentUser.uid);
+        .eq('id', currentUser.id);
       
       if (error) throw error;
       
       // Update local state
-      if (userData) {
+      if (userData && Array.isArray(userData.following)) {
         setUserData({
           ...userData,
           following: updatedFollowing,
@@ -119,7 +122,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       // Also update the target user's followers count
-      await supabase.rpc('decrement_follower_count', { target_user_id: userId });
+      try {
+        // If the rpc function exists
+        await supabase.rpc('decrement_follower_count', { target_user_id: userId });
+      } catch (rpcError) {
+        console.error('RPC error:', rpcError);
+        // Fallback: direct update if RPC fails
+        const { data: targetUser } = await supabase
+          .from('users')
+          .select('followers, follower_count')
+          .eq('id', userId)
+          .single();
+          
+        if (targetUser) {
+          const updatedFollowers = targetUser.followers.filter((id: string) => id !== currentUser.id);
+          await supabase
+            .from('users')
+            .update({
+              followers: updatedFollowers,
+              follower_count: updatedFollowers.length
+            })
+            .eq('id', userId);
+        }
+      }
       
       toast({
         title: "Success",
