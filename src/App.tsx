@@ -28,11 +28,6 @@ function App() {
     return <div className="flex items-center justify-center h-screen">Loading...</div>;
   }
 
-  // Handle auth redirection logic separately to avoid unnecessary re-renders
-  const getDefaultRedirect = () => {
-    return currentUser ? "/messages" : "/login";
-  };
-
   return (
     <>
       <Router>
@@ -40,7 +35,7 @@ function App() {
           {/* Authentication */}
           <Route 
             path="/login" 
-            element={currentUser ? <Navigate to="/" replace /> : <Navigate to="/" replace />} 
+            element={currentUser ? <Navigate to="/messages" replace /> : <div>Login Page</div>} 
           />
           
           {/* Messages */}
@@ -64,13 +59,17 @@ function App() {
           {/* User Profile */}
           <Route path="/profile/:userId" element={<UserProfile />} />
           
-          {/* Default Route - only navigate once */}
+          {/* Default Route */}
           <Route 
             path="/" 
-            element={<Navigate to={getDefaultRedirect()} replace />} 
+            element={
+              currentUser ? 
+                <Navigate to="/messages" replace /> : 
+                <Navigate to="/login" replace />
+            } 
           />
           
-          {/* Fallback - prevent infinite redirects */}
+          {/* Fallback */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>
