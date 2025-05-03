@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 // Mock Supabase client
 vi.mock('@supabase/supabase-js', () => ({
-  createClient: vi.fn().mockReturnValue({
+  createClient: vi.fn(() => ({
     auth: {
       signInWithPassword: vi.fn(),
       signUp: vi.fn(),
@@ -15,7 +15,7 @@ vi.mock('@supabase/supabase-js', () => ({
         subscription: { unsubscribe: vi.fn() }
       }))
     }
-  }),
+  })),
   AuthChangeEvent: {
     SIGNED_IN: 'SIGNED_IN',
     SIGNED_OUT: 'SIGNED_OUT',

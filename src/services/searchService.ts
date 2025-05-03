@@ -19,55 +19,47 @@ export const globalSearch = async (query: string): Promise<SearchResults> => {
     // Organize results by type
     const eventResults = results
       .filter(item => item.type === 'event')
-      .map<SearchResult>((item) => {
-        return {
-          id: item.id,
-          title: item.title,
-          description: item.description,
-          image_url: item.image_url,
-          type: 'event',
-          created_at: item.created_at,
-        };
-      });
+      .map((item): SearchResult => ({
+        id: item.id,
+        title: item.title,
+        description: item.description,
+        image_url: item.image_url,
+        type: 'event',
+        created_at: item.created_at,
+      }));
     
     const venueResults = results
       .filter(item => item.type === 'venue')
-      .map<SearchResult>((item) => {
-        return {
-          id: item.id,
-          title: item.title,
-          description: item.description,
-          image_url: item.image_url,
-          type: 'venue',
-          created_at: item.created_at,
-        };
-      });
+      .map((item): SearchResult => ({
+        id: item.id,
+        title: item.title,
+        description: item.description,
+        image_url: item.image_url,
+        type: 'venue',
+        created_at: item.created_at,
+      }));
     
     const userResults = results
       .filter(item => item.type === 'user')
-      .map<SearchResult>((item) => {
-        return {
-          id: item.id,
-          title: item.title,
-          description: item.description,
-          image_url: item.image_url,
-          type: 'user',
-          created_at: item.created_at,
-        };
-      });
+      .map((item): SearchResult => ({
+        id: item.id,
+        title: item.title,
+        description: item.description,
+        image_url: item.image_url,
+        type: 'user',
+        created_at: item.created_at,
+      }));
     
     const podcastResults = results
       .filter(item => item.type === 'podcast')
-      .map<SearchResult>((item) => {
-        return {
-          id: item.id,
-          title: item.title,
-          description: item.description,
-          image_url: item.image_url,
-          type: 'podcast',
-          created_at: item.created_at,
-        };
-      });
+      .map((item): SearchResult => ({
+        id: item.id,
+        title: item.title,
+        description: item.description,
+        image_url: item.image_url,
+        type: 'podcast',
+        created_at: item.created_at,
+      }));
     
     return {
       events: eventResults,
@@ -101,19 +93,17 @@ export const searchEventsByLocation = async (params: LocationSearchParams): Prom
     if (error) throw error;
     
     // Convert to our app's Event model with distance information
-    return (data || []).map<EventWithDistance>((event) => {
-      return {
-        id: event.id,
-        title: event.title,
-        description: event.description,
-        image_url: event.image_url,
-        date: event.date,
-        location: event.location,
-        location_lat: event.location_lat,
-        location_lng: event.location_lng,
-        distance_km: event.distance_km
-      };
-    });
+    return (data || []).map((event): EventWithDistance => ({
+      id: event.id,
+      title: event.title,
+      description: event.description,
+      image_url: event.image_url,
+      date: event.date,
+      location: event.location,
+      location_lat: event.location_lat,
+      location_lng: event.location_lng,
+      distance_km: event.distance_km
+    }));
   } catch (error) {
     console.error('Error searching events by location:', error);
     return [];
