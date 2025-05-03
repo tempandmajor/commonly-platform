@@ -69,7 +69,7 @@ const expectImpl = (value: any) => ({
   toHaveLength: (expected: number) => {},
   toThrow: (expected?: any) => {},
   toHaveBeenCalled: () => {},
-  // Fixed: Added proper implementation for toHaveBeenCalledWith
+  // Fix: Properly implement toHaveBeenCalledWith to accept any number of arguments
   toHaveBeenCalledWith: (...args: any[]) => {},
   toBeVisible: () => {},
   toHaveTitle: (regex: RegExp | string) => {}

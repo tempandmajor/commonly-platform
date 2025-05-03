@@ -29,6 +29,7 @@ vi.mock('@supabase/supabase-js', () => {
         }))
       }
     })),
+    // Fix: Export AuthChangeEvent as an object instead of a function
     AuthChangeEvent: {
       SIGNED_IN: 'SIGNED_IN',
       SIGNED_OUT: 'SIGNED_OUT',
