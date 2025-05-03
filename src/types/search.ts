@@ -1,6 +1,4 @@
 
-import { Event } from './event';
-import { Venue } from './venue';
 import { UserData } from './auth';
 
 export interface SearchResult {
@@ -15,8 +13,24 @@ export interface SearchResult {
   longitude?: number;
 }
 
-export interface EventWithDistance extends Event {
-  distance: number;
+export interface EventWithDistance {
+  id: string;
+  title: string;
+  description?: string;
+  imageUrl?: string;
+  date?: string;
+  location?: string;
+  locationLat?: number;
+  locationLng?: number;
+  distance?: number;
+  createdAt?: string;
+  createdBy?: string;
+  isVirtual?: boolean;
+  price?: number;
+  published?: boolean;
+  attendees?: any[];
+  category?: string;
+  tags?: string[];
 }
 
 export interface SearchResults {

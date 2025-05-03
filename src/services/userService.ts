@@ -2,8 +2,41 @@
 import { supabase } from "@/integrations/supabase/client";
 import { UserData } from "@/types/auth";
 
-// Export isUserPro function for use in UserProfile.tsx
-export { isUserPro } from "@/services/userService";
+// Export userPro function
+export const isUserPro = async (userId: string): Promise<boolean> => {
+  try {
+    // First check the cached flag on the user object
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('is_pro')
+      .eq('id', userId)
+      .single();
+    
+    if (userError) throw userError;
+    
+    if (userData && userData.is_pro === true) {
+      return true;
+    }
+    
+    // If not pro in user object, check subscriptions table for active pro subscription
+    const { data: subscriptionData, error: subscriptionError } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .eq('plan', 'pro')
+      .single();
+    
+    if (subscriptionError && subscriptionError.code !== 'PGRST116') {
+      throw subscriptionError;
+    }
+    
+    return !!subscriptionData;
+  } catch (error) {
+    console.error("Error checking pro status:", error);
+    return false;
+  }
+};
 
 export const getUserProfile = async (userId: string): Promise<UserData | null> => {
   try {
@@ -56,7 +89,7 @@ export const getUserEventsFeed = async (userId: string) => {
 
 export const getUserFollowers = async (userId: string) => {
   try {
-    // Using direct SQL query instead of RPC to avoid type issues
+    // Using direct SQL query for followers
     const { data, error } = await supabase
       .from('user_follows')
       .select('follower_id')
@@ -74,7 +107,7 @@ export const getUserFollowers = async (userId: string) => {
 
 export const getUserFollowing = async (userId: string) => {
   try {
-    // Using direct SQL query instead of RPC
+    // Using direct SQL query for following
     const { data, error } = await supabase
       .from('user_follows')
       .select('following_id')
@@ -91,14 +124,15 @@ export const getUserFollowing = async (userId: string) => {
   }
 };
 
-export const followUser = async (followerId: string, followingId: string) => {
+// Toggle follow status for a user
+export const toggleFollowUser = async (currentUserId: string, targetUserId: string): Promise<boolean> => {
   try {
     // Check if this follow relationship already exists
     const { data: existingFollow, error: checkError } = await supabase
       .from('user_follows')
       .select('*')
-      .eq('follower_id', followerId)
-      .eq('following_id', followingId)
+      .eq('follower_id', currentUserId)
+      .eq('following_id', targetUserId)
       .maybeSingle();
     
     if (checkError) throw checkError;
@@ -108,23 +142,23 @@ export const followUser = async (followerId: string, followingId: string) => {
       const { error } = await supabase
         .from('user_follows')
         .delete()
-        .eq('follower_id', followerId)
-        .eq('following_id', followingId);
+        .eq('follower_id', currentUserId)
+        .eq('following_id', targetUserId);
       
       if (error) throw error;
-      return { followed: false };
+      return false; // Now not following
     } else {
       // Not following, follow
       const { error } = await supabase
         .from('user_follows')
         .insert({
-          follower_id: followerId,
-          following_id: followingId,
+          follower_id: currentUserId,
+          following_id: targetUserId,
           created_at: new Date().toISOString()
         });
       
       if (error) throw error;
-      return { followed: true };
+      return true; // Now following
     }
   } catch (error) {
     console.error("Error updating follow status:", error);
@@ -132,6 +166,7 @@ export const followUser = async (followerId: string, followingId: string) => {
   }
 };
 
+// Update user profile data
 export const updateUserProfile = async (userId: string, profileData: Partial<UserData>) => {
   try {
     // Transform from our app model to database model
@@ -155,6 +190,7 @@ export const updateUserProfile = async (userId: string, profileData: Partial<Use
   }
 };
 
+// Search users
 export const searchUsers = async (query: string): Promise<UserData[]> => {
   try {
     const { data, error } = await supabase
@@ -184,52 +220,22 @@ export const searchUsers = async (query: string): Promise<UserData[]> => {
   }
 };
 
-/**
- * Check if a user has a pro subscription
- */
-export const isUserPro = async (userId: string): Promise<boolean> => {
+export const followUser = async (followerId: string, followingId: string) => {
   try {
-    // First check the cached flag on the user object
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('is_pro')
-      .eq('id', userId)
-      .single();
-    
-    if (userError) throw userError;
-    
-    if (userData && userData.is_pro === true) {
-      return true;
-    }
-    
-    // If not pro in user object, check subscriptions table for active pro subscription
-    const { data: subscriptionData, error: subscriptionError } = await supabase
-      .from('subscriptions')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('status', 'active')
-      .eq('plan', 'pro')
-      .single();
-    
-    if (subscriptionError && subscriptionError.code !== 'PGRST116') {
-      throw subscriptionError;
-    }
-    
-    return !!subscriptionData;
+    const result = await toggleFollowUser(followerId, followingId);
+    return { followed: result };
   } catch (error) {
-    console.error("Error checking pro status:", error);
-    return false;
+    console.error("Error following user:", error);
+    throw error;
   }
 };
 
-/**
- * Toggle follow status for a user
- */
-export const toggleFollowUser = async (currentUserId: string, targetUserId: string): Promise<boolean> => {
+export const unfollowUser = async (followerId: string, followingId: string) => {
   try {
-    return await followUser(currentUserId, targetUserId).then(result => result.followed);
+    const result = await toggleFollowUser(followerId, followingId);
+    return { followed: result };
   } catch (error) {
-    console.error("Error toggling follow status:", error);
+    console.error("Error unfollowing user:", error);
     throw error;
   }
 };

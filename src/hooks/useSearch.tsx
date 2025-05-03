@@ -1,6 +1,6 @@
 
-import { useState, useCallback } from 'react';
-import { globalSearch, SearchResult, SearchResults } from '@/services/searchService';
+import { useState, useCallback, useEffect } from 'react';
+import { globalSearch, SearchResults } from '@/services/searchService';
 import { useDebounce } from './useDebounce';
 
 export const useSearch = () => {
@@ -37,6 +37,10 @@ export const useSearch = () => {
     }
   }, [debouncedQuery]);
 
+  useEffect(() => {
+    search();
+  }, [search]);
+
   return {
     query,
     setQuery,
@@ -45,3 +49,5 @@ export const useSearch = () => {
     search
   };
 };
+
+export default useSearch;

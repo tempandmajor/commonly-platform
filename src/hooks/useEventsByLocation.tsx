@@ -1,9 +1,9 @@
 
 import { useState, useEffect } from "react";
-import { EventWithDistance, LocationSearchParams, searchEventsByLocation } from "@/services/searchService";
+import { LocationSearchParams, searchEventsByLocation } from "@/services/searchService";
 
 export const useEventsByLocation = (params: LocationSearchParams) => {
-  const [events, setEvents] = useState<EventWithDistance[]>([]);
+  const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,3 +28,5 @@ export const useEventsByLocation = (params: LocationSearchParams) => {
 
   return { events, loading, error };
 };
+
+export default useEventsByLocation;
