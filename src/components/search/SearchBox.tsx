@@ -141,8 +141,8 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
                         className="flex items-center p-2 hover:bg-gray-100 transition-colors"
                       >
                         <div className="h-10 w-10 mr-3 rounded overflow-hidden bg-gray-200 flex-shrink-0">
-                          {event.imageUrl ? (
-                            <img src={event.imageUrl} alt="" className="h-full w-full object-cover" />
+                          {event.image_url ? (
+                            <img src={event.image_url} alt="" className="h-full w-full object-cover" />
                           ) : (
                             <Calendar className="h-5 w-5 m-auto text-gray-400" />
                           )}
@@ -169,8 +169,8 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
                         className="flex items-center p-2 hover:bg-gray-100 transition-colors"
                       >
                         <div className="h-10 w-10 mr-3 rounded overflow-hidden bg-gray-200 flex-shrink-0">
-                          {venue.imageUrl ? (
-                            <img src={venue.imageUrl} alt="" className="h-full w-full object-cover" />
+                          {venue.image_url ? (
+                            <img src={venue.image_url} alt="" className="h-full w-full object-cover" />
                           ) : (
                             <MapPin className="h-5 w-5 m-auto text-gray-400" />
                           )}
@@ -197,7 +197,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
                         className="flex items-center p-2 hover:bg-gray-100 transition-colors"
                       >
                         <Avatar className="h-10 w-10 mr-3">
-                          <AvatarImage src={user.imageUrl} />
+                          <AvatarImage src={user.image_url || ''} />
                           <AvatarFallback>
                             {user.title ? user.title.charAt(0).toUpperCase() : 'U'}
                           </AvatarFallback>
@@ -224,8 +224,8 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
                         className="flex items-center p-2 hover:bg-gray-100 transition-colors"
                       >
                         <div className="h-10 w-10 mr-3 rounded overflow-hidden bg-gray-200 flex-shrink-0">
-                          {podcast.imageUrl ? (
-                            <img src={podcast.imageUrl} alt="" className="h-full w-full object-cover" />
+                          {podcast.image_url ? (
+                            <img src={podcast.image_url} alt="" className="h-full w-full object-cover" />
                           ) : (
                             <Mic className="h-5 w-5 m-auto text-gray-400" />
                           )}

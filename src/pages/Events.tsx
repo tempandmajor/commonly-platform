@@ -36,9 +36,9 @@ const Events: React.FC = () => {
             <div key={event.id} className="rounded-lg shadow-md overflow-hidden">
               
               <div className="h-40 overflow-hidden rounded-t-lg">
-                {event.imageUrl ? (
+                {event.image_url ? (
                   <img 
-                    src={event.imageUrl} 
+                    src={event.image_url} 
                     alt={event.title} 
                     className="w-full h-full object-cover"
                   />

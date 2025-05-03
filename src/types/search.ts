@@ -19,38 +19,19 @@ export interface EventWithDistance {
   distance_km: number;
 }
 
-export interface SearchResults {
-  events: Array<{
-    id: string;
-    title: string;
-    description: string | null;
-    image_url: string | null;
-    type: string;
-    created_at: string;
-  }>;
-  venues: Array<{
-    id: string;
-    title: string; // name is mapped to title
-    description: string | null;
-    image_url: string | null;
-    type: string;
-    created_at: string;
-  }>;
-  users: Array<{
-    id: string;
-    title: string; // display_name is mapped to title
-    description: string | null; // bio is mapped to description
-    image_url: string | null; // photo_url is mapped to image_url
-    type: string;
-    created_at: string;
-  }>;
-  podcasts: Array<{
-    id: string;
-    title: string;
-    description: string | null;
-    image_url: string | null;
-    type: string;
-    created_at: string;
-  }>;
+// Add SearchResult interface that's needed by components
+export interface SearchResult {
+  id: string;
+  title: string;
+  description: string | null;
+  image_url: string | null;
+  type: string;
+  created_at: string;
 }
 
+export interface SearchResults {
+  events: Array<SearchResult>;
+  venues: Array<SearchResult>;
+  users: Array<SearchResult>;
+  podcasts: Array<SearchResult>;
+}

@@ -138,7 +138,7 @@ export type Tables = {
 // Add type definition for the RPC functions
 declare module '@supabase/supabase-js' {
   interface SupabaseClient {
-    rpc<T = any>(
+    rpc<T extends Record<string, unknown> = Record<string, unknown>>(
       fn: 
         | 'create_notification' 
         | 'decrement_event_likes' 
@@ -152,7 +152,7 @@ declare module '@supabase/supabase-js' {
         | 'update_chat_last_message'
         | 'decrement_wallet_amount',
       params?: object
-    ): PostgrestFilterBuilder<any, T, T>;
+    ): PostgrestFilterBuilder<any, any, T>;
   }
 }
 

@@ -23,9 +23,9 @@ export const globalSearch = async (query: string): Promise<SearchResults> => {
         id: item.id,
         title: item.title,
         description: item.description,
-        imageUrl: item.image_url,
+        image_url: item.image_url,
         type: 'event' as const,
-        createdAt: item.created_at,
+        created_at: item.created_at,
       }));
     
     const venueResults = results
@@ -34,9 +34,9 @@ export const globalSearch = async (query: string): Promise<SearchResults> => {
         id: item.id,
         title: item.title,
         description: item.description,
-        imageUrl: item.image_url,
+        image_url: item.image_url,
         type: 'venue' as const,
-        createdAt: item.created_at,
+        created_at: item.created_at,
       }));
     
     const userResults = results
@@ -45,9 +45,9 @@ export const globalSearch = async (query: string): Promise<SearchResults> => {
         id: item.id,
         title: item.title,
         description: item.description,
-        imageUrl: item.image_url,
+        image_url: item.image_url,
         type: 'user' as const,
-        createdAt: item.created_at,
+        created_at: item.created_at,
       }));
     
     const podcastResults = results
@@ -56,9 +56,9 @@ export const globalSearch = async (query: string): Promise<SearchResults> => {
         id: item.id,
         title: item.title,
         description: item.description,
-        imageUrl: item.image_url,
+        image_url: item.image_url,
         type: 'podcast' as const,
-        createdAt: item.created_at,
+        created_at: item.created_at,
       }));
     
     return {
@@ -97,20 +97,12 @@ export const searchEventsByLocation = async (params: LocationSearchParams): Prom
       id: event.id,
       title: event.title,
       description: event.description,
-      imageUrl: event.image_url,
+      image_url: event.image_url,
       date: event.date,
       location: event.location,
-      locationLat: event.location_lat,
-      locationLng: event.location_lng,
-      distance: event.distance_km,
-      createdAt: event.created_at || new Date().toISOString(),
-      organizer: '',
-      organizerId: '',
-      eventType: 'in-person',
-      ageRestriction: null,
-      capacity: 0,
-      price: 0,
-      status: 'active'
+      location_lat: event.location_lat,
+      location_lng: event.location_lng,
+      distance_km: event.distance_km
     }));
   } catch (error) {
     console.error('Error searching events by location:', error);
