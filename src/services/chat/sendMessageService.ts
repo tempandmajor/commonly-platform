@@ -29,7 +29,7 @@ export const sendMessage = async (
       throw error;
     }
 
-    const messageId = data;
+    const messageId = data as string;
 
     // Update the last message in the chat - updating this to pass the proper type
     await updateLastMessage(
