@@ -53,12 +53,16 @@ export const getUserEventsFeed = async (userId: string) => {
 
 export const getUserFollowers = async (userId: string) => {
   try {
+    // Using direct query instead of RPC since the RPC function might not exist
     const { data, error } = await supabase
-      .rpc('get_user_followers', { user_id_param: userId });
+      .from('user_follows')
+      .select('follower_id')
+      .eq('following_id', userId);
     
     if (error) throw error;
     
-    return data || [];
+    // Return array of follower IDs
+    return data ? data.map(item => item.follower_id) : [];
   } catch (error) {
     console.error("Error fetching user followers:", error);
     return [];
@@ -67,12 +71,16 @@ export const getUserFollowers = async (userId: string) => {
 
 export const getUserFollowing = async (userId: string) => {
   try {
+    // Using direct query instead of RPC
     const { data, error } = await supabase
-      .rpc('get_user_following', { user_id_param: userId });
+      .from('user_follows')
+      .select('following_id')
+      .eq('follower_id', userId);
     
     if (error) throw error;
     
-    return data || [];
+    // Return array of following IDs
+    return data ? data.map(item => item.following_id) : [];
   }
   catch (error) {
     console.error("Error fetching user following:", error);
@@ -80,7 +88,6 @@ export const getUserFollowing = async (userId: string) => {
   }
 };
 
-// Create user_follows table for follow functionality
 export const followUser = async (followerId: string, followingId: string) => {
   try {
     // Check if this follow relationship already exists

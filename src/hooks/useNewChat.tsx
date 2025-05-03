@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { searchUsers } from "@/services/userService";
-import { createChat } from "@/services/chat";
+import { createChat } from "@/services/chat/index";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";

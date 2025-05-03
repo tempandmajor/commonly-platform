@@ -17,7 +17,6 @@ interface WalletDashboardProps {
 const WalletDashboard: React.FC<WalletDashboardProps> = ({ userId }) => {
   const {
     walletData,
-    wallet,
     transactions,
     referralStats,
     paymentMethods,
@@ -58,6 +57,12 @@ const WalletDashboard: React.FC<WalletDashboardProps> = ({ userId }) => {
     );
   }
 
+  // Create a combined wallet object that matches the UserWallet type expected by components
+  const wallet = {
+    ...walletData,
+    transactions: transactions
+  };
+
   return (
     <div className="space-y-6">
       <WalletOverview 
@@ -83,8 +88,8 @@ const WalletDashboard: React.FC<WalletDashboardProps> = ({ userId }) => {
             filters={filters}
             currentPage={currentPage}
             totalTransactions={totalTransactions}
-            onFilterChange={(newFilters) => setFilters(newFilters)}
-            onPageChange={(page) => setCurrentPage(page)}
+            onFilterChange={setFilters}
+            onPageChange={setCurrentPage}
             onExport={exportTransactionsToCSV}
           />
         </TabsContent>

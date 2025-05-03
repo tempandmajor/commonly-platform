@@ -1,46 +1,28 @@
-
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
-import { 
-  CalendarDays, 
-  ShoppingBag, 
-  Users, 
-  Headphones,
-  Settings,
-  MessageSquare,
-  Share2,
-  Heart,
-  AlertTriangle,
-  Loader2,
-  Edit,
-  User,
-  Calendar,
-  Activity,
-  Lock,
-  Crown,
-  MessageCircle
-} from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { UserData } from "@/types/auth";
+import Navbar from "@/components/layout/Navbar";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import LoadingSpinner from "@/components/common/LoadingSpinner";
+import { getUserProfile, toggleFollowUser } from "@/services/userService";
+import { useToast } from "@/hooks/use-toast";
 import UserProfileHeader from "@/components/profile/UserProfileHeader";
 import UserEvents from "@/components/profile/UserEvents";
 import UserPodcasts from "@/components/profile/UserPodcasts";
-import UserList from "@/components/profile/UserList";
-import MerchantStoreTab from "@/components/profile/MerchantStoreTab";
 import SubscriptionTab from "@/components/profile/SubscriptionTab";
-import LoadingIndicator from "@/components/podcasts/LoadingIndicator"; 
-import { getUserProfile, toggleFollowUser, isUserPro } from "@/services/userService";
-import { createChat } from "@/services/chat";
-import { getUserFollowers, getUserFollowing } from "@/services/socialService";
+import MerchantStoreTab from "@/components/profile/MerchantStoreTab";
+import { UserData } from "@/types/auth";
+import { createChat } from "@/services/chat/index";
+import { Mail, MoreHorizontal } from "lucide-react";
+import { 
+  DropdownMenu,
+  DropdownMenuContent, 
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
 import { useNavigate } from "react-router-dom";
-import { reportUser } from "@/services/reportService";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Textarea } from "@/components/ui/textarea";
 
 const UserProfile: React.FC = () => {
   const { userId } = useParams();
@@ -117,7 +99,7 @@ const UserProfile: React.FC = () => {
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8 flex justify-center items-center" style={{ minHeight: "calc(100vh - 64px)" }}>
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <LoadingSpinner />
       </div>
     );
   }

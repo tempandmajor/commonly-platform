@@ -12,6 +12,44 @@ export * from './unreadService';
 // Explicitly export sendMessage for backward compatibility
 export { sendMessage } from './sendMessageService';
 
+/**
+ * Creates a new chat between two users
+ */
+export const createChat = async (currentUserId: string, otherUserId: string): Promise<{chat?: Chat; error?: string}> => {
+  try {
+    // Check if chat already exists between these users
+    const { data: existingChats, error: findError } = await supabase
+      .from('chats')
+      .select('*')
+      .contains('participants', [currentUserId, otherUserId]);
+    
+    if (findError) throw findError;
+    
+    // If chat already exists, return it
+    if (existingChats && existingChats.length > 0) {
+      return { chat: existingChats[0] as Chat };
+    }
+    
+    // Create a new chat
+    const { data, error } = await supabase
+      .from('chats')
+      .insert({
+        participants: [currentUserId, otherUserId],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    
+    return { chat: data as Chat };
+  } catch (error) {
+    console.error("Error creating chat:", error);
+    return { error: error instanceof Error ? error.message : 'Unknown error creating chat' };
+  }
+};
+
 // Additional exports for backward compatibility
 export const sendMessageWithImage = async (
   chatId: string,

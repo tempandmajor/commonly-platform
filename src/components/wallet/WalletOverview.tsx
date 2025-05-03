@@ -10,8 +10,8 @@ import { ArrowDownToLine, BadgeDollarSign, Clock, CreditCard, Loader2 } from "lu
 
 interface WalletOverviewProps {
   wallet: UserWallet;
-  onWithdraw: (amount: number) => Promise<void>;
-  onConnectAccount: () => Promise<void>;
+  onWithdraw: (amount: number) => Promise<any>;
+  onConnectAccount: () => Promise<any>;
   withdrawalLoading: boolean;
   connectAccountLoading: boolean;
 }
