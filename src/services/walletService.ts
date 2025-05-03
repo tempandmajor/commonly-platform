@@ -62,7 +62,7 @@ export const getUserWallet = async (userId: string): Promise<WalletData> => {
     }
     
     return {
-      id: data.id || `wallet_${userId}`,
+      id: `wallet_${userId}`, // Generate an ID if none exists
       userId: data.user_id,
       availableBalance: data.available_balance || 0,
       pendingBalance: data.pending_balance || 0,
@@ -171,7 +171,7 @@ export const requestWithdrawal = async (
     
     if (error) throw error;
     
-    // Update the wallet balance directly
+    // Update the wallet balance directly using RPC function
     const { error: updateError } = await supabase
       .from('wallets')
       .update({ 

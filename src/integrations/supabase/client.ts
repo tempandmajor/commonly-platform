@@ -1,5 +1,7 @@
+
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
+import { PostgrestFilterBuilder } from '@supabase/postgrest-js';
 
 const SUPABASE_URL = "https://kweskshyumqhijjileky.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3ZXNrc2h5dW1xaGlqamlsZWt5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU5NDgyNTYsImV4cCI6MjA2MTUyNDI1Nn0.Qo-OpAXUOP-W_XYbAzlo61wtzjMlpja0imTNR-eLKJs";
