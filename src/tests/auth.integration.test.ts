@@ -42,14 +42,14 @@ describe('Authentication Integration', () => {
       updateProfile: vi.fn()
     };
     
-    (useAuth as jest.Mock).mockReturnValue(mockAuthContext);
+    (useAuth as any).mockReturnValue(mockAuthContext);
   });
 
   it('should integrate with supabase authentication', async () => {
     const supabase = createClient('https://example.com', 'fake-api-key');
     
     // Mock successful sign in
-    (supabase.auth.signInWithPassword as jest.Mock).mockResolvedValue({
+    (supabase.auth.signInWithPassword as any).mockResolvedValue({
       data: {
         user: {
           id: 'user123',
@@ -72,7 +72,7 @@ describe('Authentication Integration', () => {
   it('should handle sign out correctly', async () => {
     const supabase = createClient('https://example.com', 'fake-api-key');
     
-    (supabase.auth.signOut as jest.Mock).mockResolvedValue({
+    (supabase.auth.signOut as any).mockResolvedValue({
       error: null
     });
     

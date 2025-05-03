@@ -31,7 +31,7 @@ export const sendMessage = async (
 
     const messageId = data;
 
-    // Update the last message in the chat
+    // Update the last message in the chat - updating this to pass the proper type
     await updateLastMessage(
       chatId,
       senderId,

@@ -19,7 +19,7 @@ export const globalSearch = async (query: string): Promise<SearchResults> => {
     // Organize results by type
     const eventResults = results
       .filter(item => item.type === 'event')
-      .map(item => ({
+      .map((item): SearchResult => ({
         id: item.id,
         title: item.title,
         description: item.description,
@@ -30,7 +30,7 @@ export const globalSearch = async (query: string): Promise<SearchResults> => {
     
     const venueResults = results
       .filter(item => item.type === 'venue')
-      .map(item => ({
+      .map((item): SearchResult => ({
         id: item.id,
         title: item.title,
         description: item.description,
@@ -41,7 +41,7 @@ export const globalSearch = async (query: string): Promise<SearchResults> => {
     
     const userResults = results
       .filter(item => item.type === 'user')
-      .map(item => ({
+      .map((item): SearchResult => ({
         id: item.id,
         title: item.title,
         description: item.description,
@@ -52,7 +52,7 @@ export const globalSearch = async (query: string): Promise<SearchResults> => {
     
     const podcastResults = results
       .filter(item => item.type === 'podcast')
-      .map(item => ({
+      .map((item): SearchResult => ({
         id: item.id,
         title: item.title,
         description: item.description,
@@ -93,7 +93,7 @@ export const searchEventsByLocation = async (params: LocationSearchParams): Prom
     if (error) throw error;
     
     // Convert to our app's Event model with distance information
-    return (data || []).map(event => ({
+    return (data || []).map((event): EventWithDistance => ({
       id: event.id,
       title: event.title,
       description: event.description,
