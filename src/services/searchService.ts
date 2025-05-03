@@ -1,14 +1,12 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { UserData } from '@/types/auth';
-
-// Export types as type-only exports to fix isolatedModules issue
-export type { SearchResult, SearchResults, LocationSearchParams, EventWithDistance } from '@/types/search';
+import { SearchResult, SearchResults, LocationSearchParams, EventWithDistance } from '@/types/search';
 
 /**
  * Performs a global search across events, venues, and users
  */
-export const globalSearch = async (query: string): Promise<import('@/types/search').SearchResults> => {
+export const globalSearch = async (query: string): Promise<SearchResults> => {
   try {
     const { data, error } = await supabase.rpc('global_search', {
       search_query: query
@@ -78,7 +76,7 @@ export const globalSearch = async (query: string): Promise<import('@/types/searc
 /**
  * Search events by location
  */
-export const searchEventsByLocation = async (params: import('@/types/search').LocationSearchParams): Promise<import('@/types/search').EventWithDistance[]> => {
+export const searchEventsByLocation = async (params: LocationSearchParams): Promise<EventWithDistance[]> => {
   try {
     const { latitude, longitude, radius = 50 } = params;
     
@@ -104,8 +102,8 @@ export const searchEventsByLocation = async (params: import('@/types/search').Lo
       locationLat: event.location_lat,
       locationLng: event.location_lng,
       distance: event.distance_km,
-      // Added a fallback for created_at as it might not exist in the response
-      createdAt: event.created_at || new Date().toISOString(),
+      // Added a default for createdAt as it doesn't exist in the response
+      createdAt: new Date().toISOString(),
       organizer: '',
       organizerId: '',
       eventType: 'in-person',

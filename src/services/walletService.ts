@@ -171,11 +171,11 @@ export const requestWithdrawal = async (
     
     if (error) throw error;
     
-    // Update the wallet directly by using an update with the amount
+    // Update the wallet directly with SQL
     const { error: updateError } = await supabase
       .from('wallets')
       .update({ 
-        available_balance: supabase.rpc('get_wallet_balance_after_withdrawal', { 
+        available_balance: supabase.rpc('decrement_wallet_amount', { 
           user_id_param: userId, 
           amount_param: withdrawalData.amount 
         })

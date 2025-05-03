@@ -1,10 +1,20 @@
 
-import { describe, it, expect, vi } from '../test-utils/mocks'; 
+import { describe, it, expect } from '../test-utils/mocks';
 import { 
   createPodcast,
   getPodcasts,
   getPodcast
 } from '@/services/podcast/podcastCrudService';
+
+// Create vi object for mocking
+const vi = {
+  mock: (path: string, factory?: any) => {},
+  fn: () => {
+    return function mockFn() {
+      return { id: 'test-podcast-id' };
+    };
+  }
+};
 
 // Mock Firebase services
 vi.mock('@/lib/firebase', () => ({

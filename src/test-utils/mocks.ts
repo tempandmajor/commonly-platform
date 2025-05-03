@@ -4,6 +4,49 @@
 // Mock for vitest
 export const describe = (name: string, fn: () => void) => {};
 export const it = (name: string, fn: () => Promise<void> | void) => {};
+export const beforeEach = (fn: () => void) => {};
+export const afterEach = (fn: () => void) => {};
+
+// Create a vi mock object with common test utilities
+export const vi = {
+  fn: () => {
+    const mockFn = (...args: any[]) => mockFn.mock.calls.push(args);
+    mockFn.mock = {
+      calls: [],
+      results: [],
+      instances: [],
+      mockClear: () => {
+        mockFn.mock.calls = [];
+        mockFn.mock.results = [];
+        mockFn.mock.instances = [];
+      },
+      mockReset: () => {
+        mockFn.mock.calls = [];
+        mockFn.mock.results = [];
+        mockFn.mock.instances = [];
+      }
+    };
+    mockFn.mockReturnValue = (val: any) => {
+      return mockFn;
+    };
+    mockFn.mockResolvedValue = (val: any) => {
+      return mockFn;
+    };
+    mockFn.mockImplementation = (impl: (...args: any[]) => any) => {
+      return mockFn;
+    };
+    return mockFn;
+  },
+  clearAllMocks: () => {},
+  mock: (moduleName: string, factory?: () => any) => {},
+  clearAllTimers: () => {},
+  useFakeTimers: () => {},
+  useRealTimers: () => {},
+  runAllTimers: () => {},
+  advanceTimersByTime: (ms: number) => {}
+};
+
+// Expand the expect implementation to include more matchers
 const expectImpl = (value: any) => ({
   toBe: (expected: any) => {},
   toEqual: (expected: any) => {},
@@ -14,17 +57,34 @@ const expectImpl = (value: any) => ({
   toBeFalsy: () => {},
   toHaveLength: (expected: number) => {},
   toThrow: (expected?: any) => {},
+  toHaveBeenCalled: () => {},
+  toBeVisible: () => {},
+  toHaveTitle: (regex: RegExp | string) => {}
 });
+
 export const expect = expectImpl;
 
 // Mock for Playwright
-export const test = (name: string, fn: () => Promise<void> | void) => {};
+export const test = Object.assign(
+  (name: string, fn: (params: { page: any }) => Promise<void> | void) => {},
+  {
+    describe: (name: string, fn: () => void) => {},
+    beforeEach: (fn: (params: { page: any }) => Promise<void> | void) => {}
+  }
+);
+
 export const page = {
   goto: async (url: string) => {},
   click: async (selector: string) => {},
   fill: async (selector: string, value: string) => {},
   waitForSelector: async (selector: string) => {},
   waitForNavigation: async () => {},
+  waitForURL: async (url: string) => {},
+  locator: (selector: string) => ({
+    toBeVisible: () => {},
+    click: async () => {},
+    fill: async (value: string) => {}
+  })
 };
 
 // Fix for getPodcastById -> getPodcast

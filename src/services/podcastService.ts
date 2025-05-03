@@ -1,6 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { Podcast, PodcastCreateInput, PodcastCategory } from "@/types/podcast";
+// Import types directly to avoid circular references
+import type { Podcast } from "@/types/podcast";
 
 /**
  * Get featured podcasts
@@ -11,7 +12,6 @@ export const getFeaturedPodcasts = async (limit = 6): Promise<Podcast[]> => {
       .from('podcasts')
       .select('*')
       .eq('published', true)
-      .eq('visibility', 'public')
       .order('created_at', { ascending: false })
       .limit(limit);
     
@@ -39,8 +39,8 @@ const convertDbPodcastToPodcast = (dbPodcast: any): Podcast => {
     duration: dbPodcast.duration || 0,
     createdAt: dbPodcast.created_at,
     userId: dbPodcast.user_id,
-    userName: dbPodcast.user_name,
-    userPhotoUrl: dbPodcast.user_photo_url,
+    userName: "Unknown", // We'll need to fetch user data separately
+    userPhotoUrl: undefined,
     categoryId: dbPodcast.category_id,
     likeCount: dbPodcast.like_count || 0,
     viewCount: dbPodcast.view_count || 0,
@@ -60,7 +60,7 @@ const convertDbPodcastToPodcast = (dbPodcast: any): Podcast => {
 /**
  * Create a new podcast
  */
-export const createPodcast = async (podcastData: PodcastCreateInput): Promise<Podcast | null> => {
+export const createPodcast = async (podcastData: any): Promise<Podcast | null> => {
   try {
     // Convert to DB format
     const dbPodcast = {
@@ -102,37 +102,12 @@ export const createPodcast = async (podcastData: PodcastCreateInput): Promise<Po
 };
 
 /**
- * Get podcast categories
- */
-export const getPodcastCategories = async (): Promise<PodcastCategory[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('podcast_categories')
-      .select('*')
-      .order('name');
-    
-    if (error) throw error;
-    
-    return (data || []).map((category: any) => ({
-      id: category.id,
-      name: category.name,
-      description: category.description,
-      icon: category.icon,
-      imageUrl: category.image_url || category.icon // Fallback
-    }));
-  } catch (error) {
-    console.error("Error fetching podcast categories:", error);
-    return [];
-  }
-};
-
-/**
  * Increments the listen count for a podcast
  */
 export const incrementListenCount = async (podcastId: string): Promise<boolean> => {
   try {
     const { data, error } = await supabase.rpc('increment_podcast_listens', {
-      podcast_id_param: podcastId  // Fixed to use the correct parameter name
+      podcast_id_param: podcastId
     });
     
     if (error) throw error;
@@ -143,3 +118,10 @@ export const incrementListenCount = async (podcastId: string): Promise<boolean> 
     return false;
   }
 };
+
+// Re-export other services from podcast subdirectory for backward compatibility
+export * from './podcast/categoryService';
+export * from './podcast/podcastCrudService';
+export * from './podcast/commentService';
+export * from './podcast/sessionService';
+export * from './podcast/statsService';
