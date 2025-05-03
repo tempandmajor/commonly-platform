@@ -19,13 +19,16 @@ export interface EventWithDistance {
   distance_km: number;
 }
 
+// Define possible search result types
+export type SearchType = 'event' | 'venue' | 'user' | 'podcast';
+
 // Add SearchResult interface that's needed by components
 export interface SearchResult {
   id: string;
   title: string;
   description: string | null;
   image_url: string | null;
-  type: string;
+  type: SearchType;
   created_at: string;
 }
 

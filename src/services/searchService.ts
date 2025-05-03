@@ -1,7 +1,62 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { UserData } from '@/types/auth';
-import { SearchResult, SearchResults, LocationSearchParams, EventWithDistance } from '@/types/search';
+import { SearchResult, SearchResults, LocationSearchParams, EventWithDistance, SearchType } from '@/types/search';
+
+/**
+ * Type for raw search results coming from Supabase RPC
+ */
+interface RawSearchResult {
+  id: string;
+  title: string;
+  description: string | null;
+  image_url: string | null;
+  type: string;
+  created_at: string;
+}
+
+interface RawEventWithDistance {
+  id: string;
+  title: string;
+  description: string | null;
+  image_url: string | null;
+  date: string | null;
+  location: string | null;
+  location_lat: number;
+  location_lng: number;
+  distance_km: number;
+}
+
+/**
+ * Converts a raw search result to a typed SearchResult
+ */
+const mapToSearchResult = (item: RawSearchResult): SearchResult => {
+  return {
+    id: item.id,
+    title: item.title,
+    description: item.description,
+    image_url: item.image_url,
+    type: item.type as SearchType,
+    created_at: item.created_at,
+  };
+};
+
+/**
+ * Converts a raw event with distance to a typed EventWithDistance
+ */
+const mapToEventWithDistance = (event: RawEventWithDistance): EventWithDistance => {
+  return {
+    id: event.id,
+    title: event.title,
+    description: event.description,
+    image_url: event.image_url,
+    date: event.date,
+    location: event.location,
+    location_lat: event.location_lat,
+    location_lng: event.location_lng,
+    distance_km: event.distance_km
+  };
+};
 
 /**
  * Performs a global search across events, venues, and users
@@ -14,60 +69,24 @@ export const globalSearch = async (query: string): Promise<SearchResults> => {
     
     if (error) throw error;
     
-    const results = data || [];
+    const results = data as RawSearchResult[] || [];
     
     // Organize results by type
     const eventResults = results
       .filter(item => item.type === 'event')
-      .map((item): SearchResult => {
-        return {
-          id: item.id,
-          title: item.title,
-          description: item.description,
-          image_url: item.image_url,
-          type: 'event',
-          created_at: item.created_at,
-        };
-      });
+      .map(mapToSearchResult);
     
     const venueResults = results
       .filter(item => item.type === 'venue')
-      .map((item): SearchResult => {
-        return {
-          id: item.id,
-          title: item.title,
-          description: item.description,
-          image_url: item.image_url,
-          type: 'venue',
-          created_at: item.created_at,
-        };
-      });
+      .map(mapToSearchResult);
     
     const userResults = results
       .filter(item => item.type === 'user')
-      .map((item): SearchResult => {
-        return {
-          id: item.id,
-          title: item.title,
-          description: item.description,
-          image_url: item.image_url,
-          type: 'user',
-          created_at: item.created_at,
-        };
-      });
+      .map(mapToSearchResult);
     
     const podcastResults = results
       .filter(item => item.type === 'podcast')
-      .map((item): SearchResult => {
-        return {
-          id: item.id,
-          title: item.title,
-          description: item.description,
-          image_url: item.image_url,
-          type: 'podcast',
-          created_at: item.created_at,
-        };
-      });
+      .map(mapToSearchResult);
     
     return {
       events: eventResults,
@@ -101,19 +120,7 @@ export const searchEventsByLocation = async (params: LocationSearchParams): Prom
     if (error) throw error;
     
     // Convert to our app's Event model with distance information
-    return (data || []).map((event): EventWithDistance => {
-      return {
-        id: event.id,
-        title: event.title,
-        description: event.description,
-        image_url: event.image_url,
-        date: event.date,
-        location: event.location,
-        location_lat: event.location_lat,
-        location_lng: event.location_lng,
-        distance_km: event.distance_km
-      };
-    });
+    return (data as RawEventWithDistance[] || []).map(mapToEventWithDistance);
   } catch (error) {
     console.error('Error searching events by location:', error);
     return [];
