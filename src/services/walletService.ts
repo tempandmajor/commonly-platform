@@ -171,11 +171,14 @@ export const requestWithdrawal = async (
     
     if (error) throw error;
     
-    // Instead of using RPC with sql, update the wallet directly
+    // Update the wallet balance directly
     const { error: updateError } = await supabase
       .from('wallets')
       .update({ 
-        available_balance: supabase.from('wallets').select('available_balance').eq('user_id', userId).single().then(res => (res.data?.available_balance || 0) - withdrawalData.amount)
+        available_balance: supabase.rpc('decrement_wallet_amount', {
+          p_user_id: userId,
+          p_amount: withdrawalData.amount
+        })
       })
       .eq('user_id', userId);
     

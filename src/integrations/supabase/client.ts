@@ -133,6 +133,27 @@ export type Tables = {
   };
 };
 
+// Add type definition for the RPC functions
+declare module '@supabase/supabase-js' {
+  interface SupabaseClient {
+    rpc<T = any>(
+      fn: 
+        | 'create_notification' 
+        | 'decrement_event_likes' 
+        | 'global_search' 
+        | 'increment_event_likes' 
+        | 'increment_event_shares' 
+        | 'increment_podcast_listens' 
+        | 'insert_message' 
+        | 'mark_messages_as_read' 
+        | 'search_events_by_location' 
+        | 'update_chat_last_message'
+        | 'decrement_wallet_amount',
+      params?: object
+    ): PostgrestFilterBuilder<T>;
+  }
+}
+
 // Create the typed client
 // This helps TypeScript understand what tables are available
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
