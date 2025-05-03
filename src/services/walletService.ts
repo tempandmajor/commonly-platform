@@ -1,6 +1,5 @@
-
 import { supabase } from "@/integrations/supabase/client";
-import { Transaction, UserWallet, ReferralStats, PaymentMethod } from "@/types/auth";
+import { UserWallet, Transaction, TransactionFilters, ReferralStats, PaymentMethod } from "@/types/wallet";
 
 // Get user wallet
 export const getUserWallet = async (userId: string): Promise<UserWallet | null> => {
@@ -35,49 +34,53 @@ export const getUserWallet = async (userId: string): Promise<UserWallet | null> 
 
 // Get user transactions
 export const getUserTransactions = async (
-  userId: string, 
-  limit: number = 10, 
-  offset: number = 0,
-  startDate?: Date,
-  endDate?: Date
-): Promise<Transaction[]> => {
+  userId: string,
+  page: number = 1,
+  pageSize: number = 10,
+  filters?: TransactionFilters
+): Promise<{ transactions: Transaction[], total: number }> => {
   try {
     let query = supabase
       .from('transactions')
-      .select('*')
-      .eq('user_id', userId)
+      .select('*', { count: 'exact' })
+      .eq('user_id', userId);
+
+    // Apply filters if provided
+    if (filters) {
+      if (filters.type) {
+        query = query.eq('type', filters.type);
+      }
+      
+      if (filters.status) {
+        query = query.eq('status', filters.status);
+      }
+      
+      if (filters.dateFrom) {
+        query = query.gte('created_at', filters.dateFrom);
+      }
+      
+      if (filters.dateTo) {
+        query = query.lte('created_at', filters.dateTo);
+      }
+    }
+
+    // Add pagination
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    
+    // Fetch transactions with pagination
+    const { data, error, count } = await query
       .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
-    
-    // Add date filters if provided
-    if (startDate) {
-      query = query.gte('created_at', startDate.toISOString());
-    }
-    
-    if (endDate) {
-      query = query.lte('created_at', endDate.toISOString());
-    }
-    
-    const { data, error } = await query;
-    
+      .range(from, to);
+
     if (error) throw error;
-    
-    return data.map(t => ({
-      id: t.id,
-      userId: t.user_id,
-      amount: t.amount,
-      type: t.type,
-      status: t.status,
-      description: t.description || undefined,
-      eventId: t.event_id || undefined,
-      referralId: t.referral_id || undefined,
-      orderId: t.order_id || undefined,
-      paymentMethodId: t.payment_method_id || undefined,
-      createdAt: t.created_at,
-      updatedAt: t.updated_at || undefined
-    }));
+
+    return {
+      transactions: data || [],
+      total: count || 0
+    };
   } catch (error) {
-    console.error("Error fetching user transactions:", error);
+    console.error("Error fetching transactions:", error);
     throw error;
   }
 };

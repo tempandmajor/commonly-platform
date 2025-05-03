@@ -1,14 +1,19 @@
-
 import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "@/contexts/AuthContext";
-import { PaymentMethod, ReferralStats, Transaction, UserWallet } from "@/types/wallet";
 import { useToast } from "@/hooks/use-toast";
 import { 
+  UserWallet, 
+  Transaction, 
+  TransactionFilters, 
+  ReferralStats,
+  PaymentMethod
+} from "@/types/wallet";
+import { 
+  getWalletData, 
   getUserTransactions, 
-  getUserReferralStats, 
-  getUserPaymentMethods, 
-  initiateWithdrawal,
-  createConnectAccountLink 
+  createWithdrawal,
+  createStripeConnectAccount,
+  getReferralStats,
+  getPaymentMethods,
 } from "@/services/walletService";
 
 interface TransactionFilters {
@@ -75,29 +80,23 @@ export const useWallet = (userId: string) => {
   };
 
   // Fetch transactions with filters
-  const fetchTransactions = useCallback(async (
-    page: number = 1,
-    pageSize: number = 10,
-    newFilters?: TransactionFilters
-  ) => {
-    if (!userId) return;
-    
-    setTransactionsLoading(true);
+  const fetchTransactions = async (page = 1, pageSize = 10, newFilters?: TransactionFilters) => {
     try {
-      const filtersToUse = newFilters || filters;
-      const { transactions: fetchedTransactions, total } = await getUserTransactions(
-        userId,
-        filtersToUse,
-        page,
-        pageSize
-      );
-      
-      setTransactions(fetchedTransactions);
-      setTotalTransactions(total);
-      setCurrentPage(page);
-      
+      setTransactionsLoading(true);
+    
+      // Update filters if new ones are provided
+      const filtersToUse = newFilters ? { ...newFilters } : filters;
       if (newFilters) {
         setFilters(newFilters);
+        setCurrentPage(1);
+      }
+    
+      // Get transactions with the given filters
+      const result = await getUserTransactions(userId, page, pageSize, filtersToUse);
+    
+      if (result && Array.isArray(result.transactions)) {
+        setTransactions(result.transactions);
+        setTotalTransactions(result.total || 0);
       }
     } catch (error) {
       console.error("Error fetching transactions:", error);
@@ -109,7 +108,7 @@ export const useWallet = (userId: string) => {
     } finally {
       setTransactionsLoading(false);
     }
-  }, [userId, filters, toast]);
+  };
 
   // Fetch referral stats
   const fetchReferralStats = useCallback(async (period: 'week' | 'month' | 'year' | 'all' = 'month') => {
@@ -194,7 +193,7 @@ export const useWallet = (userId: string) => {
     
     setConnectAccountLoading(true);
     try {
-      const url = await createConnectAccountLink(userId);
+      const url = await createStripeConnectAccount(userId);
       window.open(url, "_blank");
     } catch (error) {
       console.error("Error creating Connect account:", error);
@@ -209,38 +208,52 @@ export const useWallet = (userId: string) => {
   };
 
   // Export transactions to CSV
-  const exportTransactionsToCSV = () => {
-    if (transactions.length === 0) {
+  const exportTransactionsToCSV = async () => {
+    try {
+      // Get all transactions for export (with current filters but no pagination)
+      const result = await getUserTransactions(userId, 1, 1000, filters);
+    
+      if (!result || !result.transactions || result.transactions.length === 0) {
+        toast({
+          title: "No data",
+          description: "No transactions to export",
+        });
+        return;
+      }
+    
+      // Convert data to CSV
+      const headers = ["Date", "Type", "Amount", "Status", "Description"];
+      const csvContent = [
+        headers.join(","),
+        ...result.transactions.map(t => [
+          new Date(t.createdAt).toLocaleDateString(),
+          t.type,
+          t.amount.toFixed(2),
+          t.status,
+          `"${t.description || ""}"`
+        ].join(","))
+      ].join("\n");
+    
+      // Create download link
+      const blob = new Blob([csvContent], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `transactions-${new Date().toISOString().split("T")[0]}.csv`;
+      link.click();
+    
       toast({
-        title: "No transactions",
-        description: "There are no transactions to export",
+        title: "Export complete",
+        description: "Transactions exported to CSV",
+      });
+    } catch (error) {
+      console.error("Error exporting transactions:", error);
+      toast({
+        title: "Export failed",
+        description: "Failed to export transactions",
         variant: "destructive",
       });
-      return;
     }
-    
-    // Create CSV content
-    const headers = "ID,Date,Description,Amount,Type,Status\n";
-    const csvContent = transactions.reduce((content, transaction) => {
-      const row = [
-        transaction.id,
-        new Date(transaction.createdAt).toLocaleDateString(),
-        `"${transaction.description?.replace(/"/g, '""') || ''}"`,
-        transaction.amount.toFixed(2),
-        transaction.type,
-        transaction.status
-      ].join(',');
-      return content + row + '\n';
-    }, headers);
-    
-    // Create download link
-    const encodedUri = encodeURI("data:text/csv;charset=utf-8," + csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `transactions-${new Date().toISOString().slice(0,10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
   // Initial data loading

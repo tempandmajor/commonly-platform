@@ -15,3 +15,9 @@ export const adaptUser = (supabaseUser: User | null): (User & { uid: string, pho
     displayName: supabaseUser.user_metadata?.full_name || null,
   };
 };
+
+/**
+ * Type definition for the adapted user
+ * This helps when we need to use the type in TypeScript
+ */
+export type AdaptedUser = NonNullable<ReturnType<typeof adaptUser>>;

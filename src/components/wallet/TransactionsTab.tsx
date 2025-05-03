@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { useWallet } from '@/hooks/useWallet';
-import { Transaction } from '@/types/wallet';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -9,23 +11,20 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { useToast } from '@/hooks/use-toast';
-import { formatCurrency } from '@/lib/utils';
-import { CalendarIcon, Download, Search } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
+import { Transaction, TransactionFilters } from '@/types/wallet';
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { FilterX, Loader2 } from "../ui/icons";
 
 interface TransactionsTabProps {
   transactions: Transaction[];
   loading: boolean;
-  filters: any;
+  filters: TransactionFilters;
   currentPage: number;
   totalTransactions: number;
-  onFilterChange: (filters: any) => void;
+  onFilterChange: (filters: TransactionFilters) => void;
   onPageChange: (page: number) => void;
   onExport: () => void;
 }

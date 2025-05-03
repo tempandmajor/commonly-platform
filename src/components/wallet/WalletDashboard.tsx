@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,7 +7,7 @@ import TransactionsTab from "./TransactionsTab";
 import PlatformCreditsTab from "./PlatformCreditsTab";
 import ReferralsTab from "./ReferralsTab";
 import PaymentMethodsTab from "./PaymentMethodsTab";
-import { Loader2 } from "lucide-react";
+import { Loader2 } from "../ui/icons";
 
 interface WalletDashboardProps {
   userId: string;

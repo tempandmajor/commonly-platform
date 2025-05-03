@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { Chat, ChatWithUser } from "@/types/chat";
 import { UserData } from "@/types/auth";
+import { v4 as uuidv4 } from 'uuid';
 import { toast } from "@/hooks/use-toast";
 
 // Helper to map database fields to our Chat type
@@ -158,31 +159,34 @@ export const getChatById = async (
  */
 export const updateLastMessage = async (
   chatId: string, 
-  messageContent: { 
-    text?: string;
-    senderId: string;
-    recipientId: string;
-    timestamp: string;
-    read: boolean; 
-    id: string; // Add the message id
-  }
-): Promise<boolean> => {
+  senderId: string,
+  recipientId: string,
+  text: string,
+  timestamp: string,
+  read: boolean
+): Promise<void> => {
   try {
-    // Call the RPC function to update the last message
-    const { error } = await supabase.rpc(
-      'update_chat_last_message', 
-      { 
-        p_chat_id: chatId, 
-        p_last_message: messageContent 
-      }
-    );
-    
-    if (error) throw error;
-    
-    return true;
+    const lastMessage = {
+      id: uuidv4(), // Generate an ID for the last message
+      senderId,
+      recipientId,
+      text,
+      timestamp,
+      read
+    };
+
+    const { error } = await supabase
+      .rpc('update_chat_last_message', {
+        p_chat_id: chatId,
+        p_last_message: lastMessage
+      });
+
+    if (error) {
+      throw error;
+    }
   } catch (error) {
     console.error('Error updating last message:', error);
-    return false;
+    throw error;
   }
 };
 
