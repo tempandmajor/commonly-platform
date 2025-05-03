@@ -1,10 +1,9 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { UserData } from '@/types/auth';
 import { SearchResult, SearchResults, LocationSearchParams, EventWithDistance, SearchType } from '@/types/search';
 
 /**
- * Type for raw search results coming from Supabase RPC
+ * Interface for raw search results coming from Supabase RPC
  */
 interface RawSearchResult {
   id: string;
@@ -15,6 +14,9 @@ interface RawSearchResult {
   created_at: string;
 }
 
+/**
+ * Interface for raw events with distance from Supabase RPC
+ */
 interface RawEventWithDistance {
   id: string;
   title: string;
@@ -25,6 +27,16 @@ interface RawEventWithDistance {
   location_lat: number;
   location_lng: number;
   distance_km: number;
+}
+
+/**
+ * Error class for search-related errors
+ */
+export class SearchError extends Error {
+  constructor(message: string, public code?: string) {
+    super(message);
+    this.name = 'SearchError';
+  }
 }
 
 /**
@@ -59,6 +71,18 @@ const mapToEventWithDistance = (event: RawEventWithDistance): EventWithDistance 
 };
 
 /**
+ * Organizes search results by their type
+ */
+const organizeSearchResults = (results: RawSearchResult[]): SearchResults => {
+  return {
+    events: results.filter(item => item.type === 'event').map(mapToSearchResult),
+    venues: results.filter(item => item.type === 'venue').map(mapToSearchResult),
+    users: results.filter(item => item.type === 'user').map(mapToSearchResult),
+    podcasts: results.filter(item => item.type === 'podcast').map(mapToSearchResult),
+  };
+};
+
+/**
  * Performs a global search across events, venues, and users
  */
 export const globalSearch = async (query: string): Promise<SearchResults> => {
@@ -67,41 +91,25 @@ export const globalSearch = async (query: string): Promise<SearchResults> => {
       search_query: query
     });
     
-    if (error) throw error;
+    if (error) {
+      throw new SearchError(`Global search failed: ${error.message}`, error.code);
+    }
     
+    // Type assertion to RawSearchResult[] since we know the shape of the data
     const results = data as RawSearchResult[] || [];
     
-    // Organize results by type
-    const eventResults = results
-      .filter(item => item.type === 'event')
-      .map(mapToSearchResult);
-    
-    const venueResults = results
-      .filter(item => item.type === 'venue')
-      .map(mapToSearchResult);
-    
-    const userResults = results
-      .filter(item => item.type === 'user')
-      .map(mapToSearchResult);
-    
-    const podcastResults = results
-      .filter(item => item.type === 'podcast')
-      .map(mapToSearchResult);
-    
-    return {
-      events: eventResults,
-      venues: venueResults,
-      users: userResults,
-      podcasts: podcastResults,
-    };
+    return organizeSearchResults(results);
   } catch (error) {
     console.error('Global search error:', error);
-    return { events: [], venues: [], users: [], podcasts: [] };
+    if (error instanceof SearchError) {
+      throw error;
+    }
+    throw new SearchError('Failed to perform global search');
   }
 };
 
 /**
- * Search events by location
+ * Search events by location with distance calculation
  */
 export const searchEventsByLocation = async (params: LocationSearchParams): Promise<EventWithDistance[]> => {
   try {
@@ -117,12 +125,19 @@ export const searchEventsByLocation = async (params: LocationSearchParams): Prom
       }
     );
     
-    if (error) throw error;
+    if (error) {
+      throw new SearchError(`Location search failed: ${error.message}`, error.code);
+    }
     
-    // Convert to our app's Event model with distance information
-    return (data as RawEventWithDistance[] || []).map(mapToEventWithDistance);
+    // Type assertion to RawEventWithDistance[] since we know the shape of the data
+    const results = data as RawEventWithDistance[] || [];
+    
+    return results.map(mapToEventWithDistance);
   } catch (error) {
     console.error('Error searching events by location:', error);
-    return [];
+    if (error instanceof SearchError) {
+      throw error;
+    }
+    throw new SearchError('Failed to search events by location');
   }
 };
