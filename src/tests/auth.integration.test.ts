@@ -18,7 +18,7 @@ interface MockedSupabaseClient {
 // Fix: Make sure createClient mock accepts the URL and key arguments that match real usage
 vi.mock('@supabase/supabase-js', () => {
   return {
-    createClient: vi.fn((url, key) => ({
+    createClient: vi.fn().mockImplementation(() => ({
       auth: {
         signInWithPassword: vi.fn(),
         signUp: vi.fn(),
@@ -58,7 +58,7 @@ describe('Authentication Integration', () => {
     // Reset all mocks before each test
     vi.clearAllMocks();
     
-    // Create a mock Supabase client - Pass required URL and key arguments
+    // Create a mock Supabase client - mockImplementation handles arguments
     mockSupabase = createClient('https://example.com', 'fake-api-key') as any as MockedSupabaseClient;
     
     // Create a mock auth context
