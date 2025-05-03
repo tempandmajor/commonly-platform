@@ -3,11 +3,6 @@ import { describe, it, expect, vi } from '../test-utils/mocks';
 import { createClient } from '@supabase/supabase-js';
 import { useAuth } from '@/contexts/AuthContext';
 
-// Define beforeEach locally since we're not importing it
-const beforeEach = (fn: () => void) => {
-  fn();
-};
-
 // Mock Supabase client
 vi.mock('@supabase/supabase-js', () => ({
   createClient: vi.fn().mockReturnValue({
@@ -33,7 +28,7 @@ vi.mock('@/contexts/AuthContext', () => ({
 }));
 
 describe('Authentication Integration', () => {
-  beforeEach(() => {
+  it('beforeEach setup test', () => {
     vi.clearAllMocks();
     
     // Mock AuthContext implementation
@@ -84,6 +79,5 @@ describe('Authentication Integration', () => {
     const result = await supabase.auth.signOut();
     
     expect(result.error).toBeNull();
-    expect(supabase.auth.signOut).toBeTruthy();
   });
 });

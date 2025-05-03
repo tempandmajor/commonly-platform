@@ -10,7 +10,10 @@ export const afterEach = (fn: () => void) => {};
 // Create a vi mock object with common test utilities
 export const vi = {
   fn: () => {
-    const mockFn = (...args: any[]) => mockFn.mock.calls.push(args);
+    const mockFn = (...args: any[]) => {
+      mockFn.mock.calls.push(args);
+      return mockFn._mockReturnValue;
+    };
     mockFn.mock = {
       calls: [],
       results: [],
@@ -26,16 +29,21 @@ export const vi = {
         mockFn.mock.instances = [];
       }
     };
+    mockFn._mockReturnValue = undefined;
     mockFn.mockReturnValue = (val: any) => {
+      mockFn._mockReturnValue = val;
       return mockFn;
     };
     mockFn.mockResolvedValue = (val: any) => {
+      mockFn._mockReturnValue = Promise.resolve(val);
       return mockFn;
     };
     mockFn.mockImplementation = (impl: (...args: any[]) => any) => {
+      mockFn._mockReturnValue = impl;
       return mockFn;
     };
     mockFn.mockReturnThis = () => {
+      mockFn._mockReturnValue = mockFn;
       return mockFn;
     };
     return mockFn;

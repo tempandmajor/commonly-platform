@@ -1,5 +1,5 @@
 
-import { supabase } from "@/lib/firebase";
+import { supabase } from "@/integrations/supabase/client";
 import { UserData } from '@/types/auth';
 import { SearchResult, SearchResults, LocationSearchParams, EventWithDistance } from '@/types/search';
 
