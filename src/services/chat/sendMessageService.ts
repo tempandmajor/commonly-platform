@@ -29,10 +29,10 @@ export const sendMessage = async (
       throw error;
     }
 
-    // Convert the data to string explicitly with proper type assertion
+    // Convert the data to string explicitly
     const messageId = String(data);
 
-    // Update the last message in the chat - updating this to pass the proper type
+    // Update the last message in the chat
     await updateLastMessage(
       chatId,
       senderId,
