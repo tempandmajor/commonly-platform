@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 // Mock Supabase client
 vi.mock('@supabase/supabase-js', () => ({
-  createClient: vi.fn(() => ({
+  createClient: vi.fn().mockImplementation(() => ({
     auth: {
       signInWithPassword: vi.fn(),
       signUp: vi.fn(),
