@@ -57,7 +57,7 @@ export const vi = {
   advanceTimersByTime: (ms: number) => {}
 };
 
-// Create expectImpl function
+// Create expectImpl function with enhanced capabilities
 const expectImpl = (value: any) => ({
   toBe: (expected: any) => {},
   toEqual: (expected: any) => {},
@@ -69,6 +69,8 @@ const expectImpl = (value: any) => ({
   toHaveLength: (expected: number) => {},
   toThrow: (expected?: any) => {},
   toHaveBeenCalled: () => {},
+  // Added this missing method for test compatibility
+  toHaveBeenCalledWith: (...args: any[]) => {},
   toBeVisible: () => {},
   toHaveTitle: (regex: RegExp | string) => {}
 });

@@ -95,8 +95,8 @@ export const globalSearch = async (query: string): Promise<SearchResults> => {
       throw new SearchError(`Global search failed: ${error.message}`, error.code);
     }
     
-    // Type assertion to RawSearchResult[] since we know the shape of the data
-    const results = data as RawSearchResult[] || [];
+    // Fixed: Properly handle the data type by checking if it's an array first
+    const results = Array.isArray(data) ? data as RawSearchResult[] : [];
     
     return organizeSearchResults(results);
   } catch (error) {
@@ -129,8 +129,8 @@ export const searchEventsByLocation = async (params: LocationSearchParams): Prom
       throw new SearchError(`Location search failed: ${error.message}`, error.code);
     }
     
-    // Type assertion to RawEventWithDistance[] since we know the shape of the data
-    const results = data as RawEventWithDistance[] || [];
+    // Fixed: Properly handle the data type by checking if it's an array first
+    const results = Array.isArray(data) ? data as RawEventWithDistance[] : [];
     
     return results.map(mapToEventWithDistance);
   } catch (error) {
