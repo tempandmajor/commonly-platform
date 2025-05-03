@@ -1,4 +1,3 @@
-
 export interface Transaction {
   id: string;
   userId: string;
@@ -68,4 +67,11 @@ export interface WalletData {
   hasPayoutMethod: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+// Add missing WithdrawalRequest interface
+export interface WithdrawalRequest {
+  amount: number;
+  paymentMethodId?: string;
+  notes?: string;
 }

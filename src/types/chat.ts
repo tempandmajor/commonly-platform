@@ -1,4 +1,3 @@
-
 import { Podcast, PodcastCreateInput } from "@/types/podcast";
 
 export interface ChatMessage {
@@ -53,5 +52,5 @@ export interface ChatWithUser extends Chat {
   unreadCount: number;
 }
 
-// Re-export podcast types for backward compatibility if needed
-export { Podcast, PodcastCreateInput };
+// Change re-exports to use the 'export type' syntax for isolatedModules compatibility
+export type { PodcastCreateInput, Podcast } from './podcast';

@@ -1,10 +1,9 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { UserData } from '@/types/auth';
-import { SearchResult, SearchResults, LocationSearchParams, EventWithDistance } from '@/types/search';
 
-// Export types
-export type { SearchResult, SearchResults, LocationSearchParams, EventWithDistance };
+// Export types as type-only exports to fix isolatedModules issue
+export type { SearchResult, SearchResults, LocationSearchParams, EventWithDistance } from '@/types/search';
 
 /**
  * Performs a global search across events, venues, and users
@@ -88,7 +87,7 @@ export const searchEventsByLocation = async (params: LocationSearchParams): Prom
       {
         lat: latitude,
         lng: longitude,
-        radius_km: radius
+        radius: radius // Fixed parameter name to match the expected type
       }
     );
     
@@ -105,7 +104,8 @@ export const searchEventsByLocation = async (params: LocationSearchParams): Prom
       locationLat: event.location_lat,
       locationLng: event.location_lng,
       distance: event.distance_km,
-      createdAt: event.created_at,
+      // Added a fallback for created_at as it might not exist in the response
+      createdAt: event.created_at || new Date().toISOString(),
       organizer: '',
       organizerId: '',
       eventType: 'in-person',

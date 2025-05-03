@@ -27,7 +27,7 @@ serve(async (req) => {
       throw new Error("Missing Supabase credentials");
     }
 
-    // Call the RPC function to increment listens
+    // Call the RPC function to increment listens, using the parameter name expected by the function
     const response = await fetch(`${supabaseUrl}/rest/v1/rpc/increment_podcast_listens`, {
       method: "POST",
       headers: {

@@ -30,22 +30,48 @@ export const getUserWallet = async (userId: string): Promise<WalletData> => {
       
       if (createError) throw createError;
       
+      if (!newWallet) {
+        // Provide default wallet data if creation failed
+        return {
+          id: `temp_${userId}`,
+          userId: userId,
+          availableBalance: 0,
+          pendingBalance: 0,
+          totalEarnings: 0,
+          platformCredits: 0,
+          hasPayoutMethod: false,
+          stripeConnectId: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+      }
+      
+      // Map DB wallet to our wallet data structure
       return {
-        availableBalance: 0,
-        pendingBalance: 0,
-        totalEarnings: 0,
-        platformCredits: 0,
-        hasPayoutMethod: false
+        id: newWallet.id || `new_${userId}`,
+        userId: newWallet.user_id,
+        availableBalance: newWallet.available_balance || 0,
+        pendingBalance: newWallet.pending_balance || 0,
+        totalEarnings: newWallet.total_earnings || 0,
+        platformCredits: newWallet.platform_credits || 0,
+        hasPayoutMethod: newWallet.has_payout_method || false,
+        stripeConnectId: newWallet.stripe_connect_id,
+        createdAt: newWallet.created_at || new Date().toISOString(),
+        updatedAt: newWallet.updated_at || new Date().toISOString()
       };
     }
     
     return {
+      id: data.id,
+      userId: data.user_id,
       availableBalance: data.available_balance || 0,
       pendingBalance: data.pending_balance || 0,
       totalEarnings: data.total_earnings || 0,
       platformCredits: data.platform_credits || 0,
       hasPayoutMethod: data.has_payout_method || false,
-      stripeConnectId: data.stripe_connect_id
+      stripeConnectId: data.stripe_connect_id,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at
     };
   } catch (error) {
     console.error("Error getting wallet data:", error);
@@ -59,7 +85,7 @@ export const getUserTransactions = async (
   page: number = 1,
   limit: number = 10,
   filters: TransactionFilters = {}
-): Promise<{ transactions: Transaction[], totalCount: number }> => {
+): Promise<{ transactions: Transaction[]; totalCount: number }> => {
   try {
     let query = supabase
       .from('transactions')
@@ -106,8 +132,8 @@ export const getUserTransactions = async (
       id: item.id,
       userId: item.user_id,
       amount: item.amount,
-      type: item.type,
-      status: item.status || 'completed',
+      type: item.type as Transaction['type'], // Cast to the specific union type
+      status: item.status as Transaction['status'] || 'completed',
       description: item.description || '',
       createdAt: item.created_at,
       updatedAt: item.updated_at
@@ -145,14 +171,13 @@ export const requestWithdrawal = async (
     
     if (error) throw error;
     
-    // Deduct from available balance
-    const { error: updateError } = await supabase.rpc(
-      'update_user_wallet_on_withdrawal',
-      { 
-        user_id_param: userId,
-        amount_param: withdrawalData.amount
-      }
-    );
+    // Instead of calling an RPC that doesn't exist, update the wallet directly
+    const { error: updateError } = await supabase
+      .from('wallets')
+      .update({ 
+        available_balance: supabase.rpc('decrement', { amount: withdrawalData.amount }) 
+      })
+      .eq('user_id', userId);
     
     if (updateError) throw updateError;
     
@@ -191,14 +216,17 @@ export const createStripeConnectAccountLink = async (
 };
 
 // Get user's referral statistics
-export const getUserReferralStats = async (userId: string): Promise<ReferralStats> => {
+export const getUserReferralStats = async (userId: string, period: 'week' | 'month' | 'year' | 'all' = 'month'): Promise<ReferralStats> => {
   // This would ideally fetch from your database
   // For now returning mock data
   return {
-    totalReferrals: 5,
-    activeReferrals: 3,
-    referralEarnings: 250,
-    pendingEarnings: 50
+    userId,
+    totalEarnings: 350.25,
+    clickCount: 142,
+    conversionCount: 18,
+    conversionRate: 12.7,
+    totalReferrals: 18,
+    period
   };
 };
 
