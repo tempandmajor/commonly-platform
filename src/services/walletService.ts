@@ -5,8 +5,8 @@ import {
   WalletData, 
   ReferralStats, 
   PaymentMethod, 
-  WithdrawalRequest,
-  TransactionFilters
+  TransactionFilters,
+  WithdrawalRequest
 } from "@/types/wallet";
 
 // Get wallet data for a user
@@ -62,7 +62,7 @@ export const getUserWallet = async (userId: string): Promise<WalletData> => {
     }
     
     return {
-      id: data.id,
+      id: data.id || `wallet_${userId}`,
       userId: data.user_id,
       availableBalance: data.available_balance || 0,
       pendingBalance: data.pending_balance || 0,
@@ -171,11 +171,14 @@ export const requestWithdrawal = async (
     
     if (error) throw error;
     
-    // Instead of calling an RPC that doesn't exist, update the wallet directly
+    // Update the wallet directly by using an update with the amount
     const { error: updateError } = await supabase
       .from('wallets')
       .update({ 
-        available_balance: supabase.rpc('decrement', { amount: withdrawalData.amount }) 
+        available_balance: supabase.rpc('get_wallet_balance_after_withdrawal', { 
+          user_id_param: userId, 
+          amount_param: withdrawalData.amount 
+        })
       })
       .eq('user_id', userId);
     

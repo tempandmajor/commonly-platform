@@ -4,7 +4,7 @@
 // Mock for vitest
 export const describe = (name: string, fn: () => void) => {};
 export const it = (name: string, fn: () => Promise<void> | void) => {};
-export const expect = (value: any) => ({
+const expectImpl = (value: any) => ({
   toBe: (expected: any) => {},
   toEqual: (expected: any) => {},
   toContain: (expected: any) => {},
@@ -15,11 +15,10 @@ export const expect = (value: any) => ({
   toHaveLength: (expected: number) => {},
   toThrow: (expected?: any) => {},
 });
+export const expect = expectImpl;
 
 // Mock for Playwright
 export const test = (name: string, fn: () => Promise<void> | void) => {};
-// Correct export syntax - removed the "as any" that was causing the error
-export { expect };
 export const page = {
   goto: async (url: string) => {},
   click: async (selector: string) => {},

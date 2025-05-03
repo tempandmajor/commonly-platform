@@ -1,5 +1,5 @@
 
-import { test, expect } from '@playwright/test';
+import { test, expect, page } from '../../test-utils/mocks';
 
 test.describe('Podcast Feature End-to-End Tests', () => {
   test.beforeEach(async ({ page }) => {

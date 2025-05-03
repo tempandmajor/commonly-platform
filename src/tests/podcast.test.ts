@@ -1,9 +1,9 @@
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi } from '../test-utils/mocks'; 
 import { 
   createPodcast,
   getPodcasts,
-  getPodcastById
+  getPodcast
 } from '@/services/podcast/podcastCrudService';
 
 // Mock Firebase services
@@ -66,11 +66,14 @@ describe('Podcast Service', () => {
       audioUrl: 'https://example.com/audio.mp3',
       imageUrl: 'https://example.com/image.jpg',
       duration: 1200,
-      categoryId: 'category1'
+      categoryId: 'category1',
+      userId: 'user123',
+      type: 'audio' as const,
+      published: true,
+      visibility: 'public' as const
     };
     
-    const userId = 'user123';
-    const result = await createPodcast(podcastData, userId);
+    const result = await createPodcast(podcastData);
     
     expect(result).toBe('test-podcast-id');
   });
@@ -84,7 +87,7 @@ describe('Podcast Service', () => {
   });
   
   it('should retrieve a podcast by ID', async () => {
-    const podcast = await getPodcastById('test-podcast-id');
+    const podcast = await getPodcast('test-podcast-id');
     
     expect(podcast).toBeDefined();
     expect(podcast?.title).toBe('Test Podcast');

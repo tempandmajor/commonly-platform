@@ -8,7 +8,7 @@ export type { SearchResult, SearchResults, LocationSearchParams, EventWithDistan
 /**
  * Performs a global search across events, venues, and users
  */
-export const globalSearch = async (query: string): Promise<SearchResults> => {
+export const globalSearch = async (query: string): Promise<import('@/types/search').SearchResults> => {
   try {
     const { data, error } = await supabase.rpc('global_search', {
       search_query: query
@@ -78,7 +78,7 @@ export const globalSearch = async (query: string): Promise<SearchResults> => {
 /**
  * Search events by location
  */
-export const searchEventsByLocation = async (params: LocationSearchParams): Promise<EventWithDistance[]> => {
+export const searchEventsByLocation = async (params: import('@/types/search').LocationSearchParams): Promise<import('@/types/search').EventWithDistance[]> => {
   try {
     const { latitude, longitude, radius = 50 } = params;
     
