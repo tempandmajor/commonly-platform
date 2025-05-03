@@ -48,7 +48,7 @@ export const getUserWallet = async (userId: string): Promise<WalletData> => {
       
       // Map DB wallet to our wallet data structure
       return {
-        id: newWallet.id || `new_${userId}`,
+        id: `new_${userId}`, // Generate an ID since it's not in DB schema
         userId: newWallet.user_id,
         availableBalance: newWallet.available_balance || 0,
         pendingBalance: newWallet.pending_balance || 0,
@@ -62,7 +62,7 @@ export const getUserWallet = async (userId: string): Promise<WalletData> => {
     }
     
     return {
-      id: `wallet_${userId}`, // Generate an ID if none exists
+      id: `wallet_${userId}`, // Generate an ID since it's not in DB schema
       userId: data.user_id,
       availableBalance: data.available_balance || 0,
       pendingBalance: data.pending_balance || 0,
@@ -175,7 +175,7 @@ export const requestWithdrawal = async (
     const { error: updateError } = await supabase
       .from('wallets')
       .update({ 
-        available_balance: supabase.rpc('decrement_wallet_amount', {
+        available_balance: supabase.rpc<number>('decrement_wallet_amount', {
           p_user_id: userId,
           p_amount: withdrawalData.amount
         })

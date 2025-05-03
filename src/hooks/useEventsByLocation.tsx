@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from "react";
-import { LocationSearchParams, searchEventsByLocation, EventWithDistance } from "@/services/searchService";
+import { searchEventsByLocation } from "@/services/searchService";
+import { LocationSearchParams, EventWithDistance } from "@/types/search";
 
 export const useEventsByLocation = (params: LocationSearchParams) => {
   const [events, setEvents] = useState<EventWithDistance[]>([]);

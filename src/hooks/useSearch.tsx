@@ -1,6 +1,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
-import { globalSearch, SearchResults } from '@/services/searchService';
+import { globalSearch } from '@/services/searchService';
+import { SearchResults } from '@/types/search';
 import { useDebounce } from './useDebounce';
 
 export const useSearch = () => {
