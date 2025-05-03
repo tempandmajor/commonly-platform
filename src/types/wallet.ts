@@ -1,9 +1,10 @@
+
 export interface Transaction {
   id: string;
   userId: string;
-  type: 'deposit' | 'withdrawal' | 'payment' | 'refund' | 'referral';
+  type: 'deposit' | 'withdrawal' | 'payment' | 'refund' | 'referral' | 'payout' | 'sale' | 'credit' | 'fee';
   amount: number;
-  status: 'pending' | 'completed' | 'failed';
+  status: 'pending' | 'completed' | 'failed' | 'canceled';
   createdAt: string;
   updatedAt: string;
   description?: string;
@@ -43,6 +44,28 @@ export interface ReferralStats {
   clickCount: number;
   conversionCount: number;
   conversionRate: number;
+  totalReferrals?: number;
   period: 'week' | 'month' | 'year' | 'all';
   // Add other properties as needed
+}
+
+export interface TransactionFilters {
+  search?: string;
+  type?: string;
+  status?: string;
+  startDate?: Date;
+  endDate?: Date;
+}
+
+export interface WalletData {
+  id: string;
+  userId: string;
+  availableBalance: number;
+  pendingBalance: number;
+  totalEarnings: number;
+  platformCredits: number;
+  stripeConnectId: string | null;
+  hasPayoutMethod: boolean;
+  createdAt: string;
+  updatedAt: string;
 }

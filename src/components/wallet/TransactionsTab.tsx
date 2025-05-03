@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,7 +17,7 @@ import { format } from 'date-fns';
 import { Transaction, TransactionFilters } from '@/types/wallet';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { FilterX, Search, Download, Loader2 } from "../ui/icons";
+import { FilterX, Search, Download, Loader2 } from "lucide-react";
 
 interface TransactionsTabProps {
   transactions: Transaction[];
@@ -87,6 +88,9 @@ const TransactionsTab: React.FC<TransactionsTabProps> = ({
       case "credit": return "💵";
       case "withdrawal": return "🏦";
       case "fee": return "💳";
+      case "deposit": return "💰";
+      case "payment": return "💲";
+      case "refund": return "⏪";
       default: return "📝";
     }
   };
@@ -120,6 +124,9 @@ const TransactionsTab: React.FC<TransactionsTabProps> = ({
                 <SelectItem value="sale">Sale</SelectItem>
                 <SelectItem value="credit">Credit</SelectItem>
                 <SelectItem value="withdrawal">Withdrawal</SelectItem>
+                <SelectItem value="deposit">Deposit</SelectItem>
+                <SelectItem value="payment">Payment</SelectItem>
+                <SelectItem value="refund">Refund</SelectItem>
                 <SelectItem value="fee">Fee</SelectItem>
               </SelectContent>
             </Select>
@@ -228,8 +235,8 @@ const TransactionsTab: React.FC<TransactionsTabProps> = ({
                             <span className="capitalize">{transaction.type}</span>
                           </span>
                         </TableCell>
-                        <TableCell className={transaction.type === 'withdrawal' || transaction.type === 'fee' ? 'text-red-600' : 'text-green-600'}>
-                          {transaction.type === 'withdrawal' || transaction.type === 'fee' ? '-' : '+'}${transaction.amount.toFixed(2)}
+                        <TableCell className={transaction.type === 'withdrawal' || transaction.type === 'fee' || transaction.type === 'refund' ? 'text-red-600' : 'text-green-600'}>
+                          {transaction.type === 'withdrawal' || transaction.type === 'fee' || transaction.type === 'refund' ? '-' : '+'}${transaction.amount.toFixed(2)}
                         </TableCell>
                         <TableCell>
                           <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs ${getTransactionStatusColor(transaction.status)} bg-opacity-10`}>

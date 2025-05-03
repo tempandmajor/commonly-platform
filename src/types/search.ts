@@ -24,13 +24,13 @@ export interface EventWithDistance {
   locationLng?: number;
   distance?: number;
   createdAt?: string;
-  createdBy?: string;
-  isVirtual?: boolean;
-  price?: number;
-  published?: boolean;
-  attendees?: any[];
-  category?: string;
-  tags?: string[];
+  organizer: string;
+  organizerId: string;
+  eventType: 'in-person' | 'virtual' | 'hybrid';
+  ageRestriction: string | null;
+  capacity: number;
+  price: number;
+  status: 'draft' | 'active' | 'canceled' | 'completed';
 }
 
 export interface SearchResults {

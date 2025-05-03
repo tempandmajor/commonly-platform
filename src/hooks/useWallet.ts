@@ -1,21 +1,23 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { WalletData, Transaction, PaymentMethod, ReferralStats, TransactionFilters, UserWallet } from "@/types/wallet";
+
+import { useState, useEffect, useCallback } from "react";
+import { Transaction, PaymentMethod, ReferralStats, UserWallet, TransactionFilters, WalletData } from "@/types/wallet";
+import { useToast } from "./use-toast";
 
 export const useWallet = (userId: string) => {
+  // State for wallet data
   const [walletData, setWalletData] = useState<WalletData | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [referralStats, setReferralStats] = useState<ReferralStats>({
-    totalReferrals: 0,
-    activeReferrals: 0,
-    referralEarnings: 0,
-    pendingEarnings: 0,
+    userId,
+    totalEarnings: 0,
     clickCount: 0,
     conversionCount: 0,
     conversionRate: 0,
-    totalEarnings: 0
+    period: 'month'
   });
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
+
+  // UI state
   const [loading, setLoading] = useState(true);
   const [transactionsLoading, setTransactionsLoading] = useState(false);
   const [withdrawalLoading, setWithdrawalLoading] = useState(false);
@@ -24,203 +26,251 @@ export const useWallet = (userId: string) => {
   const [totalTransactions, setTotalTransactions] = useState(0);
   const [filters, setFilters] = useState<TransactionFilters>({});
 
-  // Fetch wallet data
-  const loadWalletData = async () => {
-    if (!userId) return;
-    
+  const { toast } = useToast();
+
+  // Load wallet data
+  const loadWalletData = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      
-      const { data, error } = await supabase
-        .from('wallets')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
-      
-      if (error) {
-        console.error("Error fetching wallet:", error);
-        return;
-      }
-      
-      if (data) {
-        setWalletData({
-          availableBalance: data.available_balance || 0,
-          pendingBalance: data.pending_balance || 0,
-          totalEarnings: data.total_earnings || 0,
-          platformCredits: data.platform_credits || 0,
-          hasPayoutMethod: data.has_payout_method || false,
-          stripeConnectId: data.stripe_connect_id
-        });
-      }
-      
-      // Also load payment methods
-      await loadPaymentMethods();
+      // In a real app, this would be an API call to fetch wallet data
+      // For demonstration, we'll use mock data
+      const mockWalletData: WalletData = {
+        id: "wallet_1",
+        userId,
+        availableBalance: 235.50,
+        pendingBalance: 75.00,
+        totalEarnings: 1250.75,
+        platformCredits: 25,
+        stripeConnectId: null,
+        hasPayoutMethod: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      // Mock payment methods
+      const mockPaymentMethods: PaymentMethod[] = [
+        {
+          id: "pm_1",
+          userId,
+          type: "card",
+          brand: "Visa",
+          last4: "4242",
+          expMonth: 12,
+          expYear: 2025,
+          isDefault: true,
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: "pm_2",
+          userId,
+          type: "card",
+          brand: "Mastercard",
+          last4: "5555",
+          expMonth: 10,
+          expYear: 2024,
+          isDefault: false,
+          createdAt: new Date().toISOString()
+        }
+      ];
+
+      setWalletData(mockWalletData);
+      setPaymentMethods(mockPaymentMethods);
     } catch (error) {
-      console.error("Error in loadWalletData:", error);
+      console.error("Error loading wallet data:", error);
+      toast({
+        title: "Error loading wallet data",
+        description: "Please try again later.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId, toast]);
 
-  // Fetch transactions with pagination and filtering
-  const loadTransactions = async (page = 1, pageSize = 10) => {
-    if (!userId) return;
-    
+  // Load transactions with filtering and pagination
+  const loadTransactions = useCallback(async () => {
+    setTransactionsLoading(true);
     try {
-      setTransactionsLoading(true);
-      
-      const { data, error, count } = await supabase
-        .from('transactions')
-        .select('*', { count: 'exact' })
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .range((page - 1) * pageSize, page * pageSize - 1);
-      
-      if (error) {
-        console.error("Error fetching transactions:", error);
-        return;
-      }
-      
-      if (data) {
-        const formattedTransactions: Transaction[] = data.map(item => ({
-          id: item.id,
-          userId: item.user_id,
-          amount: item.amount,
-          type: item.type as 'referral' | 'payout' | 'sale' | 'credit' | 'withdrawal' | 'fee',
-          status: item.status as 'pending' | 'completed' | 'failed' | 'canceled',
-          description: item.description,
-          createdAt: item.created_at,
-          updatedAt: item.updated_at
-        }));
-        
-        setTransactions(formattedTransactions);
-        setTotalTransactions(count || 0);
-      }
+      // In a real app, this would be an API call with filters and pagination
+      // For demonstration, we'll use mock data
+      const mockTransactions: Transaction[] = [
+        {
+          id: "tx_1",
+          userId,
+          amount: 50.00,
+          type: "referral",
+          status: "completed",
+          description: "Referral bonus",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        {
+          id: "tx_2",
+          userId,
+          amount: 75.00,
+          type: "payout",
+          status: "pending",
+          description: "Weekly payout",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        {
+          id: "tx_3",
+          userId,
+          amount: 120.00,
+          type: "sale",
+          status: "completed",
+          description: "Event ticket sales",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      ];
+
+      setTransactions(mockTransactions);
+      setTotalTransactions(mockTransactions.length);
     } catch (error) {
-      console.error("Error in loadTransactions:", error);
+      console.error("Error loading transactions:", error);
+      toast({
+        title: "Error loading transactions",
+        description: "Please try again later.",
+        variant: "destructive",
+      });
     } finally {
       setTransactionsLoading(false);
     }
-  };
+  }, [userId, filters, currentPage, toast]);
 
-  // Fetch referral stats
-  const loadReferralStats = async (period?: 'week' | 'month' | 'year' | 'all') => {
-    if (!userId) return;
-    
+  // Load referral statistics
+  const loadReferralStats = useCallback(async (period: 'week' | 'month' | 'year' | 'all' = 'month') => {
     try {
-      // Implement referral stats fetching from Supabase here
-      // This is a placeholder implementation
+      // In a real app, this would be an API call
+      // For demonstration, we'll use mock data
       setReferralStats({
-        totalReferrals: 0,
-        activeReferrals: 0,
-        referralEarnings: 0,
-        pendingEarnings: 0,
-        clickCount: 0,
-        conversionCount: 0,
-        conversionRate: 0,
-        totalEarnings: 0,
-        period: period
+        userId,
+        totalEarnings: 350.25,
+        clickCount: 142,
+        conversionCount: 18,
+        conversionRate: 12.7,
+        totalReferrals: 18,
+        period
       });
     } catch (error) {
-      console.error("Error fetching referral stats:", error);
+      console.error("Error loading referral stats:", error);
+      toast({
+        title: "Error loading referral statistics",
+        description: "Please try again later.",
+        variant: "destructive",
+      });
     }
-  };
+  }, [userId, toast]);
 
-  // Handle withdrawal request
-  const handleWithdrawal = async (amount: number): Promise<{success: boolean, message: string}> => {
-    if (!userId) return { success: false, message: "User not authenticated" };
-    
+  // Handle withdrawal
+  const handleWithdrawal = async (amount: number) => {
+    setWithdrawalLoading(true);
     try {
-      setWithdrawalLoading(true);
+      // In a real app, this would call an API endpoint
+      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API call
       
-      // Implement withdrawal request logic here
+      toast({
+        title: "Withdrawal Initiated",
+        description: `$${amount.toFixed(2)} will be transferred to your account within 1-3 business days.`,
+      });
       
-      // Refresh wallet data after withdrawal
-      await fetchWalletData();
-      
-      return { success: true, message: "Withdrawal request submitted successfully" };
+      // Refresh wallet data
+      await loadWalletData();
+      return { success: true, message: "Withdrawal successful" };
     } catch (error) {
-      console.error("Error in handleWithdrawal:", error);
-      return { success: false, message: "Failed to submit withdrawal request" };
+      console.error("Error processing withdrawal:", error);
+      toast({
+        title: "Withdrawal Failed",
+        description: "Please try again later.",
+        variant: "destructive",
+      });
+      return { success: false, message: "Withdrawal failed" };
     } finally {
       setWithdrawalLoading(false);
     }
   };
 
-  // Handle creating Stripe Connect account
-  const handleCreateConnectAccount = async (): Promise<{success: boolean, url?: string, message?: string}> => {
-    if (!userId) return { success: false, message: "User not authenticated" };
-    
+  // Handle connecting a Stripe account
+  const handleCreateConnectAccount = async () => {
+    setConnectAccountLoading(true);
     try {
-      setConnectAccountLoading(true);
+      // In a real app, this would call an API endpoint
+      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API call
       
-      // Implement Stripe Connect account creation logic here
+      toast({
+        title: "Account Connection Initiated",
+        description: "You'll be redirected to complete the setup.",
+      });
       
-      // Refresh wallet data after account creation
-      await fetchWalletData();
-      
-      return { success: true, url: "https://connect.stripe.com/..." };
+      // Refresh wallet data
+      await loadWalletData();
+      return { success: true, url: "https://example.com/connect" };
     } catch (error) {
-      console.error("Error in handleCreateConnectAccount:", error);
-      return { success: false, message: "Failed to create Stripe Connect account" };
+      console.error("Error creating connect account:", error);
+      toast({
+        title: "Account Connection Failed",
+        description: "Please try again later.",
+        variant: "destructive",
+      });
+      return { success: false, message: "Connection failed" };
     } finally {
       setConnectAccountLoading(false);
     }
   };
 
   // Export transactions to CSV
-  const exportTransactionsToCSV = async (): Promise<{success: boolean, message: string}> => {
-    if (!userId || transactions.length === 0) return { success: false, message: "No transactions to export" };
-    
-    try {
-      // Implement CSV export logic here
-      
-      return { success: true, message: "Transactions exported successfully" };
-    } catch (error) {
-      console.error("Error in exportTransactionsToCSV:", error);
-      return { success: false, message: "Failed to export transactions" };
-    }
+  const exportTransactionsToCSV = () => {
+    // This would generate and download a CSV file
+    toast({
+      title: "Export Started",
+      description: "Your CSV export is being prepared.",
+    });
   };
 
-  // Load payment methods
-  const loadPaymentMethods = async () => {
-    if (!userId) return;
-    
-    try {
-      // Implement payment methods loading logic here
-      // This is a placeholder implementation
-      setPaymentMethods([]);
-    } catch (error) {
-      console.error("Error loading payment methods:", error);
+  // Load data on component mount
+  useEffect(() => {
+    if (userId) {
+      loadWalletData();
+      loadTransactions();
+      loadReferralStats();
     }
-  };
+  }, [userId, loadWalletData, loadTransactions, loadReferralStats]);
 
-  // Provide wallet data in the format expected by components
-  const wallet: UserWallet = walletData ? {
+  // Load transactions when filters or pagination changes
+  useEffect(() => {
+    if (userId) {
+      loadTransactions();
+    }
+  }, [userId, filters, currentPage, loadTransactions]);
+
+  // Combine wallet data with transactions for easy access
+  const combinedWallet: UserWallet = walletData ? {
+    id: walletData.id,
+    userId: walletData.userId,
     availableBalance: walletData.availableBalance,
     pendingBalance: walletData.pendingBalance,
     totalEarnings: walletData.totalEarnings,
-    platformCredits: walletData.platformCredits || 0,
+    platformCredits: walletData.platformCredits,
     transactions: transactions,
     hasPayoutMethod: walletData.hasPayoutMethod,
-    stripeConnectId: walletData.stripeConnectId
+    stripeConnectId: walletData.stripeConnectId,
+    createdAt: walletData.createdAt,
+    updatedAt: walletData.updatedAt
   } : {
+    id: '',
+    userId: '',
     availableBalance: 0,
     pendingBalance: 0,
     totalEarnings: 0,
     platformCredits: 0,
+    stripeConnectId: null,
+    hasPayoutMethod: false,
     transactions: [],
-    hasPayoutMethod: false
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   };
-
-  // Initial data load
-  useEffect(() => {
-    if (userId) {
-      loadWalletData();
-      loadTransactions(1, 10);
-      loadReferralStats();
-    }
-  }, [userId]);
 
   return {
     walletData,

@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { UserData } from "@/types/auth";
 
@@ -89,16 +88,18 @@ export const getUserEventsFeed = async (userId: string) => {
 
 export const getUserFollowers = async (userId: string) => {
   try {
-    // Using direct SQL query for followers
+    // Instead of querying a non-existent user_follows table, let's query the users table
+    // and check the followers array field which should contain user IDs
     const { data, error } = await supabase
-      .from('user_follows')
-      .select('follower_id')
-      .eq('following_id', userId);
+      .from('users')
+      .select('followers')
+      .eq('id', userId)
+      .single();
     
     if (error) throw error;
     
-    // Return array of follower IDs
-    return data ? data.map(item => item.follower_id) : [];
+    // Return array of follower IDs from the followers array field
+    return data && data.followers ? data.followers : [];
   } catch (error) {
     console.error("Error fetching user followers:", error);
     return [];
@@ -107,18 +108,19 @@ export const getUserFollowers = async (userId: string) => {
 
 export const getUserFollowing = async (userId: string) => {
   try {
-    // Using direct SQL query for following
+    // Instead of querying a non-existent user_follows table, let's query the users table
+    // and check the following array field which should contain user IDs
     const { data, error } = await supabase
-      .from('user_follows')
-      .select('following_id')
-      .eq('follower_id', userId);
+      .from('users')
+      .select('following')
+      .eq('id', userId)
+      .single();
     
     if (error) throw error;
     
-    // Return array of following IDs
-    return data ? data.map(item => item.following_id) : [];
-  }
-  catch (error) {
+    // Return array of following IDs from the following array field
+    return data && data.following ? data.following : [];
+  } catch (error) {
     console.error("Error fetching user following:", error);
     return [];
   }
@@ -127,37 +129,89 @@ export const getUserFollowing = async (userId: string) => {
 // Toggle follow status for a user
 export const toggleFollowUser = async (currentUserId: string, targetUserId: string): Promise<boolean> => {
   try {
-    // Check if this follow relationship already exists
-    const { data: existingFollow, error: checkError } = await supabase
-      .from('user_follows')
-      .select('*')
-      .eq('follower_id', currentUserId)
-      .eq('following_id', targetUserId)
-      .maybeSingle();
+    // Get current user's following list
+    const { data: currentUserData, error: currentUserError } = await supabase
+      .from('users')
+      .select('following')
+      .eq('id', currentUserId)
+      .single();
     
-    if (checkError) throw checkError;
+    if (currentUserError) throw currentUserError;
     
-    if (existingFollow) {
-      // Already following, unfollow
-      const { error } = await supabase
-        .from('user_follows')
-        .delete()
-        .eq('follower_id', currentUserId)
-        .eq('following_id', targetUserId);
+    // Get target user's followers list
+    const { data: targetUserData, error: targetUserError } = await supabase
+      .from('users')
+      .select('followers')
+      .eq('id', targetUserId)
+      .single();
+    
+    if (targetUserError) throw targetUserError;
+    
+    const currentFollowing = currentUserData.following || [];
+    const targetFollowers = targetUserData.followers || [];
+    
+    // Check if already following
+    const isFollowing = currentFollowing.includes(targetUserId);
+    
+    if (isFollowing) {
+      // Unfollow: Remove targetUserId from currentUser's following
+      const updatedFollowing = currentFollowing.filter(id => id !== targetUserId);
       
-      if (error) throw error;
+      // Remove currentUserId from targetUser's followers
+      const updatedFollowers = targetFollowers.filter(id => id !== currentUserId);
+      
+      // Update current user
+      const { error: updateCurrentError } = await supabase
+        .from('users')
+        .update({ 
+          following: updatedFollowing,
+          following_count: updatedFollowing.length 
+        })
+        .eq('id', currentUserId);
+      
+      if (updateCurrentError) throw updateCurrentError;
+      
+      // Update target user
+      const { error: updateTargetError } = await supabase
+        .from('users')
+        .update({ 
+          followers: updatedFollowers,
+          follower_count: updatedFollowers.length 
+        })
+        .eq('id', targetUserId);
+      
+      if (updateTargetError) throw updateTargetError;
+      
       return false; // Now not following
     } else {
-      // Not following, follow
-      const { error } = await supabase
-        .from('user_follows')
-        .insert({
-          follower_id: currentUserId,
-          following_id: targetUserId,
-          created_at: new Date().toISOString()
-        });
+      // Follow: Add targetUserId to currentUser's following
+      const updatedFollowing = [...currentFollowing, targetUserId];
       
-      if (error) throw error;
+      // Add currentUserId to targetUser's followers
+      const updatedFollowers = [...targetFollowers, currentUserId];
+      
+      // Update current user
+      const { error: updateCurrentError } = await supabase
+        .from('users')
+        .update({ 
+          following: updatedFollowing,
+          following_count: updatedFollowing.length 
+        })
+        .eq('id', currentUserId);
+      
+      if (updateCurrentError) throw updateCurrentError;
+      
+      // Update target user
+      const { error: updateTargetError } = await supabase
+        .from('users')
+        .update({ 
+          followers: updatedFollowers,
+          follower_count: updatedFollowers.length 
+        })
+        .eq('id', targetUserId);
+      
+      if (updateTargetError) throw updateTargetError;
+      
       return true; // Now following
     }
   } catch (error) {

@@ -1,10 +1,10 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { UserData } from '@/types/auth';
-import { Venue } from '@/types/venue';
+import { SearchResult, SearchResults, LocationSearchParams, EventWithDistance } from '@/types/search';
 
-// Export the types from search.ts
-export type { SearchResult, SearchResults, LocationSearchParams, EventWithDistance } from '@/types/search';
+// Export types
+export type { SearchResult, SearchResults, LocationSearchParams, EventWithDistance };
 
 /**
  * Performs a global search across events, venues, and users
@@ -79,23 +79,22 @@ export const globalSearch = async (query: string): Promise<SearchResults> => {
 /**
  * Search events by location
  */
-export const searchEventsByLocation = async (params: { latitude: number, longitude: number, radius?: number, limit?: number }) => {
+export const searchEventsByLocation = async (params: LocationSearchParams): Promise<EventWithDistance[]> => {
   try {
-    const { latitude, longitude, radius = 50, limit = 20 } = params;
+    const { latitude, longitude, radius = 50 } = params;
     
     const { data, error } = await supabase.rpc(
       'search_events_by_location',
       {
         lat: latitude,
         lng: longitude,
-        radius,
-        limit_count: limit
+        radius_km: radius
       }
     );
     
     if (error) throw error;
     
-    // Convert to our app's Event model
+    // Convert to our app's Event model with distance information
     return (data || []).map(event => ({
       id: event.id,
       title: event.title,
@@ -107,6 +106,13 @@ export const searchEventsByLocation = async (params: { latitude: number, longitu
       locationLng: event.location_lng,
       distance: event.distance_km,
       createdAt: event.created_at,
+      organizer: '',
+      organizerId: '',
+      eventType: 'in-person',
+      ageRestriction: null,
+      capacity: 0,
+      price: 0,
+      status: 'active'
     }));
   } catch (error) {
     console.error('Error searching events by location:', error);
