@@ -20,6 +20,7 @@ export interface LocationSearchParams {
   latitude: number;
   longitude: number;
   radius?: number;
+  limit?: number; // Added limit property
 }
 
 export interface EventWithDistance {

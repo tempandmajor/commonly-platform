@@ -1,5 +1,5 @@
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/firebase";
 import { UserData } from '@/types/auth';
 import { SearchResult, SearchResults, LocationSearchParams, EventWithDistance } from '@/types/search';
 
@@ -78,14 +78,15 @@ export const globalSearch = async (query: string): Promise<SearchResults> => {
  */
 export const searchEventsByLocation = async (params: LocationSearchParams): Promise<EventWithDistance[]> => {
   try {
-    const { latitude, longitude, radius = 50 } = params;
+    const { latitude, longitude, radius = 50, limit = 20 } = params;
     
     const { data, error } = await supabase.rpc(
       'search_events_by_location',
       {
         lat: latitude,
         lng: longitude,
-        radius: radius // Fixed parameter name to match the expected type
+        radius: radius,
+        limit_count: limit
       }
     );
     
@@ -102,8 +103,7 @@ export const searchEventsByLocation = async (params: LocationSearchParams): Prom
       locationLat: event.location_lat,
       locationLng: event.location_lng,
       distance: event.distance_km,
-      // Added a default for createdAt as it doesn't exist in the response
-      createdAt: new Date().toISOString(),
+      createdAt: event.created_at || new Date().toISOString(),
       organizer: '',
       organizerId: '',
       eventType: 'in-person',

@@ -4,7 +4,7 @@ import { test, page, expect } from '../../test-utils/mocks';
 
 // Define Playwright-like test structure
 test.describe('Podcast Feature End-to-End Tests', () => {
-  test.beforeEach(async () => {
+  test.beforeEach(async ({ page }) => {
     // Go to the homepage
     await page.goto('/');
     
@@ -18,7 +18,7 @@ test.describe('Podcast Feature End-to-End Tests', () => {
     await page.waitForURL('**/*');
   });
 
-  test('should display podcasts on the podcasts page', async () => {
+  test('should display podcasts on the podcasts page', async ({ page }) => {
     // Navigate to podcasts page
     await page.click('text=Podcasts');
     
@@ -26,7 +26,7 @@ test.describe('Podcast Feature End-to-End Tests', () => {
     await expect(page.locator('.podcast-card')).toBeVisible();
   });
 
-  test('should be able to play a podcast', async () => {
+  test('should be able to play a podcast', async ({ page }) => {
     // Navigate to podcasts page
     await page.click('text=Podcasts');
     
@@ -43,7 +43,7 @@ test.describe('Podcast Feature End-to-End Tests', () => {
     await expect(page.locator('.audio-player')).toBeVisible();
   });
 
-  test('should be able to create a new podcast', async () => {
+  test('should be able to create a new podcast', async ({ page }) => {
     // Navigate to user podcasts page
     await page.click('text=Profile');
     await page.click('text=My Podcasts');

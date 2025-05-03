@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Transaction, 
@@ -171,14 +170,11 @@ export const requestWithdrawal = async (
     
     if (error) throw error;
     
-    // Update the wallet directly with SQL
+    // Instead of using RPC, update the wallet with a direct query
     const { error: updateError } = await supabase
       .from('wallets')
       .update({ 
-        available_balance: supabase.rpc('decrement_wallet_amount', { 
-          user_id_param: userId, 
-          amount_param: withdrawalData.amount 
-        })
+        available_balance: supabase.sql`available_balance - ${withdrawalData.amount}`
       })
       .eq('user_id', userId);
     

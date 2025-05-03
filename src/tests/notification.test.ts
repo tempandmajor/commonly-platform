@@ -1,16 +1,6 @@
 
-import { describe, it, expect } from '../test-utils/mocks';
+import { describe, it, expect, vi } from '../test-utils/mocks';
 import { createNotification, getNotifications } from '@/services/notificationService';
-
-// Create vi object for mocking
-const vi = {
-  mock: (path: string, factory?: any) => {},
-  fn: () => {
-    return function mockFn() {
-      return { id: 'test-notification-id' };
-    };
-  }
-};
 
 // Mock Firebase services
 vi.mock('@/lib/firebase', () => ({
@@ -48,7 +38,7 @@ describe('Notification Service', () => {
       'You have a new message',
       'image-url', // Pass a string instead of object
       'action-url',
-      { chatId: 'chat123' } // Pass data object correctly as last param
+      { chatId: 'chat123' } // Pass data object correctly
     );
     
     expect(result).toBe('test-notification-id');

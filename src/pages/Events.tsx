@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Link } from "react-router-dom";
 import { useEventsByLocation } from "@/hooks/useEventsByLocation";
@@ -10,7 +11,7 @@ const Events: React.FC = () => {
     latitude: 37.7749,
     longitude: -122.4194,
     radius: 50, // kilometers
-    limit: 20, // Number of events to fetch
+    limit: 20 // Number of events to fetch
   };
 
   const { events, loading, error } = useEventsByLocation(defaultLocation);

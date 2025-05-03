@@ -35,6 +35,9 @@ export const vi = {
     mockFn.mockImplementation = (impl: (...args: any[]) => any) => {
       return mockFn;
     };
+    mockFn.mockReturnThis = () => {
+      return mockFn;
+    };
     return mockFn;
   },
   clearAllMocks: () => {},
@@ -46,7 +49,7 @@ export const vi = {
   advanceTimersByTime: (ms: number) => {}
 };
 
-// Expand the expect implementation to include more matchers
+// Create expectImpl function
 const expectImpl = (value: any) => ({
   toBe: (expected: any) => {},
   toEqual: (expected: any) => {},
