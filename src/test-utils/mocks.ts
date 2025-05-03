@@ -18,7 +18,8 @@ export const expect = (value: any) => ({
 
 // Mock for Playwright
 export const test = (name: string, fn: () => Promise<void> | void) => {};
-export const expect as any = expect;
+// Correct export syntax - removed the "as any" that was causing the error
+export { expect };
 export const page = {
   goto: async (url: string) => {},
   click: async (selector: string) => {},
