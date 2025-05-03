@@ -22,6 +22,6 @@ export const adaptUser = (supabaseUser: User | null): AdaptedUser | null => {
  */
 export type AdaptedUser = User & { 
   uid: string;
-  photoURL?: string | null;
-  displayName?: string | null;
+  photoURL: string | null;
+  displayName: string | null;
 };

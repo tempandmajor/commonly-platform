@@ -16,6 +16,7 @@ interface WalletDashboardProps {
 
 const WalletDashboard: React.FC<WalletDashboardProps> = ({ userId }) => {
   const {
+    walletData,
     wallet,
     transactions,
     referralStats,
@@ -45,7 +46,7 @@ const WalletDashboard: React.FC<WalletDashboardProps> = ({ userId }) => {
     );
   }
 
-  if (!wallet) {
+  if (!walletData) {
     return (
       <Card>
         <CardContent className="py-6">
@@ -82,8 +83,8 @@ const WalletDashboard: React.FC<WalletDashboardProps> = ({ userId }) => {
             filters={filters}
             currentPage={currentPage}
             totalTransactions={totalTransactions}
-            onFilterChange={(newFilters) => fetchTransactions(1, 10, newFilters)}
-            onPageChange={(page) => fetchTransactions(page)}
+            onFilterChange={(newFilters) => setFilters(newFilters)}
+            onPageChange={(page) => setCurrentPage(page)}
             onExport={exportTransactionsToCSV}
           />
         </TabsContent>

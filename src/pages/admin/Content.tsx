@@ -1,14 +1,17 @@
 
-import React from 'react';
-import AdminLayout from '@/components/admin/AdminLayout';
-import AdminProtectedRoute from '@/components/auth/AdminProtectedRoute';
+import React from "react";
+import AdminLayout from "@/components/layout/AdminLayout";
 
-const Content = () => {
+const AdminContent: React.FC = () => {
   return (
-    <AdminProtectedRoute>
-      <AdminLayout />
-    </AdminProtectedRoute>
+    <AdminLayout>
+      <div className="p-6">
+        <h1 className="text-2xl font-bold mb-6">Content Management</h1>
+        {/* Content management interface will go here */}
+        <p>Content management is coming soon...</p>
+      </div>
+    </AdminLayout>
   );
 };
 
-export default Content;
+export default AdminContent;

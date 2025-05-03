@@ -1,14 +1,17 @@
 
-import React from 'react';
-import AdminLayout from '@/components/admin/AdminLayout';
-import AdminProtectedRoute from '@/components/auth/AdminProtectedRoute';
+import React from "react";
+import AdminLayout from "@/components/layout/AdminLayout";
 
-const Events = () => {
+const AdminEvents: React.FC = () => {
   return (
-    <AdminProtectedRoute>
-      <AdminLayout />
-    </AdminProtectedRoute>
+    <AdminLayout>
+      <div className="p-6">
+        <h1 className="text-2xl font-bold mb-6">Events Management</h1>
+        {/* Events management interface will go here */}
+        <p>Events management is coming soon...</p>
+      </div>
+    </AdminLayout>
   );
 };
 
-export default Events;
+export default AdminEvents;

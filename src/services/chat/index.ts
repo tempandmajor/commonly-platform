@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Chat, ChatMessage, ChatWithUser } from "@/types/chat";
 
@@ -8,10 +9,10 @@ export * from './sendMessageService';
 export * from './typingService';
 export * from './unreadService';
 
-// Additional exports for backward compatibility
+// Explicitly export sendMessage for backward compatibility
 export { sendMessage } from './sendMessageService';
 
-// Add these functions which are being used but were missing
+// Additional exports for backward compatibility
 export const sendMessageWithImage = async (
   chatId: string,
   senderId: string,
@@ -45,7 +46,6 @@ export const sendMessageWithImage = async (
         last_message: {
           text: imageUrl ? "📷 Image" : text,
           senderId: senderId,
-          recipientId: recipientId,
           timestamp: new Date().toISOString(),
           read: false
         }

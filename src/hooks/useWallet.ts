@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { WalletData, Transaction, PaymentMethod, ReferralStats, TransactionFilters, UserWallet } from "@/types/wallet";
