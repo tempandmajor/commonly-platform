@@ -1,11 +1,9 @@
-
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AuthContextType, UserData, UserSession } from "@/types/auth";
 import { useAuthActions } from "@/hooks/useAuthActions";
-import { User } from "@supabase/supabase-js";
-import { toast } from "@/hooks/use-toast";
 import { adaptUser, AdaptedUser } from "@/utils/userAdapter";
+import { toast } from "@/hooks/use-toast";
 
 const AuthContext = createContext<AuthContextType | null>(null);
 

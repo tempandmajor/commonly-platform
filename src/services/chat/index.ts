@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Chat, ChatMessage, ChatWithUser } from "@/types/chat";
 
@@ -8,6 +7,9 @@ export * from './messageService';
 export * from './sendMessageService';
 export * from './typingService';
 export * from './unreadService';
+
+// Additional exports for backward compatibility
+export { sendMessage } from './sendMessageService';
 
 // Add these functions which are being used but were missing
 export const sendMessageWithImage = async (

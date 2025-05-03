@@ -36,6 +36,11 @@ export interface ReferralStats {
   activeReferrals: number;
   referralEarnings: number;
   pendingEarnings: number;
+  conversionCount?: number;
+  clickCount?: number;
+  conversionRate?: number;
+  totalEarnings?: number;
+  period?: string;
 }
 
 export interface WithdrawalRequest {
@@ -50,4 +55,12 @@ export interface TransactionFilters {
   status?: string;
   startDate?: Date;
   endDate?: Date;
+}
+
+export interface UserWallet {
+  availableBalance: number;
+  pendingBalance: number;
+  totalEarnings: number;
+  transactions: Transaction[];
+  hasPayoutMethod: boolean;
 }
