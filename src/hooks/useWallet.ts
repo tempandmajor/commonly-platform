@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { WalletData, Transaction, PaymentMethod, ReferralStats, TransactionFilters, UserWallet } from "@/types/wallet";
@@ -26,7 +25,7 @@ export const useWallet = (userId: string) => {
   const [filters, setFilters] = useState<TransactionFilters>({});
 
   // Fetch wallet data
-  const fetchWalletData = async () => {
+  const loadWalletData = async () => {
     if (!userId) return;
     
     try {
@@ -57,34 +56,25 @@ export const useWallet = (userId: string) => {
       // Also load payment methods
       await loadPaymentMethods();
     } catch (error) {
-      console.error("Error in fetchWalletData:", error);
+      console.error("Error in loadWalletData:", error);
     } finally {
       setLoading(false);
     }
   };
 
   // Fetch transactions with pagination and filtering
-  const fetchTransactions = async (page = 1, limit = 10, newFilters?: TransactionFilters) => {
+  const loadTransactions = async (page = 1, pageSize = 10) => {
     if (!userId) return;
     
     try {
       setTransactionsLoading(true);
       
-      const updatedFilters = newFilters || filters;
-      if (newFilters) {
-        setFilters(newFilters);
-      }
-      
-      setCurrentPage(page);
-      
-      // Implement transaction fetching from Supabase here
-      // This is a placeholder implementation
       const { data, error, count } = await supabase
         .from('transactions')
         .select('*', { count: 'exact' })
         .eq('user_id', userId)
         .order('created_at', { ascending: false })
-        .range((page - 1) * limit, page * limit - 1);
+        .range((page - 1) * pageSize, page * pageSize - 1);
       
       if (error) {
         console.error("Error fetching transactions:", error);
@@ -107,14 +97,14 @@ export const useWallet = (userId: string) => {
         setTotalTransactions(count || 0);
       }
     } catch (error) {
-      console.error("Error in fetchTransactions:", error);
+      console.error("Error in loadTransactions:", error);
     } finally {
       setTransactionsLoading(false);
     }
   };
 
   // Fetch referral stats
-  const fetchReferralStats = async (period = 'all-time') => {
+  const loadReferralStats = async (period?: 'week' | 'month' | 'year' | 'all') => {
     if (!userId) return;
     
     try {
@@ -226,15 +216,14 @@ export const useWallet = (userId: string) => {
   // Initial data load
   useEffect(() => {
     if (userId) {
-      fetchWalletData();
-      fetchTransactions(1, 10);
-      fetchReferralStats();
+      loadWalletData();
+      loadTransactions(1, 10);
+      loadReferralStats();
     }
   }, [userId]);
 
   return {
     walletData,
-    wallet,
     transactions,
     referralStats,
     paymentMethods,
@@ -245,14 +234,13 @@ export const useWallet = (userId: string) => {
     currentPage,
     totalTransactions,
     filters,
-    fetchWalletData,
-    fetchTransactions,
-    fetchReferralStats,
+    loadWalletData,
+    loadTransactions,
+    loadReferralStats,
     handleWithdrawal,
     handleCreateConnectAccount,
     exportTransactionsToCSV,
     setFilters,
-    setCurrentPage,
-    loadPaymentMethods
+    setCurrentPage
   };
 };

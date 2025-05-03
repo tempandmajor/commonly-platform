@@ -1,68 +1,48 @@
-
 export interface Transaction {
   id: string;
   userId: string;
+  type: 'deposit' | 'withdrawal' | 'payment' | 'refund' | 'referral';
   amount: number;
-  type: 'referral' | 'payout' | 'sale' | 'credit' | 'withdrawal' | 'fee';
-  status: 'pending' | 'completed' | 'failed' | 'canceled';
-  description: string;
+  status: 'pending' | 'completed' | 'failed';
   createdAt: string;
-  updatedAt?: string;
+  updatedAt: string;
+  description?: string;
+}
+
+// Add UserWallet interface
+export interface UserWallet {
+  id: string;
+  userId: string;
+  availableBalance: number;
+  pendingBalance: number;
+  totalEarnings: number;
+  platformCredits: number;
+  stripeCustomerId?: string;
+  stripeConnectId?: string | null;
+  hasPayoutMethod: boolean;
+  createdAt: string;
+  updatedAt: string;
+  transactions: Transaction[];
 }
 
 export interface PaymentMethod {
   id: string;
   userId: string;
-  type: string;
-  brand: string;
-  last4: string;
-  expMonth: number;
-  expYear: number;
+  type: 'card' | 'paypal' | 'bank_account';
+  brand?: string;
+  last4?: string;
+  expMonth?: number;
+  expYear?: number;
   isDefault: boolean;
   createdAt: string;
 }
 
-export interface WalletData {
-  availableBalance: number;
-  pendingBalance: number;
-  totalEarnings: number;
-  platformCredits: number;
-  hasPayoutMethod: boolean;
-  stripeConnectId?: string;
-}
-
 export interface ReferralStats {
-  totalReferrals: number;
-  activeReferrals: number;
-  referralEarnings: number;
-  pendingEarnings: number;
-  conversionCount: number;
+  userId: string;
+  totalEarnings: number;
   clickCount: number;
+  conversionCount: number;
   conversionRate: number;
-  totalEarnings: number;
-  period?: string;
-}
-
-export interface WithdrawalRequest {
-  amount: number;
-  paymentMethodId?: string;
-  notes?: string;
-}
-
-export interface TransactionFilters {
-  search?: string;
-  type?: string;
-  status?: string;
-  startDate?: Date;
-  endDate?: Date;
-}
-
-export interface UserWallet {
-  availableBalance: number;
-  pendingBalance: number;
-  totalEarnings: number;
-  platformCredits: number;
-  transactions: Transaction[];
-  hasPayoutMethod: boolean;
-  stripeConnectId?: string;
+  period: 'week' | 'month' | 'year' | 'all';
+  // Add other properties as needed
 }

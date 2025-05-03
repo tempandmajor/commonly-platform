@@ -1,10 +1,12 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { Event, Venue } from "@/types/venue";
+import { Event } from "@/types/event";
+import { Venue } from "@/types/venue";
 import { SearchResult, EventWithDistance, SearchResults, LocationSearchParams } from "@/types/search";
 import { UserData } from "@/types/auth";
 
-export { SearchResult, EventWithDistance, SearchResults, LocationSearchParams };
+// Properly export types
+export type { SearchResult, EventWithDistance, SearchResults, LocationSearchParams };
 
 /**
  * Perform a global search across multiple content types
@@ -71,33 +73,41 @@ export const globalSearch = async (query: string, limit = 10): Promise<SearchRes
  * Adapts event data from Supabase to our application format
  */
 const adaptEvent = (event: any): SearchResult => {
-  return {
+  const result: SearchResult = {
     id: event.id,
     title: event.title,
     description: event.description,
     imageUrl: event.image_url,
     type: 'event',
     createdAt: event.created_at,
-    // Safely handle potentially missing fields
-    category: event.category || 'general'
   };
+  // Safely add optional properties
+  if (event.category) {
+    result.category = event.category;
+  }
+  return result;
 };
 
 /**
  * Adapts venue data from Supabase to our application format
  */
 const adaptVenue = (venue: any): SearchResult => {
-  return {
+  const result: SearchResult = {
     id: venue.id,
     title: venue.name,
     description: venue.description,
     imageUrl: venue.image_url,
     type: 'venue',
     createdAt: venue.created_at,
-    // Safely handle potentially missing fields
-    latitude: venue.latitude || venue.location_lat || null,
-    longitude: venue.longitude || venue.location_lng || null
   };
+  // Safely add optional properties
+  if (venue.latitude || venue.location_lat) {
+    result.latitude = venue.latitude || venue.location_lat;
+  }
+  if (venue.longitude || venue.location_lng) {
+    result.longitude = venue.longitude || venue.location_lng;
+  }
+  return result;
 };
 
 /**
@@ -119,25 +129,41 @@ export const searchEventsByLocation = async (
     
     if (error) throw error;
     
-    return (data || []).map((event: any) => ({
-      id: event.id,
-      title: event.title,
-      description: event.description,
-      imageUrl: event.image_url,
-      date: event.date,
-      location: event.location,
-      locationLat: event.location_lat,
-      locationLng: event.location_lng,
-      distance: event.distance_km,
-      createdAt: event.created_at,
-      createdBy: event.created_by,
-      isVirtual: event.is_virtual || false,
-      price: event.price || 0,
-      published: true,
-      attendees: [],
-      category: event.category || 'general',
-      tags: event.tags || []
-    }));
+    // Create proper Event objects with distance property
+    return (data || []).map((event: any) => {
+      // Create base Event object with all required properties
+      const baseEvent: Event = {
+        id: event.id,
+        title: event.title,
+        description: event.description || '',
+        imageUrl: event.image_url,
+        date: event.date,
+        location: event.location || '',
+        locationLat: event.location_lat || 0,
+        locationLng: event.location_lng || 0,
+        createdAt: event.created_at,
+        createdBy: event.created_by || '',
+        isVirtual: event.is_virtual || false,
+        price: event.price || 0,
+        published: true,
+        attendees: [],
+        category: event.category || 'general',
+        tags: event.tags || [],
+        organizer: event.organizer || { name: '', email: '', phone: '' },
+        organizerId: event.organizer_id || '',
+        eventType: event.event_type || 'general',
+        ageRestriction: event.age_restriction || 'all',
+        capacity: event.capacity || 0,
+        ticketsAvailable: event.tickets_available || 0,
+        updatedAt: event.updated_at || event.created_at
+      };
+
+      // Return as EventWithDistance
+      return {
+        ...baseEvent,
+        distance: event.distance_km
+      };
+    });
   } catch (error) {
     console.error("Error searching events by location:", error);
     return [];

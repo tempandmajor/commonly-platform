@@ -1,40 +1,30 @@
 
-import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { searchEventsByLocation, EventWithDistance } from '@/services/searchService';
-import { useLocation } from '@/contexts/LocationContext';
+import { useState, useEffect } from "react";
+import { EventWithDistance, LocationSearchParams, searchEventsByLocation } from "@/services/searchService";
 
-export const useEventsByLocation = (radius: number = 50) => {
-  const { selectedLocation } = useLocation();
+export const useEventsByLocation = (params: LocationSearchParams) => {
   const [events, setEvents] = useState<EventWithDistance[]>([]);
-
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['eventsByLocation', selectedLocation?.lat, selectedLocation?.lng, radius],
-    queryFn: () => {
-      if (!selectedLocation) return Promise.resolve([]);
-      return searchEventsByLocation(
-        selectedLocation.lat,
-        selectedLocation.lng,
-        radius
-      );
-    },
-    enabled: !!selectedLocation,
-  });
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (data) {
-      setEvents(data);
-    } else {
-      setEvents([]);
-    }
-  }, [data]);
+    const fetchEvents = async () => {
+      setLoading(true);
+      try {
+        const results = await searchEventsByLocation(params);
+        setEvents(results);
+        setError(null);
+      } catch (err) {
+        console.error("Error fetching events by location:", err);
+        setError("Failed to fetch events near your location");
+        setEvents([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Refresh when location changes
-  useEffect(() => {
-    if (selectedLocation) {
-      refetch();
-    }
-  }, [selectedLocation, refetch]);
+    fetchEvents();
+  }, [params.latitude, params.longitude, params.radius, params.limit]);
 
-  return { events, isLoading, error, refetch };
+  return { events, loading, error };
 };

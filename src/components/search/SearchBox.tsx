@@ -1,29 +1,81 @@
-
-import React, { useRef, useState } from 'react';
-import { SearchIcon, Loader2, X } from 'lucide-react';
-import { useSearch } from '@/hooks/useSearch';
+import React, { useState, useEffect, useRef } from 'react';
+import { Search } from 'lucide-react';
+import { globalSearch, SearchResult } from '@/services/searchService';
 import { useNavigate } from 'react-router-dom';
-import { useOnClickOutside } from '@/hooks/useClickOutside';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command"
 import {
-  CommandDialog,
-  CommandInput,
-  CommandList,
-  CommandEmpty,
-  CommandGroup,
-  CommandItem,
-} from '@/components/ui/command';
-import { Button } from '@/components/ui/button';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 
-export function SearchBox() {
+interface SearchBoxProps {
+  className?: string;
+}
+
+const SearchBox: React.FC<SearchBoxProps> = ({ className }) => {
   const [open, setOpen] = useState(false);
-  const { query, setQuery, results, isSearching } = useSearch();
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const searchRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleSelect = (result: any) => {
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'k' && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        setOpen(true);
+        // Focus the input after a short delay to ensure the popover is open
+        setTimeout(() => {
+          inputRef.current?.focus();
+        }, 100);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!query) {
+      setResults([]);
+      return;
+    }
+
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const searchResults = await globalSearch(query, 5);
+        // Combine all results into a single array
+        const combinedResults: SearchResult[] = [
+          ...searchResults.events,
+          ...searchResults.venues,
+          ...searchResults.users,
+          ...searchResults.podcasts,
+        ];
+        setResults(combinedResults);
+      } catch (error) {
+        console.error('Search error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const delayDebounceFn = setTimeout(() => {
+      fetchData();
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [query]);
+
+  const handleSelect = (result: SearchResult) => {
     setOpen(false);
     setQuery('');
-
+    
     switch (result.type) {
       case 'event':
         navigate(`/events/${result.id}`);
@@ -34,161 +86,133 @@ export function SearchBox() {
       case 'user':
         navigate(`/profile/${result.id}`);
         break;
-      default:
+      case 'podcast':
+        navigate(`/podcasts/${result.id}`);
         break;
+      default:
+        console.warn('Unknown search result type:', result.type);
     }
   };
-
-  const handleOpenChange = (value: boolean) => {
-    setOpen(value);
-    if (!value) {
-      setQuery('');
-    }
-  };
-
-  // Close dropdown when clicking outside
-  useOnClickOutside(searchRef, () => setOpen(false));
-
-  React.useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        setOpen((open) => !open);
-      }
-    };
-    document.addEventListener('keydown', down);
-    return () => document.removeEventListener('keydown', down);
-  }, []);
 
   return (
-    <div className="relative" ref={searchRef}>
-      <Button
-        variant="outline"
-        className="flex items-center justify-between px-3 w-full md:w-64 lg:w-80"
-        onClick={() => setOpen(true)}
-      >
-        <div className="flex items-center">
-          <SearchIcon className="mr-2 h-4 w-4" />
-          <span className="text-muted-foreground">
-            Search events, venues, people...
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          className={`group flex items-center rounded-lg border border-input bg-background px-4 py-2 text-sm text-muted-foreground ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${className}`}
+        >
+          <Search className="mr-2 h-4 w-4" />
+          <span>Search...</span>
+          <span className="ml-auto text-xs tracking-widest text-muted-foreground group-hover:text-foreground">
+            Ctrl+K
           </span>
-        </div>
-        <kbd className="hidden md:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
-          ⌘K
-        </kbd>
-      </Button>
-
-      <CommandDialog open={open} onOpenChange={handleOpenChange}>
-        <div className="flex items-center border-b px-3">
-          <SearchIcon className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[400px] p-0" align="start">
+        <Command>
           <CommandInput
-            placeholder="Search events, venues, people..."
+            ref={inputRef}
+            placeholder="Type a command or search..."
             value={query}
             onValueChange={setQuery}
           />
-          {isSearching && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
-          {query && !isSearching && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              onClick={() => setQuery('')}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-        <CommandList>
-          {query.length < 3 && (
-            <CommandEmpty>
-              Type at least 3 characters to search...
-            </CommandEmpty>
-          )}
-          {query.length >= 3 && results.length === 0 && !isSearching && (
+          <CommandList>
             <CommandEmpty>No results found.</CommandEmpty>
-          )}
+            {loading && (
+              <CommandItem className="justify-center">
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-gray-900"></div>
+                  Searching...
+                </div>
+              </CommandItem>
+            )}
+            {results.length > 0 && (
+              <CommandGroup heading="Results">
+                {results.map((result) => (
+                  
+                  {result.type === 'event' && (
+                    <div key={result.id} className="flex items-center gap-3 p-2 hover:bg-muted rounded-md cursor-pointer" onClick={() => handleSelect(result)}>
+                      <div className="h-10 w-10 rounded-md bg-muted flex-shrink-0 overflow-hidden">
+                        {result.imageUrl ? (
+                          <img src={result.imageUrl} alt={result.title} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center bg-primary/10 text-primary">
+                            E
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{result.title}</p>
+                        <p className="text-xs text-muted-foreground truncate">{result.description}</p>
+                      </div>
+                    </div>
+                  )}
 
-          {results.length > 0 && (
-            <>
-              {results.some(result => result.type === 'event') && (
-                <CommandGroup heading="Events">
-                  {results
-                    .filter(result => result.type === 'event')
-                    .map(result => (
-                      <CommandItem
-                        key={result.id}
-                        onSelect={() => handleSelect(result)}
-                      >
-                        <div className="flex items-center">
-                          {result.image_url && (
-                            <img
-                              src={result.image_url}
-                              alt={result.title}
-                              className="mr-2 h-6 w-6 rounded-full object-cover"
-                            />
-                          )}
-                          <span>{result.title}</span>
-                        </div>
-                      </CommandItem>
-                    ))}
-                </CommandGroup>
-              )}
+                  
+                  {result.type === 'venue' && (
+                    <div key={result.id} className="flex items-center gap-3 p-2 hover:bg-muted rounded-md cursor-pointer" onClick={() => handleSelect(result)}>
+                      <div className="h-10 w-10 rounded-md bg-muted flex-shrink-0 overflow-hidden">
+                        {result.imageUrl ? (
+                          <img src={result.imageUrl} alt={result.title} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center bg-primary/10 text-primary">
+                            V
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{result.title}</p>
+                        <p className="text-xs text-muted-foreground truncate">{result.description}</p>
+                      </div>
+                    </div>
+                  )}
 
-              {results.some(result => result.type === 'venue') && (
-                <CommandGroup heading="Venues">
-                  {results
-                    .filter(result => result.type === 'venue')
-                    .map(result => (
-                      <CommandItem
-                        key={result.id}
-                        onSelect={() => handleSelect(result)}
-                      >
-                        <div className="flex items-center">
-                          {result.image_url && (
-                            <img
-                              src={result.image_url}
-                              alt={result.title}
-                              className="mr-2 h-6 w-6 rounded object-cover"
-                            />
-                          )}
-                          <span>{result.title}</span>
-                        </div>
-                      </CommandItem>
-                    ))}
-                </CommandGroup>
-              )}
+                  
+                  {result.type === 'user' && (
+                    <div key={result.id} className="flex items-center gap-3 p-2 hover:bg-muted rounded-md cursor-pointer" onClick={() => handleSelect(result)}>
+                      <div className="h-10 w-10 rounded-md bg-muted flex-shrink-0 overflow-hidden">
+                        {result.imageUrl ? (
+                          <img src={result.imageUrl} alt={result.title} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center bg-primary/10 text-primary">
+                            U
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{result.title}</p>
+                        <p className="text-xs text-muted-foreground truncate">{result.description}</p>
+                      </div>
+                    </div>
+                  )}
 
-              {results.some(result => result.type === 'user') && (
-                <CommandGroup heading="People">
-                  {results
-                    .filter(result => result.type === 'user')
-                    .map(result => (
-                      <CommandItem
-                        key={result.id}
-                        onSelect={() => handleSelect(result)}
-                      >
-                        <div className="flex items-center">
-                          {result.image_url ? (
-                            <img
-                              src={result.image_url}
-                              alt={result.title}
-                              className="mr-2 h-6 w-6 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="mr-2 h-6 w-6 rounded-full bg-gray-200 flex items-center justify-center">
-                              {result.title.charAt(0)}
-                            </div>
-                          )}
-                          <span>{result.title}</span>
-                        </div>
-                      </CommandItem>
-                    ))}
-                </CommandGroup>
-              )}
-            </>
-          )}
-        </CommandList>
-      </CommandDialog>
-    </div>
+                  
+                  {result.type === 'podcast' && (
+                    <div key={result.id} className="flex items-center gap-3 p-2 hover:bg-muted rounded-md cursor-pointer" onClick={() => handleSelect(result)}>
+                      <div className="h-10 w-10 rounded-md bg-muted flex-shrink-0 overflow-hidden">
+                        {result.imageUrl ? (
+                          <img src={result.imageUrl} alt={result.title} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center bg-primary/10 text-primary">
+                            P
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{result.title}</p>
+                        <p className="text-xs text-muted-foreground truncate">{result.description}</p>
+                      </div>
+                    </div>
+                  )}
+                
+                ))}
+              </CommandGroup>
+            )}
+            <CommandSeparator />
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
-}
+};
+
+export default SearchBox;

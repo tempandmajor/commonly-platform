@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Podcast, PodcastCreateInput, PodcastCategory } from "@/types/podcast";
 
@@ -127,16 +126,16 @@ export const getPodcastCategories = async (): Promise<PodcastCategory[]> => {
 };
 
 /**
- * Increment the listen count for a podcast
+ * Increments the listen count for a podcast
  */
 export const incrementListenCount = async (podcastId: string): Promise<boolean> => {
   try {
-    // Use the dedicated RPC function
-    const { error } = await supabase.rpc('increment_podcast_listens', {
-      podcast_id_param: podcastId
+    const { data, error } = await supabase.rpc('increment_podcast_listens', {
+      podcast_id: podcastId
     });
     
     if (error) throw error;
+    
     return true;
   } catch (error) {
     console.error("Error incrementing podcast listen count:", error);

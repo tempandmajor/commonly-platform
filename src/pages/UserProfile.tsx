@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/layout/Navbar";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import LoadingSpinner from "@/components/common/LoadingSpinner";
-import { getUserProfile, toggleFollowUser } from "@/services/userService";
+import { LoadingSpinner } from "@/components/common/LoadingSpinner";
+import { getUserProfile, toggleFollowUser, isUserPro } from "@/services/userService";
 import { useToast } from "@/hooks/use-toast";
 import UserProfileHeader from "@/components/profile/UserProfileHeader";
 import UserEvents from "@/components/profile/UserEvents";
@@ -14,7 +14,18 @@ import SubscriptionTab from "@/components/profile/SubscriptionTab";
 import MerchantStoreTab from "@/components/profile/MerchantStoreTab";
 import { UserData } from "@/types/auth";
 import { createChat } from "@/services/chat/index";
-import { Mail, MoreHorizontal } from "lucide-react";
+import { 
+  Mail, 
+  MessageCircle,
+  Loader2,
+  Edit,
+  Lock,
+  Crown,
+  ShoppingBag,
+  User,
+  Calendar,
+  Activity
+} from "lucide-react";
 import { 
   DropdownMenu,
   DropdownMenuContent, 
@@ -22,7 +33,26 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
-import { useNavigate } from "react-router-dom";
+import { 
+  Card, 
+  CardContent, 
+  CardHeader, 
+  CardTitle, 
+  CardDescription 
+} from "@/components/ui/card";
+import { 
+  Avatar, 
+  AvatarFallback, 
+  AvatarImage 
+} from "@/components/ui/avatar";
+
+// Create a UserList component placeholder since it's referenced but not defined
+const UserList: React.FC<{userId: string, listType: 'followers' | 'following'}> = ({ userId, listType }) => (
+  <div className="text-center p-10">
+    <h3 className="text-lg font-medium">{listType === 'followers' ? 'Followers' : 'Following'}</h3>
+    <p className="text-muted-foreground">User list coming soon</p>
+  </div>
+);
 
 const UserProfile: React.FC = () => {
   const { userId } = useParams();

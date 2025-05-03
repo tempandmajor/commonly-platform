@@ -1,45 +1,47 @@
 
 import { useState, useCallback } from 'react';
-import { SearchResult, globalSearch } from '@/services/searchService';
+import { globalSearch, SearchResult, SearchResults } from '@/services/searchService';
+import { useDebounce } from './useDebounce';
 
-export function useSearch() {
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [query, setQuery] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(false);
-  const [isSearching, setIsSearching] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+export const useSearch = () => {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<SearchResults>({
+    events: [],
+    venues: [],
+    users: [],
+    podcasts: []
+  });
+  const [loading, setLoading] = useState(false);
+  
+  const debouncedQuery = useDebounce(query, 300);
 
-  const search = useCallback(async (searchQuery: string) => {
-    if (!searchQuery || searchQuery.trim().length < 2) {
-      setResults([]);
+  const search = useCallback(async () => {
+    if (!debouncedQuery) {
+      setResults({
+        events: [],
+        venues: [],
+        users: [],
+        podcasts: []
+      });
       return;
     }
 
-    setQuery(searchQuery);
     setLoading(true);
-    setIsSearching(true);
-    setError(null);
-
     try {
-      const searchResults = await globalSearch(searchQuery);
+      const searchResults = await globalSearch(debouncedQuery);
       setResults(searchResults);
-    } catch (err) {
-      const errMessage = err instanceof Error ? err.message : 'An unknown error occurred';
-      setError(errMessage);
-      console.error('Search failed:', err);
+    } catch (error) {
+      console.error('Search error:', error);
     } finally {
       setLoading(false);
-      setIsSearching(false);
     }
-  }, []);
+  }, [debouncedQuery]);
 
   return {
-    results,
-    loading,
-    error,
-    search,
     query,
     setQuery,
-    isSearching
+    results,
+    loading,
+    search
   };
-}
+};

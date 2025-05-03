@@ -10,6 +10,9 @@ export interface SearchResult {
   imageUrl?: string;
   type: 'event' | 'venue' | 'user' | 'podcast';
   createdAt: string;
+  category?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface EventWithDistance extends Event {

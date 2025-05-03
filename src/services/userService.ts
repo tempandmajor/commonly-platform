@@ -2,6 +2,9 @@
 import { supabase } from "@/integrations/supabase/client";
 import { UserData } from "@/types/auth";
 
+// Export isUserPro function for use in UserProfile.tsx
+export { isUserPro } from "@/services/userService";
+
 export const getUserProfile = async (userId: string): Promise<UserData | null> => {
   try {
     const { data, error } = await supabase
@@ -53,7 +56,7 @@ export const getUserEventsFeed = async (userId: string) => {
 
 export const getUserFollowers = async (userId: string) => {
   try {
-    // Using direct query instead of RPC since the RPC function might not exist
+    // Using direct SQL query instead of RPC to avoid type issues
     const { data, error } = await supabase
       .from('user_follows')
       .select('follower_id')
@@ -71,7 +74,7 @@ export const getUserFollowers = async (userId: string) => {
 
 export const getUserFollowing = async (userId: string) => {
   try {
-    // Using direct query instead of RPC
+    // Using direct SQL query instead of RPC
     const { data, error } = await supabase
       .from('user_follows')
       .select('following_id')

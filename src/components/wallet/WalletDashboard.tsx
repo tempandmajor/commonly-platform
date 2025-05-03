@@ -27,9 +27,9 @@ const WalletDashboard: React.FC<WalletDashboardProps> = ({ userId }) => {
     currentPage,
     totalTransactions,
     filters,
-    fetchWalletData,
-    fetchTransactions,
-    fetchReferralStats,
+    loadWalletData,
+    loadTransactions,
+    loadReferralStats,
     handleWithdrawal,
     handleCreateConnectAccount,
     exportTransactionsToCSV,
@@ -60,16 +60,27 @@ const WalletDashboard: React.FC<WalletDashboardProps> = ({ userId }) => {
   // Create a combined wallet object that matches the UserWallet type expected by components
   const wallet = {
     ...walletData,
-    transactions: transactions
+    transactions: transactions,
+    stripeConnectId: walletData.stripeConnectId || null,
+    platformCredits: walletData.platformCredits || 0
+  };
+
+  // Create wrapper functions to handle return type mismatches
+  const handleWithdrawalWrapper = async (amount: number): Promise<void> => {
+    await handleWithdrawal(amount);
+  };
+
+  const handleCreateConnectAccountWrapper = async (): Promise<void> => {
+    await handleCreateConnectAccount();
   };
 
   return (
     <div className="space-y-6">
       <WalletOverview 
         wallet={wallet} 
-        onWithdraw={handleWithdrawal} 
+        onWithdraw={handleWithdrawalWrapper} 
         withdrawalLoading={withdrawalLoading}
-        onConnectAccount={handleCreateConnectAccount}
+        onConnectAccount={handleCreateConnectAccountWrapper}
         connectAccountLoading={connectAccountLoading}
       />
       
@@ -95,22 +106,22 @@ const WalletDashboard: React.FC<WalletDashboardProps> = ({ userId }) => {
         </TabsContent>
         
         <TabsContent value="credits" className="mt-4">
-          <PlatformCreditsTab wallet={wallet} refreshWallet={fetchWalletData} />
+          <PlatformCreditsTab wallet={wallet} refreshWallet={loadWalletData} />
         </TabsContent>
         
         <TabsContent value="referrals" className="mt-4">
           <ReferralsTab 
             referralStats={referralStats} 
-            onPeriodChange={(period) => fetchReferralStats(period)} 
+            onPeriodChange={(period) => loadReferralStats(period)} 
           />
         </TabsContent>
         
         <TabsContent value="payment-methods" className="mt-4">
           <PaymentMethodsTab 
             paymentMethods={paymentMethods} 
-            refreshPaymentMethods={fetchWalletData} 
+            refreshPaymentMethods={loadWalletData} 
             hasStripeConnect={!!wallet.stripeConnectId}
-            onConnectAccount={handleCreateConnectAccount}
+            onConnectAccount={handleCreateConnectAccountWrapper}
             connectAccountLoading={connectAccountLoading}
           />
         </TabsContent>
