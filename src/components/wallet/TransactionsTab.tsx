@@ -16,7 +16,7 @@ import { format } from 'date-fns';
 import { Transaction, TransactionFilters } from '@/types/wallet';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { FilterX, Loader2 } from "../ui/icons";
+import { FilterX, Search, Download, Loader2 } from "../ui/icons";
 
 interface TransactionsTabProps {
   transactions: Transaction[];

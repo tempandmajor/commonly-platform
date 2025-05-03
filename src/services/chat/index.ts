@@ -5,6 +5,7 @@ import { Chat, ChatMessage, ChatWithUser } from "@/types/chat";
 // Re-export functions from chat service modules
 export * from './chatService';
 export * from './messageService';
+export * from './sendMessageService';
 export * from './typingService';
 export * from './unreadService';
 

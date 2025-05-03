@@ -1,105 +1,78 @@
-import { useState, useEffect, useCallback } from "react";
-import { useToast } from "@/hooks/use-toast";
+
+import { useState, useEffect } from 'react';
 import { 
-  UserWallet, 
   Transaction, 
-  TransactionFilters, 
-  ReferralStats,
-  PaymentMethod
-} from "@/types/wallet";
-import { 
-  getWalletData, 
-  getUserTransactions, 
-  createWithdrawal,
-  createStripeConnectAccount,
-  getReferralStats,
-  getPaymentMethods,
-} from "@/services/walletService";
+  WalletData, 
+  ReferralStats, 
+  PaymentMethod, 
+  WithdrawalRequest,
+  TransactionFilters 
+} from '@/types/wallet';
+import {
+  getUserTransactions,
+  getUserWallet,
+  requestWithdrawal,
+  createStripeConnectAccountLink
+} from '@/services/walletService';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from './use-toast';
 
-interface TransactionFilters {
-  type?: string;
-  startDate?: Date;
-  endDate?: Date;
-  status?: string;
-  search?: string;
-}
-
-export const useWallet = (userId: string) => {
-  const { currentUser } = useAuth();
-  const { toast } = useToast();
-  const [wallet, setWallet] = useState<UserWallet | null>(null);
+export function useWallet() {
+  const [walletData, setWalletData] = useState<WalletData | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [referralStats, setReferralStats] = useState<ReferralStats | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [transactionsLoading, setTransactionsLoading] = useState<boolean>(false);
-  const [withdrawalLoading, setWithdrawalLoading] = useState<boolean>(false);
-  const [connectAccountLoading, setConnectAccountLoading] = useState<boolean>(false);
+  const [referralStats, setReferralStats] = useState<ReferralStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [transactionsLoading, setTransactionsLoading] = useState(false);
   const [filters, setFilters] = useState<TransactionFilters>({});
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [totalTransactions, setTotalTransactions] = useState<number>(0);
-  const [statsPeriod, setStatsPeriod] = useState<'week' | 'month' | 'year' | 'all'>('month');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalTransactions, setTotalTransactions] = useState(0);
+  const [connectAccountLoading, setConnectAccountLoading] = useState(false);
+  const { toast } = useToast();
+  const { currentUser } = useAuth();
 
-  // Mock implementation for now
-  const fetchWalletData = useCallback(async () => {
-    setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setWallet({
-        userId,
-        totalEarnings: 1250.75,
-        availableBalance: 875.50,
-        pendingBalance: 200.00,
-        platformCredits: 50,
-        stripeConnectId: null,
-        hasPayoutMethod: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        transactions: []
-      });
-      setPaymentMethods(generateMockPaymentMethods(userId));
-      setLoading(false);
-    }, 800);
-  }, [userId]);
-
-  // Mock helper function
-  const generateMockPaymentMethods = (userId: string): PaymentMethod[] => {
-    return [
-      {
-        id: "pm_1",
-        userId,
-        type: "card",
-        brand: "visa",
-        last4: "4242",
-        expMonth: 12,
-        expYear: 2025,
-        isDefault: true,
-        createdAt: new Date().toISOString()
+  // Fetch wallet data
+  useEffect(() => {
+    const fetchWalletData = async () => {
+      if (!currentUser) return;
+      
+      try {
+        setLoading(true);
+        const data = await getUserWallet(currentUser.uid);
+        setWalletData(data);
+      } catch (error) {
+        console.error('Error fetching wallet data:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load wallet data",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
       }
-    ];
-  };
+    };
+    
+    fetchWalletData();
+  }, [currentUser, toast]);
 
-  // Fetch transactions with filters
-  const fetchTransactions = async (page = 1, pageSize = 10, newFilters?: TransactionFilters) => {
+  // Load transactions with pagination and filters
+  const loadTransactions = async () => {
+    if (!currentUser) return;
+    
     try {
       setTransactionsLoading(true);
-    
-      // Update filters if new ones are provided
-      const filtersToUse = newFilters ? { ...newFilters } : filters;
-      if (newFilters) {
-        setFilters(newFilters);
-        setCurrentPage(1);
-      }
-    
-      // Get transactions with the given filters
-      const result = await getUserTransactions(userId, page, pageSize, filtersToUse);
-    
-      if (result && Array.isArray(result.transactions)) {
-        setTransactions(result.transactions);
-        setTotalTransactions(result.total || 0);
-      }
+      
+      const result = await getUserTransactions(
+        currentUser.uid,
+        currentPage,
+        10, // pageSize
+        filters
+      );
+      
+      setTransactions(result.transactions);
+      setTotalTransactions(result.totalCount);
     } catch (error) {
-      console.error("Error fetching transactions:", error);
+      console.error('Error fetching transactions:', error);
       toast({
         title: "Error",
         description: "Failed to load transactions",
@@ -110,179 +83,195 @@ export const useWallet = (userId: string) => {
     }
   };
 
-  // Fetch referral stats
-  const fetchReferralStats = useCallback(async (period: 'week' | 'month' | 'year' | 'all' = 'month') => {
-    if (!userId) return;
+  // Load referral stats
+  const loadReferralStats = async () => {
+    if (!currentUser) return;
     
     try {
-      const stats = await getUserReferralStats(userId, period);
+      // Using correct function name as imported
+      const stats = await getUserReferralStats(currentUser.uid);
       setReferralStats(stats);
-      setStatsPeriod(period);
     } catch (error) {
-      console.error("Error fetching referral stats:", error);
+      console.error('Error fetching referral stats:', error);
       toast({
         title: "Error",
         description: "Failed to load referral statistics",
         variant: "destructive",
       });
     }
-  }, [userId, toast]);
+  };
 
-  // Fetch payment methods
-  const fetchPaymentMethods = useCallback(async () => {
-    if (!userId) return;
+  // Load payment methods
+  const loadPaymentMethods = async () => {
+    if (!currentUser) return;
     
     try {
-      const methods = await getUserPaymentMethods(userId);
+      // Using correct function name as imported
+      const methods = await getUserPaymentMethods(currentUser.uid);
       setPaymentMethods(methods);
     } catch (error) {
-      console.error("Error fetching payment methods:", error);
+      console.error('Error fetching payment methods:', error);
       toast({
         title: "Error",
         description: "Failed to load payment methods",
         variant: "destructive",
       });
     }
-  }, [userId, toast]);
+  };
 
-  // Initiate withdrawal
-  const handleWithdrawal = async (amount: number) => {
-    if (!userId || !wallet) return;
+  // Trigger a refresh of all wallet data
+  const refreshWalletData = async () => {
+    setLoading(true);
     
-    if (amount <= 0) {
-      toast({
-        title: "Invalid amount",
-        description: "Withdrawal amount must be greater than zero",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (amount > wallet.availableBalance) {
-      toast({
-        title: "Insufficient funds",
-        description: "Withdrawal amount exceeds available balance",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setWithdrawalLoading(true);
     try {
-      await initiateWithdrawal(userId, amount);
-      toast({
-        title: "Withdrawal initiated",
-        description: "Your withdrawal has been initiated and will be processed shortly",
-      });
-      await fetchWalletData();
+      if (currentUser) {
+        await Promise.all([
+          getUserWallet(currentUser.uid).then(setWalletData),
+          loadTransactions(),
+          loadReferralStats(),
+          loadPaymentMethods(),
+        ]);
+      }
     } catch (error) {
-      console.error("Error initiating withdrawal:", error);
-      toast({
-        title: "Withdrawal failed",
-        description: error instanceof Error ? error.message : "Failed to process withdrawal",
-        variant: "destructive",
-      });
+      console.error('Error refreshing wallet data:', error);
     } finally {
-      setWithdrawalLoading(false);
+      setLoading(false);
     }
   };
 
-  // Create Stripe Connect account link
-  const handleCreateConnectAccount = async () => {
-    if (!userId) return;
-    
-    setConnectAccountLoading(true);
-    try {
-      const url = await createStripeConnectAccount(userId);
-      window.open(url, "_blank");
-    } catch (error) {
-      console.error("Error creating Connect account:", error);
+  // Initiate a withdrawal
+  const initiateWithdrawal = async (withdrawalData: WithdrawalRequest) => {
+    if (!currentUser || !walletData) {
       toast({
         title: "Error",
-        description: "Failed to create Stripe Connect account link",
+        description: "User information is missing",
         variant: "destructive",
       });
+      return false;
+    }
+    
+    if (walletData.availableBalance < withdrawalData.amount) {
+      toast({
+        title: "Insufficient balance",
+        description: "You don't have enough funds to withdraw this amount",
+        variant: "destructive",
+      });
+      return false;
+    }
+    
+    try {
+      // Using correct function
+      await requestWithdrawal(currentUser.uid, withdrawalData);
+      
+      toast({
+        title: "Withdrawal requested",
+        description: "Your withdrawal request has been submitted",
+      });
+      
+      await refreshWalletData();
+      return true;
+    } catch (error) {
+      console.error('Error initiating withdrawal:', error);
+      toast({
+        title: "Error",
+        description: "Failed to request withdrawal",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
+  // Connect Stripe account for payouts
+  const connectStripeAccount = async () => {
+    if (!currentUser) return;
+    
+    try {
+      setConnectAccountLoading(true);
+      const url = await createStripeConnectAccountLink(currentUser.uid);
+      
+      if (url) {
+        window.location.href = url;
+        return true;
+      } else {
+        throw new Error("Failed to create account link");
+      }
+    } catch (error) {
+      console.error('Error connecting Stripe account:', error);
+      toast({
+        title: "Error",
+        description: "Failed to initiate Stripe Connect",
+        variant: "destructive",
+      });
+      return false;
     } finally {
       setConnectAccountLoading(false);
     }
   };
 
-  // Export transactions to CSV
-  const exportTransactionsToCSV = async () => {
-    try {
-      // Get all transactions for export (with current filters but no pagination)
-      const result = await getUserTransactions(userId, 1, 1000, filters);
-    
-      if (!result || !result.transactions || result.transactions.length === 0) {
-        toast({
-          title: "No data",
-          description: "No transactions to export",
-        });
-        return;
-      }
-    
-      // Convert data to CSV
-      const headers = ["Date", "Type", "Amount", "Status", "Description"];
-      const csvContent = [
-        headers.join(","),
-        ...result.transactions.map(t => [
-          new Date(t.createdAt).toLocaleDateString(),
-          t.type,
-          t.amount.toFixed(2),
-          t.status,
-          `"${t.description || ""}"`
-        ].join(","))
-      ].join("\n");
-    
-      // Create download link
-      const blob = new Blob([csvContent], { type: "text/csv" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `transactions-${new Date().toISOString().split("T")[0]}.csv`;
-      link.click();
-    
-      toast({
-        title: "Export complete",
-        description: "Transactions exported to CSV",
-      });
-    } catch (error) {
-      console.error("Error exporting transactions:", error);
-      toast({
-        title: "Export failed",
-        description: "Failed to export transactions",
-        variant: "destructive",
-      });
-    }
+  // Filter transactions
+  const handleFilterChange = (newFilters: TransactionFilters) => {
+    setFilters(newFilters);
+    setCurrentPage(1); // Reset to first page when filters change
   };
 
-  // Initial data loading
+  // Change page
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  // Export transactions to CSV
+  const exportTransactions = () => {
+    if (transactions.length === 0) return;
+    
+    // Create CSV content
+    const headers = ['Date', 'Type', 'Amount', 'Status', 'Description'];
+    const csvContent = [
+      headers.join(','),
+      ...transactions.map(t => [
+        new Date(t.createdAt).toLocaleDateString(),
+        t.type,
+        t.amount.toFixed(2),
+        t.status,
+        `"${t.description.replace(/"/g, '""')}"`
+      ].join(','))
+    ].join('\n');
+    
+    // Create download link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `transactions-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Load initial data
   useEffect(() => {
-    if (userId) {
-      fetchWalletData();
+    if (currentUser) {
+      loadTransactions();
     }
-  }, [userId, fetchWalletData]);
+  }, [currentUser, filters, currentPage]);
 
   return {
-    wallet,
+    walletData,
     transactions,
-    referralStats,
     paymentMethods,
+    referralStats,
     loading,
     transactionsLoading,
-    withdrawalLoading,
     connectAccountLoading,
+    filters,
     currentPage,
     totalTransactions,
-    filters,
-    fetchWalletData,
-    fetchTransactions,
-    fetchReferralStats,
-    fetchPaymentMethods,
-    handleWithdrawal,
-    handleCreateConnectAccount,
-    exportTransactionsToCSV,
-    setFilters,
-    setCurrentPage
+    refreshWalletData,
+    initiateWithdrawal,
+    connectStripeAccount,
+    handleFilterChange,
+    handlePageChange,
+    exportTransactions,
+    loadPaymentMethods,
   };
-};
+}

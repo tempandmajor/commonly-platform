@@ -1,6 +1,6 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { updateLastMessage } from "./chatService";
-import { v4 as uuidv4 } from 'uuid';
 
 export const sendMessage = async (
   chatId: string,

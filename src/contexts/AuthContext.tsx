@@ -5,7 +5,7 @@ import { AuthContextType, UserData, UserSession } from "@/types/auth";
 import { useAuthActions } from "@/hooks/useAuthActions";
 import { User } from "@supabase/supabase-js";
 import { toast } from "@/hooks/use-toast";
-import { adaptUser } from "@/utils/userAdapter";
+import { adaptUser, AdaptedUser } from "@/utils/userAdapter";
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
@@ -18,7 +18,8 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  // Changed the type from User to AdaptedUser to ensure uid property exists
+  const [currentUser, setCurrentUser] = useState<AdaptedUser | null>(null);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -328,7 +329,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!currentUser) throw new Error("No authenticated user");
     
     try {
-      const { error } = await supabase.auth.admin.deleteUser(currentUser.id);
+      const { error } = await supabase.auth.admin.deleteUser(currentUser.uid);
       if (error) throw error;
     } catch (error) {
       console.error("Error deleting account:", error);

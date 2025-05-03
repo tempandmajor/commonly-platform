@@ -1,8 +1,16 @@
-import { supabase } from "@/integrations/supabase/client";
-import { UserWallet, Transaction, TransactionFilters, ReferralStats, PaymentMethod } from "@/types/wallet";
 
-// Get user wallet
-export const getUserWallet = async (userId: string): Promise<UserWallet | null> => {
+import { supabase } from "@/integrations/supabase/client";
+import { 
+  Transaction, 
+  WalletData, 
+  ReferralStats, 
+  PaymentMethod, 
+  WithdrawalRequest,
+  TransactionFilters
+} from "@/types/wallet";
+
+// Get wallet data for a user
+export const getUserWallet = async (userId: string): Promise<WalletData> => {
   try {
     const { data, error } = await supabase
       .from('wallets')
@@ -12,157 +20,214 @@ export const getUserWallet = async (userId: string): Promise<UserWallet | null> 
     
     if (error) throw error;
     
-    if (!data) return null;
+    if (!data) {
+      // Create wallet if it doesn't exist
+      const { data: newWallet, error: createError } = await supabase
+        .from('wallets')
+        .insert({ user_id: userId })
+        .select()
+        .single();
+      
+      if (createError) throw createError;
+      
+      return {
+        availableBalance: 0,
+        pendingBalance: 0,
+        totalEarnings: 0,
+        platformCredits: 0,
+        hasPayoutMethod: false
+      };
+    }
     
     return {
-      userId: data.user_id,
-      totalEarnings: data.total_earnings || 0,
       availableBalance: data.available_balance || 0,
       pendingBalance: data.pending_balance || 0,
+      totalEarnings: data.total_earnings || 0,
       platformCredits: data.platform_credits || 0,
-      stripeConnectId: data.stripe_connect_id,
       hasPayoutMethod: data.has_payout_method || false,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at,
-      transactions: [] // Transactions are fetched separately
+      stripeConnectId: data.stripe_connect_id
     };
   } catch (error) {
-    console.error("Error fetching user wallet:", error);
+    console.error("Error getting wallet data:", error);
     throw error;
   }
 };
 
-// Get user transactions
+// Get user transactions with pagination and filtering
 export const getUserTransactions = async (
   userId: string,
   page: number = 1,
-  pageSize: number = 10,
-  filters?: TransactionFilters
-): Promise<{ transactions: Transaction[], total: number }> => {
+  limit: number = 10,
+  filters: TransactionFilters = {}
+): Promise<{ transactions: Transaction[], totalCount: number }> => {
   try {
     let query = supabase
       .from('transactions')
       .select('*', { count: 'exact' })
       .eq('user_id', userId);
-
-    // Apply filters if provided
-    if (filters) {
-      if (filters.type) {
-        query = query.eq('type', filters.type);
-      }
-      
-      if (filters.status) {
-        query = query.eq('status', filters.status);
-      }
-      
-      if (filters.dateFrom) {
-        query = query.gte('created_at', filters.dateFrom);
-      }
-      
-      if (filters.dateTo) {
-        query = query.lte('created_at', filters.dateTo);
-      }
-    }
-
-    // Add pagination
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize - 1;
     
-    // Fetch transactions with pagination
-    const { data, error, count } = await query
+    // Apply filters
+    if (filters.search) {
+      query = query.ilike('description', `%${filters.search}%`);
+    }
+    
+    if (filters.type) {
+      query = query.eq('type', filters.type);
+    }
+    
+    if (filters.status) {
+      query = query.eq('status', filters.status);
+    }
+    
+    if (filters.startDate) {
+      query = query.gte('created_at', filters.startDate.toISOString());
+    }
+    
+    if (filters.endDate) {
+      // Add a day to include the end date
+      const endDate = new Date(filters.endDate);
+      endDate.setDate(endDate.getDate() + 1);
+      query = query.lt('created_at', endDate.toISOString());
+    }
+    
+    // Add pagination
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+    
+    query = query
       .order('created_at', { ascending: false })
       .range(from, to);
-
+    
+    const { data, error, count } = await query;
+    
     if (error) throw error;
-
+    
+    const transactions: Transaction[] = (data || []).map(item => ({
+      id: item.id,
+      userId: item.user_id,
+      amount: item.amount,
+      type: item.type,
+      status: item.status || 'completed',
+      description: item.description || '',
+      createdAt: item.created_at,
+      updatedAt: item.updated_at
+    }));
+    
     return {
-      transactions: data || [],
-      total: count || 0
+      transactions,
+      totalCount: count || 0
     };
   } catch (error) {
-    console.error("Error fetching transactions:", error);
-    throw error;
+    console.error("Error getting user transactions:", error);
+    return {
+      transactions: [],
+      totalCount: 0
+    };
   }
 };
 
-// Get referral stats for user
-export const getUserReferralStats = async (userId: string, period: string = '30days'): Promise<ReferralStats> => {
+// Create a withdrawal request
+export const requestWithdrawal = async (
+  userId: string,
+  withdrawalData: WithdrawalRequest
+): Promise<boolean> => {
   try {
-    // In a real implementation, you would fetch this from Supabase
-    // This is mock data for development
-    return {
-      totalReferrals: 12,
-      clickCount: 54,
-      conversionCount: 8,
-      totalEarnings: 120,
-      conversionRate: 14.8,
-      period
-    };
-  } catch (error) {
-    console.error("Error fetching referral stats:", error);
-    throw error;
-  }
-};
-
-// Get user payment methods
-export const getUserPaymentMethods = async (userId: string): Promise<PaymentMethod[]> => {
-  try {
-    // In a real implementation, you would fetch this from Supabase
-    // This is mock data for development
-    return [
-      {
-        id: "pm_1",
-        userId: userId,
-        type: "card",
-        last4: "4242",
-        expMonth: 12,
-        expYear: 2024,
-        isDefault: true,
-        createdAt: new Date().toISOString()
+    const { error } = await supabase
+      .from('transactions')
+      .insert({
+        user_id: userId,
+        amount: withdrawalData.amount,
+        type: 'withdrawal',
+        status: 'pending',
+        description: `Withdrawal request ${withdrawalData.notes ? `- ${withdrawalData.notes}` : ''}`,
+        payment_method_id: withdrawalData.paymentMethodId
+      });
+    
+    if (error) throw error;
+    
+    // Deduct from available balance
+    const { error: updateError } = await supabase.rpc(
+      'update_user_wallet_on_withdrawal',
+      { 
+        user_id_param: userId,
+        amount_param: withdrawalData.amount
       }
-    ];
-  } catch (error) {
-    console.error("Error fetching payment methods:", error);
-    throw error;
-  }
-};
-
-// Initiate a withdrawal
-export const initiateWithdrawal = async (userId: string, amount: number): Promise<{ success: boolean; message: string }> => {
-  try {
-    // In a real implementation, you would create a withdrawal request in Supabase
-    // Mock implementation for development
-    console.log(`Initiating withdrawal of $${amount} for user ${userId}`);
+    );
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    if (updateError) throw updateError;
     
-    return {
-      success: true,
-      message: `Withdrawal of $${amount.toFixed(2)} initiated successfully.`
-    };
+    return true;
   } catch (error) {
-    console.error("Error initiating withdrawal:", error);
+    console.error("Error requesting withdrawal:", error);
     throw error;
   }
 };
 
 // Create a Stripe Connect account link
-export const createConnectAccountLink = async (userId: string): Promise<{ url: string }> => {
+export const createStripeConnectAccountLink = async (
+  userId: string
+): Promise<string> => {
   try {
-    // In a real implementation, you would call a serverless function to create a Stripe Connect account link
-    // Mock implementation for development
-    console.log(`Creating Stripe Connect account link for user ${userId}`);
+    // This should be an edge function in a real app
+    // For now, we'll just simulate it
+    const response = await fetch('/api/stripe/create-connect-link', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ userId })
+    });
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    if (!response.ok) {
+      throw new Error('Failed to create connect link');
+    }
     
-    // Return a mock URL
-    return {
-      url: "https://connect.stripe.com/setup/s/mock-link"
-    };
+    const data = await response.json();
+    return data.url;
   } catch (error) {
-    console.error("Error creating Connect account link:", error);
+    console.error("Error creating Stripe connect link:", error);
     throw error;
   }
+};
+
+// Get user's referral statistics
+export const getUserReferralStats = async (userId: string): Promise<ReferralStats> => {
+  // This would ideally fetch from your database
+  // For now returning mock data
+  return {
+    totalReferrals: 5,
+    activeReferrals: 3,
+    referralEarnings: 250,
+    pendingEarnings: 50
+  };
+};
+
+// Get user's payment methods
+export const getUserPaymentMethods = async (userId: string): Promise<PaymentMethod[]> => {
+  // This would ideally fetch from your database or Stripe
+  // For now returning mock data
+  return [
+    {
+      id: "pm_1",
+      userId: userId,
+      type: "card",
+      brand: "Visa",
+      last4: "4242",
+      expMonth: 12,
+      expYear: 2025,
+      isDefault: true,
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: "pm_2",
+      userId: userId,
+      type: "card",
+      brand: "Mastercard",
+      last4: "5555",
+      expMonth: 10,
+      expYear: 2024,
+      isDefault: false,
+      createdAt: new Date().toISOString()
+    }
+  ];
 };
