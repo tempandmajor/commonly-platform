@@ -15,7 +15,7 @@ interface MockedSupabaseClient {
   };
 }
 
-// Fixed: Updated mock implementation without passing arguments
+// Fixed: Mock implementation correctly handles arguments
 vi.mock('@supabase/supabase-js', () => {
   return {
     createClient: vi.fn(() => ({
@@ -59,7 +59,7 @@ describe('Authentication Integration', () => {
     vi.clearAllMocks();
     
     // Create a mock Supabase client - fixed by casting to the correct type
-    mockSupabase = createClient('https://example.com', 'fake-api-key') as any as MockedSupabaseClient;
+    mockSupabase = createClient() as any as MockedSupabaseClient;
     
     // Create a mock auth context
     mockAuthContext = {
