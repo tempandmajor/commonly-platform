@@ -1,5 +1,6 @@
 
 import { User } from "@supabase/supabase-js";
+import { AdaptedUser } from "@/utils/userAdapter";
 
 export interface UserData {
   uid: string;
@@ -31,7 +32,7 @@ export interface UserSession {
 }
 
 export interface AuthContextType {
-  currentUser: User | null;
+  currentUser: AdaptedUser | null;
   userData: UserData | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<any>;

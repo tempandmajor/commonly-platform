@@ -1,10 +1,9 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { WalletData, Transaction, PaymentMethod, ReferralStats, TransactionFilters } from "@/types/wallet";
+import { WalletData, Transaction, PaymentMethod, ReferralStats, TransactionFilters, UserWallet } from "@/types/wallet";
 
 export const useWallet = (userId: string) => {
-  const [wallet, setWallet] = useState<WalletData | null>(null);
+  const [walletData, setWalletData] = useState<WalletData | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [referralStats, setReferralStats] = useState<ReferralStats>({
     totalReferrals: 0,
@@ -44,7 +43,7 @@ export const useWallet = (userId: string) => {
       }
       
       if (data) {
-        setWallet({
+        setWalletData({
           availableBalance: data.available_balance || 0,
           pendingBalance: data.pending_balance || 0,
           totalEarnings: data.total_earnings || 0,
@@ -96,8 +95,8 @@ export const useWallet = (userId: string) => {
           id: item.id,
           userId: item.user_id,
           amount: item.amount,
-          type: item.type,
-          status: item.status,
+          type: item.type as 'referral' | 'payout' | 'sale' | 'credit' | 'withdrawal' | 'fee',
+          status: item.status as 'pending' | 'completed' | 'failed' | 'canceled',
           description: item.description,
           createdAt: item.created_at,
           updatedAt: item.updated_at
@@ -137,8 +136,8 @@ export const useWallet = (userId: string) => {
   };
 
   // Handle withdrawal request
-  const handleWithdrawal = async (amount: number) => {
-    if (!userId) return;
+  const handleWithdrawal = async (amount: number): Promise<{success: boolean, message: string}> => {
+    if (!userId) return { success: false, message: "User not authenticated" };
     
     try {
       setWithdrawalLoading(true);
@@ -158,8 +157,8 @@ export const useWallet = (userId: string) => {
   };
 
   // Handle creating Stripe Connect account
-  const handleCreateConnectAccount = async () => {
-    if (!userId) return;
+  const handleCreateConnectAccount = async (): Promise<{success: boolean, url?: string, message?: string}> => {
+    if (!userId) return { success: false, message: "User not authenticated" };
     
     try {
       setConnectAccountLoading(true);
@@ -179,8 +178,8 @@ export const useWallet = (userId: string) => {
   };
 
   // Export transactions to CSV
-  const exportTransactionsToCSV = async () => {
-    if (!userId || transactions.length === 0) return;
+  const exportTransactionsToCSV = async (): Promise<{success: boolean, message: string}> => {
+    if (!userId || transactions.length === 0) return { success: false, message: "No transactions to export" };
     
     try {
       // Implement CSV export logic here
@@ -205,6 +204,24 @@ export const useWallet = (userId: string) => {
     }
   };
 
+  // Provide wallet data in the format expected by components
+  const wallet: UserWallet = walletData ? {
+    availableBalance: walletData.availableBalance,
+    pendingBalance: walletData.pendingBalance,
+    totalEarnings: walletData.totalEarnings,
+    platformCredits: walletData.platformCredits || 0,
+    transactions: transactions,
+    hasPayoutMethod: walletData.hasPayoutMethod,
+    stripeConnectId: walletData.stripeConnectId
+  } : {
+    availableBalance: 0,
+    pendingBalance: 0,
+    totalEarnings: 0,
+    platformCredits: 0,
+    transactions: [],
+    hasPayoutMethod: false
+  };
+
   // Initial data load
   useEffect(() => {
     if (userId) {
@@ -215,6 +232,7 @@ export const useWallet = (userId: string) => {
   }, [userId]);
 
   return {
+    walletData,
     wallet,
     transactions,
     referralStats,

@@ -1,4 +1,5 @@
 
+
 export interface Transaction {
   id: string;
   userId: string;
@@ -36,10 +37,10 @@ export interface ReferralStats {
   activeReferrals: number;
   referralEarnings: number;
   pendingEarnings: number;
-  conversionCount?: number;
-  clickCount?: number;
-  conversionRate?: number;
-  totalEarnings?: number;
+  conversionCount: number;
+  clickCount: number;
+  conversionRate: number;
+  totalEarnings: number;
   period?: string;
 }
 
@@ -61,6 +62,8 @@ export interface UserWallet {
   availableBalance: number;
   pendingBalance: number;
   totalEarnings: number;
+  platformCredits: number;
   transactions: Transaction[];
   hasPayoutMethod: boolean;
+  stripeConnectId?: string;
 }

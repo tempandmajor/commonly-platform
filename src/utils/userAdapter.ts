@@ -5,7 +5,7 @@ import { User } from "@supabase/supabase-js";
  * Adapts Supabase User object to include Firebase-like properties
  * This helps maintain compatibility with code that expects Firebase auth user properties
  */
-export const adaptUser = (supabaseUser: User | null): (User & { uid: string, photoURL?: string | null, displayName?: string | null }) | null => {
+export const adaptUser = (supabaseUser: User | null): AdaptedUser | null => {
   if (!supabaseUser) return null;
   
   return {
@@ -20,4 +20,8 @@ export const adaptUser = (supabaseUser: User | null): (User & { uid: string, pho
  * Type definition for the adapted user
  * This helps when we need to use the type in TypeScript
  */
-export type AdaptedUser = NonNullable<ReturnType<typeof adaptUser>>;
+export type AdaptedUser = User & { 
+  uid: string;
+  photoURL?: string | null;
+  displayName?: string | null;
+};
